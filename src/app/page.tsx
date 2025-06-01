@@ -1,10 +1,18 @@
-import { Button } from "@/components/ui/button";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth.api.getSession({
+    headers: await headers()
+})
+
+
   return (
     <main>
       <h1>Hello World</h1>
-      <Button>Click me</Button>
+
+      {!session ? "not authenticated" : "Welcome"}
+
     </main>
   );
 }

@@ -7,11 +7,13 @@ export default async function Home() {
 })
 
 
+
   return (
     <main>
       <h1>Hello World</h1>
 
-      {!session ? "not authenticated" : "Welcome"}
+      {!session ? "not authenticated" : "Welcome" }
+
 
     </main>
   );

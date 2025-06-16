@@ -22,7 +22,7 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signIn } from "@/lib/auth-client";
+import { getErrorMessage, signIn } from "@/lib/auth-client";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email ist erforderlich!" }),
@@ -53,11 +53,11 @@ export const LoginForm = () => {
       },
       {
         onSuccess: () => {
-          router.push("/");
+          router.push("/dashboard");
           setLoading(false);
         },
         onError: ({ error }) => {
-          setError(error.message);
+          setError(error.code ? getErrorMessage(error.code) : error.message);
           setLoading(false);
         },
       }
@@ -151,7 +151,7 @@ export const LoginForm = () => {
                   type="button"
                   onClick={() => {
                     form.clearErrors();
-                    signIn.social({ provider: "github" });
+                    signIn.social({ provider: "github", callbackURL: "/dashboard"});
                   }}
                   variant="outline"
                   className={cn("w-full h-10 gap-2")}
@@ -182,13 +182,13 @@ export const LoginForm = () => {
               </div>
             </form>
           </Form>
-          <div className="bg-radial from-primary/40 to-primary relative hidden md:flex flex-col gap-y-4 items-center justify-center">
+          <div className="bg-radial from-primary/40 via-primary/90 to-primary relative hidden md:flex flex-col gap-y-4 items-center justify-center">
             <img
               src="/logo.svg"
               alt="Logo"
-              className="w-32 h-32 brightness-0 invert drop-shadow-lg"
+              className="w-32 h-32 brightness-0 invert drop-shadow-xl"
             />
-            <p className="text-2xl text-white text-center font-bold drop-shadow-sm">
+            <p className="text-3xl text-white text-center font-bold drop-shadow-xl">
               Pivote
             </p>
           </div>

@@ -5,6 +5,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Logo color handling */
+#logo-36 path {
+  fill: oklch(0.5417 0.1790 288.0332);
+}
+
+.dark #logo-36 path {
+  fill: oklch(0.7162 0.1597 290.3962);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

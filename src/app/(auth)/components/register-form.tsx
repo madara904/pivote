@@ -180,14 +180,6 @@ export const RegisterForm = () => {
                     <AlertTitle className="text-sm">{error}</AlertTitle>
                   </Alert>
                 )}
-                <div className="items-center">
-                  <a
-                    href="#"
-                    className="ml-auto text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    Passwort vergessen?
-                  </a>
-                </div>
                 <Button
                   type="submit"
                   className="w-full h-10 font-medium"
@@ -235,13 +227,13 @@ export const RegisterForm = () => {
               </div>
             </form>
           </Form>
-          <div className="bg-radial from-primary/40 to-primary relative hidden md:flex flex-col gap-y-4 items-center justify-center p-8">
+          <div className="bg-radial from-primary/40 via-primary/90 to-primary relative hidden md:flex flex-col gap-y-4 items-center justify-center">
             <img
               src="/logo.svg"
               alt="Logo"
               className="w-32 h-32 brightness-0 invert drop-shadow-lg"
             />
-            <p className="text-2xl text-white text-center font-bold drop-shadow-sm">
+            <p className="text-3xl text-white text-center font-bold drop-shadow-sm">
               Bereit loszulegen?
             </p>
           </div>

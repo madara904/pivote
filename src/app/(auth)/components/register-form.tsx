@@ -66,7 +66,7 @@ export const RegisterForm = () => {
       },
       {
         onSuccess: () => {
-          router.push("/");
+          router.push("/dashboard");
           setLoading(false);
         },
         onError: ({ error }) => {

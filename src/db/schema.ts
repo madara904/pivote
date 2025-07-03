@@ -1,11 +1,20 @@
-import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, decimal, pgEnum } from 'drizzle-orm/pg-core';
+import { randomUUID } from 'crypto';
 
+// Enums for the freight platform
+export const userTypeEnum = pgEnum('user_type', ['company', 'forwarder']);
+export const connectionStatusEnum = pgEnum('connection_status', ['pending', 'accepted', 'rejected']);
+export const inquiryStatusEnum = pgEnum('inquiry_status', ['draft', 'sent', 'closed']);
+export const quotationStatusEnum = pgEnum('quotation_status', ['pending', 'submitted', 'accepted', 'rejected']);
+
+// Better Auth generated schema
 export const user = pgTable("user", {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').$defaultFn(() => false).notNull(),
   image: text('image'),
+  userType: userTypeEnum('user_type').default('company'),
   createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
   updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
 });
@@ -46,7 +55,96 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp('updated_at').$defaultFn(() => new Date())
 });
 
+// Custom tables for freight platform
+export const company = pgTable("company", {
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+  name: text('name').notNull(),
+  address: text('address'),
+  contactPerson: text('contact_person'),
+  phone: text('phone'),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
+});
+
+export const forwarder = pgTable("forwarder", {
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+  name: text('name').notNull(),
+  address: text('address'),
+  contactPerson: text('contact_person'),
+  phone: text('phone'),
+  services: text('services'), // e.g., "sea freight, air freight, customs"
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
+});
+
+export const connection = pgTable("connection", {
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+  companyId: text('company_id').notNull().references(() => company.id, { onDelete: 'cascade' }),
+  forwarderId: text('forwarder_id').notNull().references(() => forwarder.id, { onDelete: 'cascade' }),
+  status: connectionStatusEnum('status').notNull().default('pending'),
+  invitedAt: timestamp('invited_at').$defaultFn(() => new Date()).notNull(),
+  respondedAt: timestamp('responded_at'),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
+});
+
+export const inquiry = pgTable("inquiry", {
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+  title: text('title').notNull(),
+  description: text('description'),
+  originPort: text('origin_port').notNull(),
+  destinationPort: text('destination_port').notNull(),
+  cargoType: text('cargo_type'),
+  weight: decimal('weight', { precision: 10, scale: 2 }),
+  volume: decimal('volume', { precision: 10, scale: 2 }),
+  pickupDate: timestamp('pickup_date'),
+  deliveryDate: timestamp('delivery_date'),
+  status: inquiryStatusEnum('status').notNull().default('draft'),
+  companyId: text('company_id').notNull().references(() => company.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
+});
+
+export const inquiryForwarder = pgTable("inquiry_forwarder", {
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+  inquiryId: text('inquiry_id').notNull().references(() => inquiry.id, { onDelete: 'cascade' }),
+  forwarderId: text('forwarder_id').notNull().references(() => forwarder.id, { onDelete: 'cascade' }),
+  sentAt: timestamp('sent_at').$defaultFn(() => new Date()).notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull()
+});
+
+export const quotation = pgTable("quotation", {
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+  inquiryId: text('inquiry_id').notNull().references(() => inquiry.id, { onDelete: 'cascade' }),
+  forwarderId: text('forwarder_id').notNull().references(() => forwarder.id, { onDelete: 'cascade' }),
+  price: decimal('price', { precision: 12, scale: 2 }).notNull(),
+  currency: text('currency').notNull().default('USD'),
+  validUntil: timestamp('valid_until'),
+  notes: text('notes'),
+  status: quotationStatusEnum('status').notNull().default('pending'),
+  submittedAt: timestamp('submitted_at').$defaultFn(() => new Date()).notNull(),
+  respondedAt: timestamp('responded_at'),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
+});
+
+// Type exports
 export type InsertUser = typeof user.$inferInsert;
 export type SelectUser = typeof user.$inferSelect;
 export type InsertVerification = typeof verification.$inferInsert;
 export type SelectVerification = typeof verification.$inferSelect;
+
+export type InsertCompany = typeof company.$inferInsert;
+export type SelectCompany = typeof company.$inferSelect;
+export type InsertForwarder = typeof forwarder.$inferInsert;
+export type SelectForwarder = typeof forwarder.$inferSelect;
+export type InsertConnection = typeof connection.$inferInsert;
+export type SelectConnection = typeof connection.$inferSelect;
+export type InsertInquiry = typeof inquiry.$inferInsert;
+export type SelectInquiry = typeof inquiry.$inferSelect;
+export type InsertInquiryForwarder = typeof inquiryForwarder.$inferInsert;
+export type SelectInquiryForwarder = typeof inquiryForwarder.$inferSelect;
+export type InsertQuotation = typeof quotation.$inferInsert;
+export type SelectQuotation = typeof quotation.$inferSelect;

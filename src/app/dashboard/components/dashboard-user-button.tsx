@@ -44,7 +44,9 @@ export const DashboardUserButton = () => {
             <AvatarImage src={data.user.image} />
           </Avatar>
         ) : (
-          <AvatarFallback className="rounded-lg">UNK</AvatarFallback>
+          <Avatar>
+            <AvatarFallback className="rounded-lg">UNK</AvatarFallback>
+          </Avatar>
         )}
         <div className="grid flex-1 text-left text-sm leading-tight">
           <span className="ml-2 truncate text-sm">{data.user.name}</span>

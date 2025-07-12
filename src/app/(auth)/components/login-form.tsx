@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getErrorMessage, signIn } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email ist erforderlich!" }),
@@ -55,8 +56,10 @@ export const LoginForm = () => {
         onSuccess: () => {
           router.push("/dashboard");
           setLoading(false);
+          toast.success("Anmeldung erfolgreich! Sie werden in Kürze weitergeleitet...")
         },
         onError: ({ error }) => {
+          toast.error(error.code ? getErrorMessage(error.code) : error.message)
           setError(error.code ? getErrorMessage(error.code) : error.message);
           setLoading(false);
         },

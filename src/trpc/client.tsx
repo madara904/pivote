@@ -7,6 +7,7 @@ import { createTRPCReact } from '@trpc/react-query';
 import { useState } from 'react';
 import { makeQueryClient } from './query-client';
 import type { AppRouter } from './routers/_app';
+import { env } from '@/lib/env';
 export const trpc = createTRPCReact<AppRouter>();
 let clientQueryClientSingleton: QueryClient;
 function getQueryClient() {
@@ -20,7 +21,7 @@ function getQueryClient() {
 function getUrl() {
   const base = (() => {
     if (typeof window !== 'undefined') return '';
-    return process.env.NEXT_PUBLIC_APP_URL;
+    return env.NEXT_PUBLIC_SUPABASE_URL;
   })();
   return `${base}/api/trpc`;
 }

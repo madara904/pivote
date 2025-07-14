@@ -15,6 +15,14 @@ import { ChevronsUpDown, Gem, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+function getInitials(name?: string) {
+  if (!name) return "";
+  const words = name.split(" ").filter(Boolean);
+  if (words.length === 1) return words[0][0]?.toUpperCase() ?? "";
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+
 export const DashboardUserButton = () => {
   const router = useRouter();
   const { data, isPending } = useSession();
@@ -32,20 +40,16 @@ export const DashboardUserButton = () => {
     return null;
   }
 
-  {
-    /* To do: show Company name & Logo*/
-  }
-
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-lg border border-border/10 p-3 w-full flex items-center justify-between bg-sidebar-background hover:bg-accent overflow-hidden cursor-pointer">
+      <DropdownMenuTrigger className="rounded-lg shadow p-3 w-full flex items-center justify-between hover:bg-secondary overflow-hidden cursor-pointer">
         {data.user.image ? (
           <Avatar>
             <AvatarImage src={data.user.image} />
           </Avatar>
         ) : (
           <Avatar>
-            <AvatarFallback className="rounded-lg">UNK</AvatarFallback>
+            <AvatarFallback>{getInitials(data.user.name)}</AvatarFallback>
           </Avatar>
         )}
         <div className="grid flex-1 text-left text-sm leading-tight">
@@ -59,6 +63,7 @@ export const DashboardUserButton = () => {
             <p className="text-sm font-medium leading-none">{data.user.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {data.user.email}
+              
             </p>
           </div>
         </DropdownMenuLabel>

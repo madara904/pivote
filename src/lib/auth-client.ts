@@ -1,7 +1,11 @@
 import { createAuthClient } from "better-auth/react"
+import { organizationClient } from "better-auth/client/plugins"
 
 const authClient = createAuthClient({
     baseURL: "http://localhost:3000",
+    plugins: [
+        organizationClient()
+    ]
 })
 
 type ErrorCode = 
@@ -108,7 +112,7 @@ const getErrorMessage = (code: string) => {
     return "Ein unbekannter Fehler ist aufgetreten";
 };
 
-export const { signIn, signUp, signOut, useSession, getSession } = authClient;
+export const { signIn, signUp, signOut, useSession, getSession, useActiveOrganization } = authClient;
 
 // Export the error message getter for use in components
 export { getErrorMessage };

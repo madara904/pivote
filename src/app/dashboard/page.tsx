@@ -1,4 +1,4 @@
-import DashboardÜbersicht from "./components/home/dashboard-home";
+import DashboardÜbersicht from "./components/view/dashboard-home";
 
 export default async function Home() {
 

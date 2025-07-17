@@ -56,10 +56,12 @@ export const LoginForm = () => {
         onSuccess: () => {
           router.push("/dashboard");
           setLoading(false);
-          toast.success("Anmeldung erfolgreich! Sie werden in Kürze weitergeleitet...")
+          toast.success(
+            "Anmeldung erfolgreich! Sie werden in Kürze weitergeleitet..."
+          );
         },
         onError: ({ error }) => {
-          toast.error(error.code ? getErrorMessage(error.code) : error.message)
+          toast.error(error.code ? getErrorMessage(error.code) : error.message);
           setError(error.code ? getErrorMessage(error.code) : error.message);
           setLoading(false);
         },
@@ -74,14 +76,6 @@ export const LoginForm = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 md:p-8">
               <div className="flex flex-col gap-6">
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <h1 className="text-2xl font-bold tracking-tight">
-                    Willkommen zurück
-                  </h1>
-                  <p className="text-muted-foreground text-wrap text-sm">
-                    Melden Sie sich bei Ihrem Konto an
-                  </p>
-                </div>
                 <div className="grid gap-4">
                   <FormField
                     control={form.control}
@@ -154,7 +148,10 @@ export const LoginForm = () => {
                   type="button"
                   onClick={() => {
                     form.clearErrors();
-                    signIn.social({ provider: "github", callbackURL: "/dashboard"});
+                    signIn.social({
+                      provider: "github",
+                      callbackURL: "/dashboard",
+                    });
                   }}
                   variant="outline"
                   className={cn("w-full h-10 gap-2")}
@@ -185,16 +182,30 @@ export const LoginForm = () => {
               </div>
             </form>
           </Form>
-          <div className="bg-radial from-primary/40 via-primary/90 to-primary relative hidden md:flex flex-col gap-y-4 items-center justify-center">
+          <div className="relative hidden md:flex flex-col gap-y-4 items-center justify-center bg-gradient-to-r from-purple-100 to-purple-50">
+          <div className="flex flex-col items-center text-center space-y-2">
+                  <h1 className="text-2xl font-bold tracking-tight">
+                    Willkommen zurück
+                  </h1>
+                  <p className="text-muted-foreground text-wrap text-sm">
+                    Melden Sie sich bei Ihrem Konto an
+                  </p>
+                </div>
             <img
-              src="/logo.svg"
-              alt="Logo"
-              className="w-32 h-32 brightness-0 invert drop-shadow-xl"
+              src="/illustration.svg"
+              alt="Sign‑in illustration"
+              width={300}
+              height={50}
+              className="max-w-full"
             />
+          </div>
+          {/** 
+          <div className="bg-radial from-primary/50 via-primary/90 to-primary relative hidden md:flex flex-col gap-y-4 items-center justify-center">
+              <Logo className="h-20 w-32 text-primary-foreground ml-5"/>
             <p className="text-3xl text-white text-center font-bold drop-shadow-xl">
               Pivote
             </p>
-          </div>
+          </div>*/}
         </CardContent>
       </Card>
       <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">

@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signUp, getErrorMessage, signIn } from "@/lib/auth-client";
+import Logo from "@/components/logo";
 
 const formSchema = z
   .object({
@@ -84,14 +85,7 @@ export const RegisterForm = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 md:p-8">
               <div className="flex flex-col gap-6">
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <h1 className="text-2xl font-bold tracking-tight">
-                    Werden Sie ein Teil von Pivote ✅
-                  </h1>
-                  <p className="text-muted-foreground text-wrap text-sm">
-                    ... und starten heute noch durch!
-                  </p>
-                </div>
+
                 <div className="grid gap-4">
                   <FormField
                     control={form.control}
@@ -227,15 +221,18 @@ export const RegisterForm = () => {
               </div>
             </form>
           </Form>
-          <div className="bg-radial from-primary/40 via-primary/90 to-primary relative hidden md:flex flex-col gap-y-4 items-center justify-center">
-            <img
-              src="/logo.svg"
-              alt="Logo"
-              className="w-32 h-32 brightness-0 invert drop-shadow-lg"
-            />
-            <p className="text-3xl text-white text-center font-bold drop-shadow-sm">
-              Bereit loszulegen?
-            </p>
+          <div className="brelative hidden md:flex flex-col gap-y-4 items-center justify-center bg-gradient-to-r from-purple-100 to-purple-50">
+              <div className="flex items-center justify-center rounded-full bg-primary w-28 h-28 mb-4">
+                <Logo className="h-16 w-16 mt-3 text-primary-foreground" />
+              </div>
+              <div className="flex flex-col items-center text-center space-y-2">
+                  <h1 className="text-2xl font-bold tracking-tight">
+                    Werden Sie heute noch ein Teil von Pivote
+                  </h1>
+                  <p className="text-muted-foreground text-wrap text-sm">
+                    ... und optimieren Ihren Transporteinkauf!
+                  </p>
+                </div>
           </div>
         </CardContent>
       </Card>

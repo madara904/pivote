@@ -7,7 +7,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { SearchForm } from "./dashboard-search-form";
@@ -15,6 +14,7 @@ import { Slash } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 import { usePathname } from "next/navigation";
+import Logo from "@/components/logo";
 
 interface BreadcrumbItem {
   label: string;
@@ -68,9 +68,7 @@ export function SiteHeader() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/dashboard">
-                  <Button className="h-7 w-7" variant="link" size="icon">
-                    <img src="/logo.svg" width={20} height={20} alt="Logo" />
-                  </Button>
+                <Logo className="h-7 w-auto text-primary" />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -101,9 +99,7 @@ export function SiteHeader() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/dashboard">
-                  <Button className="h-7 w-7" variant="link" size="icon">
-                    <img src="/logo.svg" width={20} height={20} alt="Logo" />
-                  </Button>
+                <Logo className="h-5 w-auto text-primary" />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>

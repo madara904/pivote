@@ -99,7 +99,7 @@ export function SiteHeader() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/dashboard">
-                <Logo className="h-5 w-auto text-primary" />
+                <Logo className="h-6 ml-1 w-auto text-primary" />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>

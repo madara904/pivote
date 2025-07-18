@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getErrorMessage, signIn } from "@/lib/auth-client";
 import { toast } from "sonner";
+import Logo from "@/components/logo";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email ist erforderlich!" }),
@@ -71,6 +72,11 @@ export const LoginForm = () => {
 
   return (
     <div className="flex flex-col gap-6">
+            <div className="block md:hidden flex items-center justify-center">
+        <div className="flex items-center justify-center rounded-full bg-primary w-18 h-18">
+          <Logo className="h-10 mt-3 text-primary-foreground" />
+        </div>
+      </div>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
           <Form {...form}>

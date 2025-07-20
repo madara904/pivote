@@ -112,7 +112,7 @@ const getErrorMessage = (code: string) => {
     return "Ein unbekannter Fehler ist aufgetreten";
 };
 
-export const { signIn, signUp, signOut, useSession, getSession, useActiveOrganization } = authClient;
+export const { signIn, signUp, signOut, useSession, getSession, useActiveOrganization, organization } = authClient;
 
 // Export the error message getter for use in components
 export { getErrorMessage };

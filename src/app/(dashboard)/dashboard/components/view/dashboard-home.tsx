@@ -38,20 +38,7 @@ const DashboardÜbersicht = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <span className="text-primary font-semibold text-lg">F</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">FreightCorp GmbH</h3>
-              <p className="text-sm text-muted-foreground">
-                Spedition & Logistik
-              </p>
-            </div>
-          </div>
-          <DashboardRating />
-        </div>
+      <DashboardRating />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Letzte Aktualisierung:</span>
           <span className="font-medium">vor 5 Min</span>
@@ -168,9 +155,7 @@ const DashboardÜbersicht = () => {
         </CardContent>
       </Card>
 
-      {/* Activity Overview */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recent Inquiries */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -246,7 +231,7 @@ const DashboardÜbersicht = () => {
           </CardContent>
         </Card>
 
-        {/* Performance Summary */}
+
         <Card>
           <CardHeader>
             <CardTitle>Leistungsübersicht</CardTitle>

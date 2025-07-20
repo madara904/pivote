@@ -58,26 +58,13 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp('updated_at').$defaultFn(() => new Date())
 });
 
-// Better Auth Organization Plugin Tables
+
 export const organization = pgTable("organization", {
   id: text('id').primaryKey().$defaultFn(() => randomUUID()),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   logo: text('logo'),
-  metadata: text('metadata'), // Better Auth expects this field
-  organizationType: organizationTypeEnum('organization_type').notNull(),
-  // Company details
-  address: text('address'),
-  city: text('city'),
-  postalCode: text('postal_code'),
-  country: text('country'),
-  phone: text('phone'),
-  website: text('website'),
-  taxNumber: text('tax_number'),
-  // Forwarder specific
-  services: text('services'), // JSON string of services offered
-  certifications: text('certifications'), // JSON string of certifications
-  coverageAreas: text('coverage_areas'), // JSON string of coverage areas
+  metadata: text('metadata'), 
   createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
   updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
 });
@@ -87,7 +74,6 @@ export const member = pgTable("member", {
   organizationId: text('organization_id').notNull().references(() => organization.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   role: memberRoleEnum('role').notNull().default('member'),
-  email: text('email').notNull(),
   createdAt: timestamp('created_at').$defaultFn(() => new Date()).notNull(),
   updatedAt: timestamp('updated_at').$defaultFn(() => new Date()).notNull()
 });

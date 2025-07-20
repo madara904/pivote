@@ -18,7 +18,7 @@ import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
-} from "./drawer";
+} from "./ui/drawer";
 
 interface UpgradeDialogProps {
   title?: string;

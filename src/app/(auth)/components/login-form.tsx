@@ -22,7 +22,7 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getErrorMessage, signIn } from "@/lib/auth-client";
+import { signIn, language } from "@/lib/auth-client";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
 
@@ -62,8 +62,9 @@ export const LoginForm = () => {
           );
         },
         onError: ({ error }) => {
-          toast.error(error.code ? getErrorMessage(error.code) : error.message);
-          setError(error.code ? getErrorMessage(error.code) : error.message);
+          const errorMessage = error.code ? language.getErrorMessage(error.code) : error.message;
+          toast.error(errorMessage);
+          setError(errorMessage);
           setLoading(false);
         },
       }

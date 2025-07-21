@@ -1,25 +1,23 @@
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { OrganizationDisplay } from "@/components/organization-display"
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { OrganizationDisplay } from "@/components/organization-display";
 
 const Home = () => {
   return (
     <div>
       <h1>Page</h1>
-      <Button
-      variant={"default"}
-      >
       <Link href="/dashboard">
-      <span> {"-->"} Dashboard (unprotected)</span>
+        <Button variant={"default"}>
+          <span> {"-->"} Dashboard (unprotected)</span>
+        </Button>
       </Link>
-      </Button>
-      <Button
-      variant={"link"}>
-      <Link href="/sign-in">{"-->"} Sign-in (unprotected)</Link>
-      </Button>
+      <Link href="/sign-in">
+        {"-->"}
+        <Button variant={"link"}>Sign-in (unprotected)</Button>
+      </Link>
       <OrganizationDisplay />
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

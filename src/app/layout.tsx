@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/trpc/client"
 import { Toaster } from "@/components/ui/sonner";
+import { env } from "@/lib/env";
 
 
 const geistSans = Geist({
@@ -16,6 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: "Pivote DE | Dein sicherer Platz für effizienten Transporteinkauf!",
   description: "Pivote ist die moderne Plattform für Spedition & Logistik. Effizient, sicher und digital Transporte einkaufen und verwalten.",
   keywords: [

@@ -24,7 +24,7 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signUp, getErrorMessage, signIn } from "@/lib/auth-client";
+import { signUp, signIn, language } from "@/lib/auth-client";
 import Logo from "@/components/logo";
 
 const formSchema = z
@@ -72,7 +72,8 @@ export const RegisterForm = () => {
           setLoading(false);
         },
         onError: ({ error }) => {
-          setError(error.code ? getErrorMessage(error.code) : error.message);
+          const errorMessage = error.code ? language.getErrorMessage(error.code) : error.message;
+          setError(errorMessage);
           setLoading(false);
         },
       }

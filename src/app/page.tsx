@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { OrganizationDisplay } from "@/components/organization-display";
 
 const Home = () => {
   return (
@@ -15,7 +14,6 @@ const Home = () => {
         {"-->"}
         <Button variant={"link"}>Sign-in (unprotected)</Button>
       </Link>
-      <OrganizationDisplay />
     </div>
   );
 };

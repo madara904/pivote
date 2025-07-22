@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { CircleAlert, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { CheckCircle, BadgeCheck, Clock, Users } from "lucide-react";
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { z } from "zod";
 
@@ -24,9 +24,9 @@ import {
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signUp, signIn, language, useActiveOrganization, useSession } from "@/lib/auth-client";
+import { signUp, signIn, language } from "@/lib/auth-client";
 import Logo from "@/components/logo";
+import { useRouter } from "next/navigation";
 
 const formSchema = z
   .object({
@@ -43,25 +43,12 @@ const formSchema = z
   });
 
 export const RegisterForm = () => {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const [registered, setRegistered] = useState<boolean>(false);
+  const router = useRouter();
 
-  const { data: organization, isPending: orgPending } = useActiveOrganization();
-  const { data: session, isPending: sessionPending } = useSession();
-
-  useEffect(() => {
-    if (registered && !sessionPending && session && !orgPending) {
-      if (!organization) {
-        router.push("/complete-registration");
-      } else {
-        router.push("/dashboard");
-      }
-    }
-  }, [registered, session, sessionPending, organization, orgPending, router]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,11 +69,12 @@ export const RegisterForm = () => {
         name: data.name,
         email: data.email,
         password: data.password,
+        callbackURL: "http://localhost:3000/dashboard"
       },
       {
         onSuccess: () => {
-          setRegistered(true);
           setLoading(false);
+          router.push("/dashboard");
         },
         onError: ({ error }) => {
           const errorMessage = error.code

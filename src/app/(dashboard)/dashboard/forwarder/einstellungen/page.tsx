@@ -13,9 +13,6 @@ export default async function EinstellungenPage() {
   if(!session)
     redirect("/sign-in")
 
-  if(!session.session.activeOrganizationId)
-    redirect("/complete-registration")
-
 
   return <SettingsView />;
 }

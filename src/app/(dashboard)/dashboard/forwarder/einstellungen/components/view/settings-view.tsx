@@ -2,18 +2,18 @@
 import { useQueryState, parseAsStringEnum } from "nuqs";
 import {
   AccountSettingsCards,
-  OrganizationSettingsCards,
   SecuritySettingsCards,
 } from "@daveyplate/better-auth-ui";
 import { User, Lock, Building2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import OrganizationCreateForm from "../../../components/organization-create-form";
 
 const TABS = [
   { key: "account", label: "Konto", icon: User },
   { key: "security", label: "Sicherheit", icon: Lock },
-  { key: "organization", label: "Organization", icon: Building2 },
+  { key: "org", label: "Organisation", icon: Building2 },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -21,9 +21,9 @@ type TabKey = (typeof TABS)[number]["key"];
 const SettingsView = () => {
   const [tab, setTab] = useQueryState<TabKey>(
     "tab",
-    parseAsStringEnum(["account", "security", "organization"])
+    parseAsStringEnum(["account", "security", "org"])
       .withDefault("account")
-      .withOptions({ clearOnDefault: false, history: "push" })
+      .withOptions({ clearOnDefault: false, history: "push"})
   );
   const isMobile = useIsMobile();
 
@@ -55,7 +55,7 @@ const SettingsView = () => {
         <main className="flex-1 p-2 md:p-5">
           {tab === "account" && <AccountSettingsCards />}
           {tab === "security" && <SecuritySettingsCards />}
-          {tab === "organization" && <OrganizationSettingsCards />}
+          {tab === "org" && <OrganizationCreateForm />}
         </main>
       </div>
     </>

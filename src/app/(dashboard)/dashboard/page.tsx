@@ -14,30 +14,9 @@ const Dashboard = async () => {
     redirect("/sign-in");
   }
 
+  redirect("/dashboard/forwarder")
+  
 
-  const activeOrgId = session.session.activeOrganizationId;
-  console.log("Active Org ID:", activeOrgId);
-
-  if (!activeOrgId) {
-    redirect("/complete-registration");
-  }
-
-  const org = await auth.api.getFullOrganization({ 
-    headers: await headers() 
-  });
-  
-  if (!org) redirect("/complete-registration");
-  
-  const metadata = typeof org.metadata === "string"
-    ? JSON.parse(org.metadata)
-    : org.metadata;
-  
-  const orgType = metadata?.organizationType;
-  
-  if (orgType === "shipper") redirect("/dashboard/shipper");
-  if (orgType === "forwarder") redirect("/dashboard/forwarder");
-  
-  redirect("/complete-registration");
 };
 
 export default Dashboard;

@@ -41,6 +41,12 @@ export function TRPCProvider(
         httpBatchLink({
           // transformer: superjson, <-- if you use a data transformer
           url: getUrl(),
+          fetch(url, options) {
+            return fetch(url, {
+              ...(options as RequestInit),
+              credentials: "include",
+            });
+          },
         }),
       ],
     }),

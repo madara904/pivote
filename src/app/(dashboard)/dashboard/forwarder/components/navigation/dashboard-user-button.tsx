@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOut, useActiveOrganization, useSession } from "@/lib/auth-client";
+import { signOut, useSession } from "@/lib/auth-client";
 import { ChevronsUpDown, Gem, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,6 @@ function getInitials(name?: string) {
 }
 
 export const DashboardUserButton = () => {
-  const { data: activeOrganization } = useActiveOrganization();
   const router = useRouter();
   const { data, isPending } = useSession();
 
@@ -61,7 +60,6 @@ export const DashboardUserButton = () => {
       <DropdownMenuContent className="w-56" align="center">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <span>{activeOrganization?.name || "Keine Organisation"}</span>
             <p className="text-xs leading-none text-muted-foreground">
               {data.user.email}
             </p>

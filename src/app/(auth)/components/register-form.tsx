@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { CheckCircle, BadgeCheck, Clock, Users } from "lucide-react";
+import * as React from "react";
+import { useEffect, useState } from "react";
 
 import { z } from "zod";
 
@@ -23,8 +25,7 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { signUp, signIn, language } from "@/lib/auth-client";
+import { signUp, signIn, language, useActiveOrganization, useSession } from "@/lib/auth-client";
 import Logo from "@/components/logo";
 
 const formSchema = z
@@ -45,6 +46,22 @@ export const RegisterForm = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [registered, setRegistered] = useState<boolean>(false);
+
+  const { data: organization, isPending: orgPending } = useActiveOrganization();
+  const { data: session, isPending: sessionPending } = useSession();
+
+  useEffect(() => {
+    if (registered && !sessionPending && session && !orgPending) {
+      if (!organization) {
+        router.push("/complete-registration");
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  }, [registered, session, sessionPending, organization, orgPending, router]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -68,16 +85,26 @@ export const RegisterForm = () => {
       },
       {
         onSuccess: () => {
-          router.push("/dashboard");
+          setRegistered(true);
           setLoading(false);
         },
         onError: ({ error }) => {
-          const errorMessage = error.code ? language.getErrorMessage(error.code) : error.message;
+          const errorMessage = error.code
+            ? language.getErrorMessage(error.code)
+            : error.message;
           setError(errorMessage);
           setLoading(false);
         },
       }
     );
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
   };
 
   return (
@@ -108,12 +135,17 @@ export const RegisterForm = () => {
                             Name
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              type="text"
-                              placeholder="Max Mustermann"
-                              className="h-10"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <div className="absolute left-0 top-1 bottom-1 flex items-center pl-3 pr-3 border-r border-border">
+                                <User className="text-muted-foreground h-4 w-4" />
+                              </div>
+                              <Input
+                                type="text"
+                                placeholder="Max Mustermann"
+                                className="h-10 pl-12"
+                                {...field}
+                              />
+                            </div>
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -128,12 +160,17 @@ export const RegisterForm = () => {
                             Email
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="max@mustermann.de"
-                              className="h-10"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <div className="absolute left-0 top-1 bottom-1 flex items-center pl-3 pr-3 border-r border-border">
+                                <Mail className="text-muted-foreground h-4 w-4" />
+                              </div>
+                              <Input
+                                type="email"
+                                placeholder="max@mustermann.de"
+                                className="h-10 pl-12"
+                                {...field}
+                              />
+                            </div>
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -148,12 +185,29 @@ export const RegisterForm = () => {
                             Passwort
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="********"
-                              className="h-10"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <div className="absolute left-0 top-1 bottom-1 flex items-center pl-3 pr-3 border-r border-border">
+                                <Lock className="text-muted-foreground h-4 w-4" />
+                              </div>
+                              <Input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="********"
+                                className="h-10 pl-12 pr-10"
+                                {...field}
+                              />
+                              <button
+                                type="button"
+                                onClick={togglePasswordVisibility}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                                tabIndex={-1}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4 cursor-pointer" />
+                                ) : (
+                                  <Eye className="h-4 w-4 cursor-pointer" />
+                                )}
+                              </button>
+                            </div>
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -168,12 +222,29 @@ export const RegisterForm = () => {
                             Passwort wiederholen
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="********"
-                              className="h-10"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <div className="absolute left-0 top-1 bottom-1 flex items-center pl-3 pr-3 border-r border-border">
+                                <Lock className="text-muted-foreground h-4 w-4" />
+                              </div>
+                              <Input
+                                type={showConfirmPassword ? "text" : "password"}
+                                placeholder="********"
+                                className="h-10 pl-12 pr-10"
+                                {...field}
+                              />
+                              <button
+                                type="button"
+                                onClick={toggleConfirmPasswordVisibility}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                                tabIndex={-1}
+                              >
+                                {showConfirmPassword ? (
+                                  <EyeOff className="h-4 w-4 cursor-pointer" />
+                                ) : (
+                                  <Eye className="h-4 w-4 cursor-pointer" />
+                                )}
+                              </button>
+                            </div>
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>

@@ -16,7 +16,7 @@ import {
   Map,
   ArrowRight,
 } from "lucide-react";
-import { organization } from "@/lib/auth-client";
+import { organization, language } from "@/lib/auth-client";
 import type { OrganizationDetails } from "@/lib/schemas/organization";
 
 interface RegistrationSummaryStepProps {
@@ -74,28 +74,8 @@ export function RegistrationSummaryStep({
       if (!createdOrg.data) {
         if (createdOrg.error) {
           console.error("Better Auth error:", createdOrg.error);
-
-          if (
-            createdOrg.error.code === "ORGANIZATION_LIMIT_EXCEEDED" ||
-            createdOrg.error.code === "USER_ALREADY_HAS_ORGANIZATION"
-          ) {
-            throw new Error(
-              "Sie haben bereits eine Organisation erstellt. Sie können nur eine Organisation pro Benutzer haben."
-            );
-          } else if (
-            createdOrg.error.code === "SLUG_ALREADY_TAKEN" ||
-            createdOrg.error.code === "ORGANIZATION_SLUG_EXISTS"
-          ) {
-            throw new Error(
-              "Dieser Organisationsname ist bereits vergeben. Bitte wählen Sie einen anderen Namen."
-            );
-          } else if (
-            createdOrg.error.code === "UNAUTHORIZED" ||
-            createdOrg.error.code === "FORBIDDEN"
-          ) {
-            throw new Error(
-              "Sie sind nicht berechtigt, eine Organisation zu erstellen."
-            );
+          if (createdOrg.error.code) {
+            throw new Error(language.getErrorMessage(createdOrg.error.code));
           } else {
             throw new Error(
               createdOrg.error.message ||

@@ -4,18 +4,16 @@ import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { env } from "./env";
 import { organization } from "better-auth/plugins";
-import { getUserActiveOrganization } from "./organization-utils";
+import { getUserActiveOrganization } from "./utils/organization-utils";
+
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
   }),
-  session: {
-    cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60,
-    },
+  user: {
+    deleteUser: { enabled: true },
   },
   emailAndPassword: {
     enabled: true,

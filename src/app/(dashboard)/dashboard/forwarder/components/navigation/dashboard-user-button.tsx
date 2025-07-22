@@ -37,7 +37,7 @@ export const DashboardUserButton = () => {
     });
   };
 
-  if (isPending || !data || !activeOrganization) {
+  if (isPending || !data ) {
     return null;
   }
 
@@ -61,7 +61,7 @@ export const DashboardUserButton = () => {
       <DropdownMenuContent className="w-56" align="center">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <span>{activeOrganization.name || "Keine Organisation"}</span>
+            <span>{activeOrganization?.name || "Keine Organisation"}</span>
             <p className="text-xs leading-none text-muted-foreground">
               {data.user.email}
             </p>
@@ -70,13 +70,13 @@ export const DashboardUserButton = () => {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/einstellungen">
+            <Link href="/dashboard/forwarder/einstellungen">
               <Gem className="mr-2 h-4 w-4" />
               <span>Jetzt upgraden</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/einstellungen">
+            <Link href="/dashboard/forwarder/einstellungen">
               <Settings className="mr-2 h-4 w-4" />
               <span>Einstellungen</span>
             </Link>

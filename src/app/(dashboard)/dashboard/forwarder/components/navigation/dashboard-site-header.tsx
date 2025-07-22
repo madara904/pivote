@@ -33,14 +33,14 @@ export function SiteHeader() {
 
     breadcrumbs.push({
       label: "Dashboard",
-      href: "/dashboard",
+      href: "/dashboard/forwarder",
     });
 
     let currentPath = "";
     pathSegments.forEach((segment, index) => {
       currentPath += `/${segment}`;
 
-      if (segment === "dashboard") return;
+      if (segment === "dashboard" || currentPath === "/dashboard/forwarder") return;
 
       const label = segment
         .split("-")
@@ -67,7 +67,7 @@ export function SiteHeader() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/dashboard">
+                <Link href="/dashboard/forwarder">
                 <Logo className="h-7 w-auto text-primary" />
                 </Link>
               </BreadcrumbLink>
@@ -98,7 +98,7 @@ export function SiteHeader() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/dashboard">
+                <Link href="/dashboard/forwarder">
                 <Logo className="h-6 ml-1 w-auto text-primary" />
                 </Link>
               </BreadcrumbLink>

@@ -28,29 +28,29 @@ const menuItems = {
   main: [
     {
       title: "Übersicht",
-      url: "/dashboard",
+      url: "/dashboard/forwarder",
       icon: House,
     },
     {
       title: "Frachtanfragen",
-      url: "/dashboard/frachtanfragen",
+      url: "/dashboard/forwarder/frachtanfragen",
       icon: ClipboardList,
     },
     {
       title: "Sendungen",
-      url: "/dashboard/sendungen",
+      url: "/dashboard/forwarder/sendungen",
       icon: Package,
     },
     {
       title: "Statistiken",
-      url: "/dashboard/statistiken",
+      url: "/dashboard/forwarder/statistiken",
       icon: BarChart3,
     },
   ],
   settings: [
     {
       title: "Einstellungen",
-      url: "/dashboard/einstellungen",
+      url: "/dashboard/forwarder/einstellungen",
       icon: Settings,
     },
   ],

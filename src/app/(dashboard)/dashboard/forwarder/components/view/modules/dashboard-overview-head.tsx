@@ -1,14 +1,18 @@
+"use client"
+
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import UpgradeDialog from "@/components/upgrade-dialog";
 import { Star } from "lucide-react";
 import { useState } from "react";
 
-const DashboardRating = () => {
+const DashboardOverviewHead = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const isHighTier = false;
 
   return (
     <>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <UpgradeDialog onOpenChange={setIsDialogOpen} open={isDialogOpen} />
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
@@ -36,8 +40,14 @@ const DashboardRating = () => {
           </div>
         )}
       </div>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Letzte Aktualisierung:</span>
+          <span className="font-medium">vor 5 Min</span>
+        </div>
+      </div>
+      <Separator className="mt-8" />
     </>
   );
 };
 
-export default DashboardRating;
+export default DashboardOverviewHead;

@@ -155,3 +155,41 @@ export function isForwarder(organization: BetterAuthOrganization | null | undefi
 export function isShipper(organization: BetterAuthOrganization | null | undefined): boolean {
   return getOrganizationType(organization) === "shipper"
 }
+
+// Minimal type for API org member user (may be missing id)
+type RawOrgMemberUser = {
+  id?: string;
+  name?: string;
+  email?: string;
+  image?: string;
+};
+
+// Minimal type for API org member
+type RawOrgMember = {
+  id: string;
+  createdAt: Date;
+  userId: string;
+  organizationId: string;
+  role: string;
+  teamId?: string;
+  user: RawOrgMemberUser;
+};
+
+// Minimal type for API org
+type RawOrg = Omit<BetterAuthOrganization, 'members'> & { members: RawOrgMember[] };
+
+// Accepts raw org shape (from API), returns fully patched BetterAuthOrganization
+export function patchOrganizationMembers(org: RawOrg): BetterAuthOrganization {
+  return {
+    ...org,
+    members: org.members.map((m) => ({
+      ...m,
+      user: {
+        id: m.user?.id ?? m.userId ?? "",
+        name: m.user?.name ?? "",
+        email: m.user?.email ?? "",
+        image: m.user?.image ?? "",
+      },
+    })),
+  };
+}

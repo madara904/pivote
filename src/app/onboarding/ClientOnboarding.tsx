@@ -712,7 +712,7 @@ export default function OnboardingForm() {
                       className="flex items-center space-x-2 min-w-[200px] bg-primary"
                     >
                       {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                      <span>{isSubmitting ? "Erstelle Organisation..." : "Organisation erstellen"}</span>
+                      <span>{isSubmitting ? "Erstelle Organisation.." : "Organisation erstellen"}</span>
                     </Button>
                   )}
                 </div>

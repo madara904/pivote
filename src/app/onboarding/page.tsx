@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { organizationMember } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { ClientOnboarding } from "./ClientOnboarding";
+import ClientOnboarding from "./ClientOnboarding";
 
 
 export default async function Page() {
@@ -19,5 +19,5 @@ export default async function Page() {
   if (memberships.length > 0) redirect("/dashboard");
 
   // 3. Render onboarding client component
-  return <ClientOnboarding />;
+  return <ClientOnboarding />
 } 

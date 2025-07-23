@@ -23,7 +23,7 @@ const SettingsView = () => {
     "tab",
     parseAsStringEnum(["account", "security", "org"])
       .withDefault("account")
-      .withOptions({ clearOnDefault: false, history: "push"})
+      .withOptions({ clearOnDefault: false, history: "push" })
   );
   const isMobile = useIsMobile();
 
@@ -53,8 +53,32 @@ const SettingsView = () => {
           ))}
         </nav>
         <main className="flex-1 p-2 md:p-5">
-          {tab === "account" && <AccountSettingsCards />}
-          {tab === "security" && <SecuritySettingsCards />}
+          {tab === "account" && (
+            <AccountSettingsCards
+              classNames={{
+                card: {
+                  base: "shadow-none",
+                  header: "",
+                  footer: "",
+                  cell: "shadow-none",
+                },
+              }}
+            />
+          )}
+          {tab === "security" && (
+            <SecuritySettingsCards
+              classNames={{
+                cards: "",
+                card: {
+                  base: "shadow-none",
+                  input: "shadow-none",
+                  header: "",
+                  footer: "",
+                  cell: "shadow-none",
+                },
+              }}
+            />
+          )}
           {tab === "org" && <OrganizationCreateForm />}
         </main>
       </div>

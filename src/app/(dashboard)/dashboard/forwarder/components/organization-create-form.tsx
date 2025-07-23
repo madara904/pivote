@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { trpc } from "@/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import type { SelectOrganization } from "@/db/schema";
 
 const orgSchema = z.object({
   name: z.string().min(2, "Name ist erforderlich"),
@@ -52,7 +51,7 @@ export default function OrganizationCrudTest() {
         type: org.type,
       });
     }
-  }, [selectedOrgId, editMode, orgsQuery.data]);
+  }, [selectedOrgId, editMode, orgsQuery.data, editForm]);
 
   // Handlers
   const handleCreate = (data: OrgForm) => {

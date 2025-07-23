@@ -1,0 +1,31 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background clipboard -->
+  <g transform="translate(20, 15)">
+    <!-- Clipboard body with integrated clip notch -->
+    <path d="M8 20 L35 20 L35 8 L85 8 L85 20 L112 20 Q120 20 120 28 L120 152 Q120 160 112 160 L8 160 Q0 160 0 152 L0 28 Q0 20 8 20 Z" 
+          fill="#f8fafc" stroke="#e2e8f0" stroke-width="3"/>
+    
+    <!-- Empty content lines -->
+    <rect x="15" y="45" width="90" height="2" rx="1" fill="#e2e8f0"/>
+    <rect x="15" y="55" width="70" height="2" rx="1" fill="#e2e8f0"/>
+    <rect x="15" y="65" width="85" height="2" rx="1" fill="#e2e8f0"/>
+    
+    <!-- Dotted area to suggest empty content -->
+    <rect x="15" y="85" width="90" height="60" rx="4" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+  </g>
+  
+  <!-- Foreground clipboard -->
+  <g transform="translate(60, 45)">
+    <!-- Clipboard body with integrated clip notch -->
+    <path d="M8 20 L35 20 L35 8 L85 8 L85 20 L112 20 Q120 20 120 28 L120 152 Q120 160 112 160 L8 160 Q0 160 0 152 L0 28 Q0 20 8 20 Z" 
+          fill="#ffffff" stroke="#d1d5db" stroke-width="3"/>
+    
+    <!-- Empty content lines -->
+    <rect x="15" y="45" width="90" height="2" rx="1" fill="#d1d5db"/>
+    <rect x="15" y="55" width="70" height="2" rx="1" fill="#d1d5db"/>
+    <rect x="15" y="65" width="85" height="2" rx="1" fill="#d1d5db"/>
+    
+    <!-- Dotted area to suggest empty content -->
+    <rect x="15" y="85" width="90" height="60" rx="4" fill="none" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,3" opacity="0.8"/>
+  </g>
+</svg>

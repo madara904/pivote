@@ -1,5 +1,4 @@
 import { initTRPC } from '@trpc/server';
-import { cache } from 'react';
 import { db } from '@/db';
 import { auth } from '@/lib/auth';
 import { TRPCError } from '@trpc/server';

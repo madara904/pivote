@@ -7,12 +7,18 @@
 
 @source "../../node_modules/@daveyplate/better-auth-ui";
 
-#logo-36 path {
-  fill: oklch(0.5417 0.1790 288.0332);
+.aceternity-loader-circle {
+  stroke-dasharray: 126;
+  stroke-dashoffset: 126;
+  animation: aceternity-loader 1.4s linear infinite;
 }
-
-.dark #logo-36 path {
-  fill: oklch(0.7162 0.1597 290.3962);
+@keyframes aceternity-loader {
+  0% {
+    stroke-dashoffset: 126;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
 }
 
 :root {

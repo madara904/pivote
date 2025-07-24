@@ -12,6 +12,7 @@ import {
   SidebarSeparator,
   SidebarFooter,
   SidebarContent,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { 
   Package, 
@@ -60,6 +61,7 @@ const DashboardSidebar = ({
   ...props
 }: React.ComponentProps<typeof Sidebar>) => {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar
@@ -75,8 +77,8 @@ const DashboardSidebar = ({
             <SidebarMenu>
               {menuItems.main.map((item) => (
                 <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
+                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title}>
+                    <Link href={item.url} onClick={() => setOpenMobile(false)}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>

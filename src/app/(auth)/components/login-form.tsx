@@ -80,7 +80,7 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex items-center justify-center flex-col">
         <div className="flex items-center justify-center rounded-full bg-primary w-14 h-14">
           <Logo className="h-8 mt-2 text-primary-foreground" />
@@ -88,7 +88,7 @@ export const LoginForm = () => {
         <h1 className="text-3xl pt-2">Pivote</h1>
       </div>
       <Card className="overflow-hidden p-0">
-        <CardContent className="grid p-0 md:grid-cols-2  h-[620px]">
+        <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 md:p-8">
               <div className="flex flex-col gap-6">

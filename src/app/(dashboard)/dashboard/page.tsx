@@ -7,7 +7,6 @@ const Dashboard = async () => {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
-  console.log("Session:", session);
 
 
   if (!session) {

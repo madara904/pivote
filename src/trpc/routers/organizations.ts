@@ -4,6 +4,7 @@ import { and, eq, or, gt, lt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { organizationInvitation, organizationMember, organization, user } from "@/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../init";
+import { env } from '@/lib/env';
 
 // Sichere Token-Generierung
 function generateSecureToken(): string {
@@ -167,7 +168,7 @@ export const organizationRouter = createTRPCRouter({
         email: invitation.email,
         role: invitation.role,
         expiresAt: invitation.expiresAt,
-        invitationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`,
+        invitationUrl: `${env.NEXT_PUBLIC_APP_URL}/invite/${token}`,
       };
     }),
 
@@ -311,7 +312,7 @@ export const organizationRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       // Validiere Cron Secret
-      if (input.cronSecret !== process.env.CRON_SECRET) {
+      if (input.cronSecret !== env.CRON_SECRET) {
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
 

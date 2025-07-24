@@ -27,6 +27,7 @@ import Link from "next/link";
 import { signUp, signIn, language } from "@/lib/auth-client";
 import Logo from "@/components/logo";
 import { useRouter } from "next/navigation";
+import { env } from '@/lib/env';
 
 const formSchema = z
   .object({
@@ -69,7 +70,7 @@ export const RegisterForm = () => {
         name: data.name,
         email: data.email,
         password: data.password,
-        callbackURL: "http://localhost:3000/dashboard"
+        callbackURL: env.NEXT_PUBLIC_APP_URL + "/dashboard"
       },
       {
         onSuccess: () => {

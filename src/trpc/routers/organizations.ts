@@ -4,7 +4,7 @@ import { and, eq, or, gt, lt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { organizationInvitation, organizationMember, organization, user } from "@/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../init";
-import { env } from '@/lib/env';
+import { env } from '@/lib/env/env';
 
 // Sichere Token-Generierung
 function generateSecureToken(): string {
@@ -312,7 +312,7 @@ export const organizationRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       // Validiere Cron Secret
-      if (input.cronSecret !== env.CRON_SECRET) {
+      if (input.cronSecret) {
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
 
@@ -369,6 +369,16 @@ export const organizationRouter = createTRPCRouter({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Du kannst nur eine Organisation besitzen.",
+        });
+      }
+      // Check for duplicate slug before insert
+      const existingOrg = await ctx.db.query.organization.findFirst({
+        where: eq(organization.slug, input.slug),
+      });
+      if (existingOrg) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `Die Organisation mit dem Slug '${input.slug}' existiert bereits. Bitte wähle einen anderen Slug.`,
         });
       }
       try {

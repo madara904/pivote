@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator"
 import { LogoLoader } from "@/components/ui/loader"
 import { trpc } from "@/trpc/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 const organizationSchema = z.object({
   name: z.string().min(2, "Name muss mindestens 2 Zeichen lang sein"),
@@ -120,6 +121,10 @@ export default function OnboardingForm() {
         }
       }, 800)
     },
+    onError: (error) => {
+      toast.error(error.message ?? "Fehler beim Erstellen der Organisation.")
+      setIsSubmitting(false)
+    },
   })
 
   const form = useForm<OrganizationFormData>({
@@ -165,7 +170,6 @@ export default function OnboardingForm() {
   // Navigation function - only validates and moves to next step
   const nextStep = async () => {
     let fieldsToValidate: (keyof OrganizationFormData)[] = []
-
     switch (currentStep) {
       case 1:
         fieldsToValidate = ["type"]
@@ -194,15 +198,16 @@ export default function OnboardingForm() {
   }
 
   // Actual form submission - only called when "Absenden" is clicked
-  const handleSubmit = async (data: OrganizationFormData) => {
+  const handleSubmit = (data: OrganizationFormData) => {
     setIsSubmitting(true)
-    try {
-      await createOrg.mutateAsync(data)
-    } catch (error) {
-      console.error("Fehler beim Erstellen der Organisation:", error)
-    } finally {
-      setIsSubmitting(false)
-    }
+    createOrg.mutate(data, {
+      onError: () => {
+        setIsSubmitting(false)
+      },
+      onSuccess: () => {
+        setIsSubmitting(false)
+      },
+    })
   }
 
   if (redirecting) {
@@ -215,16 +220,16 @@ export default function OnboardingForm() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] font-sans">
-      <div className="container mx-auto py-8">
-        <div className="max-w-5xl mx-auto">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <div className="max-w-4xl mx-auto">
           {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-center">
-              <div className="flex items-center">
+          <div className="mb-6 md:mb-8 pt-2">
+            <div className="flex items-center justify-center overflow-x-auto pb-2 pt-2">
+              <div className="flex items-center min-w-max px-4">
                 {steps.map((step, index) => (
                   <div key={step.id} className="flex items-center">
                     <motion.div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-medium transition-colors ${
                         currentStep >= step.id
                           ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
                           : "bg-[var(--muted)] text-[var(--muted-foreground)]"
@@ -233,11 +238,11 @@ export default function OnboardingForm() {
                         scale: currentStep === step.id ? 1.1 : 1,
                       }}
                     >
-                      {currentStep > step.id ? <Check className="w-5 h-5" /> : step.id}
+                      {currentStep > step.id ? <Check className="w-3 h-3 md:w-5 md:h-5" /> : step.id}
                     </motion.div>
                     {index < steps.length - 1 && (
                       <div
-                        className={`w-20 h-1 mx-4 transition-colors ${
+                        className={`w-8 md:w-20 h-1 mx-2 md:mx-4 transition-colors ${
                           currentStep > step.id ? "bg-[var(--primary)]" : "bg-[var(--muted)]"
                         }`}
                       />
@@ -246,12 +251,13 @@ export default function OnboardingForm() {
                 ))}
               </div>
             </div>
-            <div className="mt-6 text-center">
-              <h2 className="text-2xl font-bold text-[var(--primary)]">{steps[currentStep - 1].title}</h2>
-              <p className="text-[var(--muted-foreground)] mt-2">{steps[currentStep - 1].description}</p>
+            <div className="mt-4 md:mt-6 text-center px-4">
+              <h2 className="text-xl md:text-2xl font-bold text-[var(--primary)]">{steps[currentStep - 1].title}</h2>
+              <p className="text-[var(--muted-foreground)] mt-1 md:mt-2 text-sm md:text-base">
+                {steps[currentStep - 1].description}
+              </p>
             </div>
           </div>
-
           <Form {...form}>
             <div>
               <AnimatePresence mode="wait">
@@ -264,18 +270,18 @@ export default function OnboardingForm() {
                 >
                   {/* Step 1: Organization Type */}
                   {currentStep === 1 && (
-                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans min-h-[600px]">
-                      <CardHeader className="pb-8">
-                        <CardTitle className="text-xl">Wählen Sie Ihren Organisationstyp</CardTitle>
+                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
+                      <CardHeader className="pb-4 md:pb-8 px-4 md:px-6">
+                        <CardTitle className="text-lg md:text-xl">Wählen Sie Ihren Organisationstyp</CardTitle>
                       </CardHeader>
-                      <CardContent className="px-8 pb-8">
+                      <CardContent className="px-4 md:px-8 pb-4 md:pb-8">
                         <FormField
                           control={form.control}
                           name="type"
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4">
                                   {organizationTypes.map((type) => {
                                     const Icon = type.icon
                                     const isSelected = field.value === type.value
@@ -300,10 +306,12 @@ export default function OnboardingForm() {
                                               <Check className="w-4 h-4 text-[var(--primary-foreground)]" />
                                             </motion.div>
                                           )}
-                                          <CardContent className="p-6 text-center">
-                                            <Icon className="w-12 h-12 mx-auto mb-4 text-[var(--muted-foreground)]" />
-                                            <h3 className="text-lg font-semibold mb-2">{type.title}</h3>
-                                            <p className="text-sm text-[var(--muted-foreground)]">{type.description}</p>
+                                          <CardContent className="p-4 md:p-6 text-center">
+                                            <Icon className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 md:mb-4 text-[var(--muted-foreground)]" />
+                                            <h3 className="text-base md:text-lg font-semibold mb-2">{type.title}</h3>
+                                            <p className="text-xs md:text-sm text-[var(--muted-foreground)]">
+                                              {type.description}
+                                            </p>
                                           </CardContent>
                                         </Card>
                                       </motion.div>
@@ -321,12 +329,14 @@ export default function OnboardingForm() {
 
                   {/* Step 2: Basic Information */}
                   {currentStep === 2 && (
-                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans min-h-[600px]">
-                      <CardHeader>
-                        <CardTitle className="text-xl">Grundlegende Informationen</CardTitle>
-                        <CardDescription>Geben Sie die wichtigsten Daten Ihrer Organisation ein.</CardDescription>
+                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
+                      <CardHeader className="px-4 md:px-6 pb-4 md:pb-6">
+                        <CardTitle className="text-lg md:text-xl">Grundlegende Informationen</CardTitle>
+                        <CardDescription className="text-sm">
+                          Geben Sie die wichtigsten Daten Ihrer Organisation ein.
+                        </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-8 px-8 pb-8">
+                      <CardContent className="space-y-4 md:space-y-6 px-4 md:px-8 pb-4 md:pb-8">
                         <FormField
                           control={form.control}
                           name="name"
@@ -379,7 +389,7 @@ export default function OnboardingForm() {
                                   {...field}
                                 />
                               </FormControl>
-                              <FormDescription>
+                              <FormDescription className="text-xs md:text-sm">
                                 Optional: Beschreiben Sie Ihre Organisation in wenigen Sätzen.
                               </FormDescription>
                             </FormItem>
@@ -391,13 +401,15 @@ export default function OnboardingForm() {
 
                   {/* Step 3: Contact Information */}
                   {currentStep === 3 && (
-                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans min-h-[600px]">
-                      <CardHeader>
-                        <CardTitle className="text-xl">Kontaktinformationen</CardTitle>
-                        <CardDescription>Wie können Geschäftspartner Sie erreichen?</CardDescription>
+                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
+                      <CardHeader className="px-4 md:px-6 pb-4 md:pb-6">
+                        <CardTitle className="text-lg md:text-xl">Kontaktinformationen</CardTitle>
+                        <CardDescription className="text-sm">
+                          Wie können Geschäftspartner Sie erreichen?
+                        </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-8 px-8 pb-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <CardContent className="space-y-4 md:space-y-6 px-4 md:px-8 pb-4 md:pb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                           <FormField
                             control={form.control}
                             name="phone"
@@ -496,13 +508,15 @@ export default function OnboardingForm() {
 
                   {/* Step 4: Additional Details */}
                   {currentStep === 4 && (
-                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans min-h-[600px]">
-                      <CardHeader>
-                        <CardTitle className="text-xl">Zusätzliche Details</CardTitle>
-                        <CardDescription>Weitere Informationen für eine vollständige Registrierung.</CardDescription>
+                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
+                      <CardHeader className="px-4 md:px-6 pb-4 md:pb-6">
+                        <CardTitle className="text-lg md:text-xl">Zusätzliche Details</CardTitle>
+                        <CardDescription className="text-sm">
+                          Weitere Informationen für eine vollständige Registrierung.
+                        </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-8 px-8 pb-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                      <CardContent className="space-y-4 md:space-y-6 px-4 md:px-8 pb-4 md:pb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
                           <FormField
                             control={form.control}
                             name="vatNumber"
@@ -515,7 +529,9 @@ export default function OnboardingForm() {
                                     <Input placeholder="DE123456789" className="pl-10" {...field} />
                                   </div>
                                 </FormControl>
-                                <FormDescription>Umsatzsteuer-Identifikationsnummer</FormDescription>
+                                <FormDescription className="text-xs">
+                                  Umsatzsteuer-Identifikationsnummer
+                                </FormDescription>
                               </FormItem>
                             )}
                           />
@@ -541,16 +557,18 @@ export default function OnboardingForm() {
 
                   {/* Step 5: Summary */}
                   {currentStep === 5 && (
-                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans min-h-[600px]">
-                      <CardHeader>
-                        <CardTitle>Zusammenfassung</CardTitle>
-                        <CardDescription>Überprüfen Sie Ihre Angaben vor der Registrierung.</CardDescription>
+                    <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
+                      <CardHeader className="px-4 md:px-6 pb-4 md:pb-2">
+                        <CardTitle className="text-lg md:text-xl">Zusammenfassung</CardTitle>
+                        <CardDescription className="text-sm">
+                          Überprüfen Sie Ihre Angaben vor der Registrierung.
+                        </CardDescription>
                       </CardHeader>
-                      <CardContent className="p-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                          <div className="space-y-3">
-                            <div className="bg-muted/30 pl-8 pb-3 rounded-lg">
-                              <h4 className="font-semibold text-base text-muted-foreground mb-6 uppercase tracking-wide">
+                      <CardContent className="p-4">
+                        <div className="grid grid-cols-1 gap-6 md:gap-8">
+                          <div className="space-y-2">
+                            <div className="bg-muted/30 p-4 md:p-6 rounded-lg">
+                              <h4 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wide">
                                 Organisationstyp
                               </h4>
                               <div className="flex items-center space-x-3">
@@ -565,28 +583,28 @@ export default function OnboardingForm() {
                               </div>
                             </div>
 
-                            <div className="bg-muted/30 p-8 rounded-lg">
-                              <h4 className="font-semibold text-base text-muted-foreground mb-6 uppercase tracking-wide">
+                            <div className="bg-muted/30 p-4 md:p-6 rounded-lg">
+                              <h4 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wide">
                                 Grunddaten
                               </h4>
-                              <div className="space-y-4 text-sm">
-                                <div className="flex justify-between">
+                              <div className="space-y-3 text-sm">
+                                <div className="flex flex-col md:flex-row md:justify-between gap-1">
                                   <span className="font-medium text-muted-foreground">Name:</span>
-                                  <span className="text-right">{form.getValues("name")}</span>
+                                  <span className="md:text-right">{form.getValues("name")}</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex flex-col md:flex-row md:justify-between gap-1">
                                   <span className="font-medium text-muted-foreground">Slug:</span>
-                                  <span className="text-right font-mono text-xs bg-muted px-2 py-1 rounded">
+                                  <span className="md:text-right font-mono text-xs bg-muted px-2 py-1 rounded w-fit">
                                     {form.getValues("slug")}
                                   </span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex flex-col md:flex-row md:justify-between gap-1">
                                   <span className="font-medium text-muted-foreground">E-Mail:</span>
-                                  <span className="text-right">{form.getValues("email")}</span>
+                                  <span className="md:text-right break-all">{form.getValues("email")}</span>
                                 </div>
                                 {form.getValues("description") && (
-                                  <div className="pt-4 border-t">
-                                    <span className="font-medium text-muted-foreground block mb-3">Beschreibung:</span>
+                                  <div className="pt-3 border-t">
+                                    <span className="font-medium text-muted-foreground block mb-2">Beschreibung:</span>
                                     <p className="text-sm text-muted-foreground italic">
                                       {form.getValues("description")}
                                     </p>
@@ -594,64 +612,67 @@ export default function OnboardingForm() {
                                 )}
                               </div>
                             </div>
-                          </div>
 
-                          <div className="space-y-8">
-                            <div className="bg-muted/30 p-8 rounded-lg">
-                              <h4 className="font-semibold text-base text-muted-foreground mb-6 uppercase tracking-wide">
-                                Kontakt
-                              </h4>
-                              <div className="space-y-4 text-sm">
-                                {form.getValues("phone") && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-muted-foreground">Telefon:</span>
-                                    <span className="text-right">{form.getValues("phone")}</span>
-                                  </div>
-                                )}
-                                {form.getValues("website") && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-muted-foreground">Website:</span>
-                                    <span className="text-right text-blue-600 hover:underline">
-                                      {form.getValues("website")}
-                                    </span>
-                                  </div>
-                                )}
-                                {(form.getValues("address") || form.getValues("city")) && (
-                                  <div className="pt-4 border-t">
-                                    <span className="font-medium text-muted-foreground block mb-3">Adresse:</span>
-                                    <p className="text-sm text-right">
-                                      {[
-                                        form.getValues("address"),
-                                        form.getValues("postalCode"),
-                                        form.getValues("city"),
-                                        form.getValues("country"),
-                                      ]
-                                        .filter(Boolean)
-                                        .join(", ")}
-                                    </p>
-                                  </div>
-                                )}
+                            {(form.getValues("phone") ||
+                              form.getValues("website") ||
+                              form.getValues("address") ||
+                              form.getValues("city")) && (
+                              <div className="bg-muted/30 p-4 md:p-6 rounded-lg">
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wide">
+                                  Kontakt
+                                </h4>
+                                <div className="space-y-3 text-sm">
+                                  {form.getValues("phone") && (
+                                    <div className="flex flex-col md:flex-row md:justify-between gap-1">
+                                      <span className="font-medium text-muted-foreground">Telefon:</span>
+                                      <span className="md:text-right">{form.getValues("phone")}</span>
+                                    </div>
+                                  )}
+                                  {form.getValues("website") && (
+                                    <div className="flex flex-col md:flex-row md:justify-between gap-1">
+                                      <span className="font-medium text-muted-foreground">Website:</span>
+                                      <span className="md:text-right text-blue-600 hover:underline break-all">
+                                        {form.getValues("website")}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {(form.getValues("address") || form.getValues("city")) && (
+                                    <div className="pt-3 border-t">
+                                      <span className="font-medium text-muted-foreground block mb-2">Adresse:</span>
+                                      <p className="text-sm md:text-right">
+                                        {[
+                                          form.getValues("address"),
+                                          form.getValues("postalCode"),
+                                          form.getValues("city"),
+                                          form.getValues("country"),
+                                        ]
+                                          .filter(Boolean)
+                                          .join(", ")}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             {(form.getValues("vatNumber") || form.getValues("registrationNumber")) && (
-                              <div className="bg-muted/30 p-8 rounded-lg">
-                                <h4 className="font-semibold text-base text-muted-foreground mb-6 uppercase tracking-wide">
+                              <div className="bg-muted/30 p-4 md:p-6 rounded-lg">
+                                <h4 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wide">
                                   Weitere Details
                                 </h4>
-                                <div className="space-y-4 text-sm">
+                                <div className="space-y-3 text-sm">
                                   {form.getValues("vatNumber") && (
-                                    <div className="flex justify-between">
+                                    <div className="flex flex-col md:flex-row md:justify-between gap-1">
                                       <span className="font-medium text-muted-foreground">USt-IdNr.:</span>
-                                      <span className="text-right font-mono text-xs bg-muted px-2 py-1 rounded">
+                                      <span className="md:text-right font-mono text-xs bg-muted px-2 py-1 rounded w-fit">
                                         {form.getValues("vatNumber")}
                                       </span>
                                     </div>
                                   )}
                                   {form.getValues("registrationNumber") && (
-                                    <div className="flex justify-between">
+                                    <div className="flex flex-col md:flex-row md:justify-between gap-1">
                                       <span className="font-medium text-muted-foreground">HRB:</span>
-                                      <span className="text-right font-mono text-xs bg-muted px-2 py-1 rounded">
+                                      <span className="md:text-right font-mono text-xs bg-muted px-2 py-1 rounded w-fit">
                                         {form.getValues("registrationNumber")}
                                       </span>
                                     </div>
@@ -662,8 +683,8 @@ export default function OnboardingForm() {
                           </div>
                         </div>
 
-                        <div className="border-t pt-8">
-                          <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg">
+                        <div className="border-t pt-6 md:pt-8">
+                          <div className="bg-blue-50 border border-blue-200 p-4 md:p-6 rounded-lg">
                             <p className="text-sm text-blue-800">
                               <strong>Hinweis:</strong> Nach der Erstellung können Sie alle Angaben in den Einstellungen
                               Ihrer Organisation bearbeiten.
@@ -677,7 +698,7 @@ export default function OnboardingForm() {
               </AnimatePresence>
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between mt-8">
+              <div className="flex justify-between mt-6 md:mt-8 px-4 md:px-0">
                 <Button
                   type="button"
                   variant="outline"
@@ -686,10 +707,9 @@ export default function OnboardingForm() {
                   className="flex items-center space-x-2 bg-transparent"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>Zurück</span>
+                  <span className="hidden sm:inline">Zurück</span>
                 </Button>
-
-                <div className="flex space-x-4">
+                <div className="flex space-x-2 md:space-x-4">
                   {/* Navigation Button - Only show if not on last step */}
                   {currentStep < steps.length && (
                     <Button
@@ -698,21 +718,24 @@ export default function OnboardingForm() {
                       disabled={isSubmitting}
                       className="flex items-center space-x-2"
                     >
-                      <span>Weiter</span>
+                      <span className="hidden sm:inline">Weiter</span>
+                      <span className="sm:hidden">Weiter</span>
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   )}
-
                   {/* Submit Button - Only show on last step */}
                   {currentStep === steps.length && (
                     <Button
                       type="button"
                       onClick={form.handleSubmit(handleSubmit)}
                       disabled={isSubmitting}
-                      className="flex items-center space-x-2 min-w-[200px] bg-primary"
+                      className="flex items-center space-x-2 bg-primary"
                     >
                       {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                      <span>{isSubmitting ? "Erstelle Organisation.." : "Organisation erstellen"}</span>
+                      <span className="hidden sm:inline">
+                        {isSubmitting ? "Erstelle Organisation.." : "Organisation erstellen"}
+                      </span>
+                      <span className="sm:hidden">{isSubmitting ? "Erstelle.." : "Erstellen"}</span>
                     </Button>
                   )}
                 </div>

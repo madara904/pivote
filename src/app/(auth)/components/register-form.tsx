@@ -69,12 +69,11 @@ export const RegisterForm = () => {
         name: data.name,
         email: data.email,
         password: data.password,
-        callbackURL: process.env.NEXT_PUBLIC_APP_URL + "/dashboard"
       },
       {
         onSuccess: () => {
           setLoading(false);
-          router.push("/dashboard");
+          router.push("/onboarding");
         },
         onError: ({ error }) => {
           const errorMessage = error.code
@@ -97,13 +96,13 @@ export const RegisterForm = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-center flex-col">
-          <div className="flex items-center justify-center rounded-full bg-primary w-14 h-14">
-            <Logo className="h-8 mt-2 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl pt-2">Pivote</h1>
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-center flex-col">
+        <div className="flex items-center justify-center rounded-full bg-primary w-14 h-14">
+          <Logo className="h-8 mt-2 text-primary-foreground" />
         </div>
+        <h1 className="text-3xl pt-2">Pivote</h1>
+      </div>
         <Card className="overflow-hidden p-0">
           <CardContent className="grid p-0 md:grid-cols-2">
             {/* Logo only for mobile (above form) */}

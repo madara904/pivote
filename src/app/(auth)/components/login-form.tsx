@@ -57,11 +57,11 @@ export const LoginForm = () => {
       },
       {
         onSuccess: () => {
-          router.push("/dashboard");
-          setLoading(false);
           toast.success(
             "Anmeldung erfolgreich! Sie werden in Kürze weitergeleitet..."
           );
+          router.push("/dashboard");
+          setLoading(false);
         },
         onError: ({ error }) => {
           const errorMessage = error.code

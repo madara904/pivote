@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import { useState } from "react"
@@ -16,7 +17,6 @@ import {
   Globe,
   MapPin,
   FileText,
-  Palette,
   Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"

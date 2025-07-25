@@ -2,9 +2,14 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, or, gt, lt } from "drizzle-orm";
 import { randomBytes } from "crypto";
-import { organizationInvitation, organizationMember, organization, user } from "@/db/schema";
+import {
+  organizationInvitation,
+  organizationMember,
+  organization,
+  user,
+} from "@/db/schema";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../init";
-import { env } from '@/lib/env/env';
+import { env } from "@/lib/env/env";
 
 // Sichere Token-Generierung
 function generateSecureToken(): string {
@@ -19,7 +24,10 @@ type InvitationWithOrg = typeof organizationInvitation.$inferSelect & {
   >;
 };
 
-async function validateInvitationToken(token: string, db: typeof import('@/db').db): Promise<InvitationWithOrg> {
+async function validateInvitationToken(
+  token: string,
+  db: typeof import("@/db").db
+): Promise<InvitationWithOrg> {
   const invitation = await db.query.organizationInvitation.findFirst({
     where: and(
       eq(organizationInvitation.token, token),
@@ -45,6 +53,15 @@ async function validateInvitationToken(token: string, db: typeof import('@/db').
   }
 
   return invitation as InvitationWithOrg;
+}
+
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
 }
 
 export const organizationRouter = createTRPCRouter({
@@ -214,17 +231,22 @@ export const organizationRouter = createTRPCRouter({
       }
 
       // 3. Prüfe ob User bereits Mitglied einer Organisation ist
-      const existingMembership = await ctx.db.query.organizationMember.findFirst({
-        where: and(
-          eq(organizationMember.userId, ctx.session.user.id),
-          eq(organizationMember.isActive, true)
-        ),
-        with: {
-          organization: {
-            columns: { name: true },
+      const existingMembership =
+        (await ctx.db.query.organizationMember.findFirst({
+          where: and(
+            eq(organizationMember.userId, ctx.session.user.id),
+            eq(organizationMember.isActive, true)
+          ),
+          with: {
+            organization: {
+              columns: { name: true },
+            },
           },
-        },
-      }) as (typeof organizationMember.$inferSelect & { organization: { name: string } }) | null;
+        })) as
+          | (typeof organizationMember.$inferSelect & {
+              organization: { name: string };
+            })
+          | null;
 
       if (existingMembership) {
         throw new TRPCError({
@@ -338,7 +360,6 @@ export const organizationRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(2),
-        slug: z.string().min(2),
         email: z.string().email(),
         type: z.enum(["shipper", "forwarder"]).optional().default("shipper"),
         description: z.string().optional(),
@@ -348,10 +369,14 @@ export const organizationRouter = createTRPCRouter({
         city: z.string().optional(),
         postalCode: z.string().optional(),
         country: z.string().optional(),
-        vatNumber: z.string().optional(),
+        vatNumber: z
+          .string()
+          .regex(
+            /^DE[0-9]{9}$/,
+            "Die UST-ID muss mit 'DE' beginnen und 9 Ziffern enthalten"
+          ),
         registrationNumber: z.string().optional(),
         logo: z.string().optional(),
-        primaryColor: z.string().optional(),
         settings: z.string().optional(),
         isActive: z.boolean().optional(),
       })
@@ -371,37 +396,52 @@ export const organizationRouter = createTRPCRouter({
           message: "Du kannst nur eine Organisation besitzen.",
         });
       }
-      // Check for duplicate slug before insert
+
       const existingOrg = await ctx.db.query.organization.findFirst({
-        where: eq(organization.slug, input.slug),
+        where: or(
+          eq(organization.slug, slugify(input.name)),
+          eq(organization.name, input.name),
+          eq(organization.vatNumber, input.vatNumber),
+          eq(organization.registrationNumber, input.registrationNumber ?? "") //HRB kann mitgegeben werden - muss aber nicht deswegen nullish coe.
+        ),
       });
       if (existingOrg) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: `Die Organisation mit dem Slug '${input.slug}' existiert bereits. Bitte wähle einen anderen Slug.`,
-        });
+        if (existingOrg.name === input.name) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Der Name '${input.name}' ist bereits vergeben. Bitte wähle einen anderen Namen.`,
+          });
+        }
+        if (existingOrg.vatNumber === input.vatNumber) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Die UST-ID '${input.vatNumber}' ist bereits vergeben. Bitte prüfe deine Eingabe.`,
+          });
+        }
       }
       try {
         // 1. Create the organization
-        const [org] = await ctx.db.insert(organization).values({
-          name: input.name,
-          slug: input.slug,
-          email: input.email,
-          type: input.type,
-          description: input.description,
-          phone: input.phone,
-          website: input.website,
-          address: input.address,
-          city: input.city,
-          postalCode: input.postalCode,
-          country: input.country,
-          vatNumber: input.vatNumber,
-          registrationNumber: input.registrationNumber,
-          logo: input.logo,
-          primaryColor: input.primaryColor,
-          settings: input.settings,
-          isActive: input.isActive,
-        }).returning();
+        const [org] = await ctx.db
+          .insert(organization)
+          .values({
+            name: input.name,
+            slug: slugify(input.name),
+            email: input.email,
+            type: input.type,
+            description: input.description,
+            phone: input.phone,
+            website: input.website,
+            address: input.address,
+            city: input.city,
+            postalCode: input.postalCode,
+            country: input.country,
+            vatNumber: input.vatNumber,
+            registrationNumber: input.registrationNumber,
+            logo: input.logo,
+            settings: input.settings,
+            isActive: input.isActive,
+          })
+          .returning();
 
         // 2. Check if the user exists
         const dbUser = await ctx.db.query.user.findFirst({
@@ -415,12 +455,15 @@ export const organizationRouter = createTRPCRouter({
         }
 
         // 3. Attach the current user as owner
-        const [membership] = await ctx.db.insert(organizationMember).values({
-          organizationId: org.id,
-          userId: ctx.session.user.id,
-          role: "owner",
-          isActive: true,
-        }).returning();
+        const [membership] = await ctx.db
+          .insert(organizationMember)
+          .values({
+            organizationId: org.id,
+            userId: ctx.session.user.id,
+            role: "owner",
+            isActive: true,
+          })
+          .returning();
 
         return {
           organization: org,
@@ -515,7 +558,7 @@ export const organizationRouter = createTRPCRouter({
       }
     }),
 
-  // Delete organization - only owner can delete, removes all members (cascade)
+
   deleteOrganization: protectedProcedure
     .input(z.object({ organizationId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -556,14 +599,13 @@ export const organizationRouter = createTRPCRouter({
       }
     }),
 
-  getMyOrganizations: protectedProcedure
-    .query(async ({ ctx }) => {
-      const memberships = await ctx.db.query.organizationMember.findMany({
-        where: eq(organizationMember.userId, ctx.session.user.id),
-        with: {
-          organization: true,
-        },
-      });
-      return memberships.map(m => m.organization);
-    }),
+  getMyOrganizations: protectedProcedure.query(async ({ ctx }) => {
+    const memberships = await ctx.db.query.organizationMember.findMany({
+      where: eq(organizationMember.userId, ctx.session.user.id),
+      with: {
+        organization: true,
+      },
+    });
+    return memberships.map((m) => m.organization);
+  }),
 });

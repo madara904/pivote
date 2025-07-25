@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-"use client"
+"use client";
 
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Check,
   Building2,
@@ -18,25 +18,35 @@ import {
   MapPin,
   FileText,
   Loader2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { LogoLoader } from "@/components/ui/loader"
-import { trpc } from "@/trpc/client"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { LogoLoader } from "@/components/ui/loader";
+import { trpc } from "@/trpc/client";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const organizationSchema = z.object({
   name: z.string().min(2, "Name muss mindestens 2 Zeichen lang sein"),
-  slug: z
-    .string()
-    .min(2, "Slug muss mindestens 2 Zeichen lang sein")
-    .regex(/^[a-z0-9-]+$/, "Slug darf nur Kleinbuchstaben, Zahlen und Bindestriche enthalten"),
   email: z.string().email("Ungültige E-Mail-Adresse"),
   type: z.enum(["shipper", "forwarder"], {
     required_error: "Bitte wählen Sie einen Organisationstyp",
@@ -48,12 +58,14 @@ const organizationSchema = z.object({
   city: z.string().optional(),
   postalCode: z.string().optional(),
   country: z.string().optional(),
-  vatNumber: z.string().optional(),
+  vatNumber: z
+    .string()
+    .min(1, "Bitte geben Sie eine UST-ID ein")
+    .regex(/^[0-9]{9}$/, "Die UST-ID muss aus genau 9 Ziffern bestehen"),
   registrationNumber: z.string().optional(),
-  primaryColor: z.string().optional(),
-})
+});
 
-type OrganizationFormData = z.infer<typeof organizationSchema>
+type OrganizationFormData = z.infer<typeof organizationSchema>;
 
 const steps = [
   {
@@ -81,7 +93,7 @@ const steps = [
     title: "Zusammenfassung",
     description: "Überprüfen Sie Ihre Angaben",
   },
-]
+];
 
 const organizationTypes = [
   {
@@ -100,38 +112,37 @@ const organizationTypes = [
     color: "bg-green-50 border-green-200 hover:bg-green-100",
     selectedColor: "bg-green-100 border-green-500",
   },
-]
+];
 
 export default function OnboardingForm() {
-  const [currentStep, setCurrentStep] = useState(1)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [redirecting, setRedirecting] = useState(false)
-  const [orgType, setOrgType] = useState<string | undefined>(undefined)
-  const router = useRouter()
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [orgType, setOrgType] = useState<string | undefined>(undefined);
+  const router = useRouter();
 
   const createOrg = trpc.organization.createOrganization.useMutation({
     onSuccess: (_, variables) => {
-      setOrgType(variables.type)
-      setRedirecting(true)
+      setOrgType(variables.type);
+      setRedirecting(true);
       setTimeout(() => {
         if (variables.type === "forwarder") {
-          router.push("/dashboard/forwarder")
+          router.push("/dashboard/forwarder");
         } else {
-          router.push("/dashboard/shipper")
+          router.push("/dashboard/shipper");
         }
-      }, 800)
+      }, 800);
     },
     onError: (error) => {
-      toast.error(error.message ?? "Fehler beim Erstellen der Organisation.")
-      setIsSubmitting(false)
+      toast.error(error.message ?? "Fehler beim Erstellen der Organisation.");
+      setIsSubmitting(false);
     },
-  })
+  });
 
   const form = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
       name: "",
-      slug: "",
       email: "",
       type: undefined,
       description: "",
@@ -143,79 +154,64 @@ export default function OnboardingForm() {
       country: "Deutschland",
       vatNumber: "",
       registrationNumber: "",
-      primaryColor: "#5248ff",
     },
-  })
+  });
 
-  const watchedName = form.watch("name")
-  const watchedType = form.watch("type")
-
-  // Auto-generate slug from name
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim()
-  }
-
-  const handleNameChange = (name: string) => {
-    form.setValue("name", name)
-    if (name) {
-      form.setValue("slug", generateSlug(name))
-    }
-  }
+  const watchedName = form.watch("name");
+  const watchedType = form.watch("type");
 
   // Navigation function - only validates and moves to next step
   const nextStep = async () => {
-    let fieldsToValidate: (keyof OrganizationFormData)[] = []
+    let fieldsToValidate: (keyof OrganizationFormData)[] = [];
     switch (currentStep) {
       case 1:
-        fieldsToValidate = ["type"]
-        break
+        fieldsToValidate = ["type"];
+        break;
       case 2:
-        fieldsToValidate = ["name", "slug", "email"]
-        break
+        fieldsToValidate = ["name", "email"];
+        break;
       case 3:
         // Optional fields, no validation needed
-        break
+        break;
       case 4:
-        // Optional fields, no validation needed
-        break
+        fieldsToValidate = ["vatNumber"];
+        break;
     }
 
     if (fieldsToValidate.length > 0) {
-      const isValid = await form.trigger(fieldsToValidate)
-      if (!isValid) return
+      const isValid = await form.trigger(fieldsToValidate);
+      if (!isValid) return;
     }
 
-    setCurrentStep((prev) => Math.min(prev + 1, steps.length))
-  }
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+  };
 
   const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1))
-  }
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
 
   // Actual form submission - only called when "Absenden" is clicked
   const handleSubmit = (data: OrganizationFormData) => {
-    setIsSubmitting(true)
-    createOrg.mutate(data, {
-      onError: () => {
-        setIsSubmitting(false)
-      },
-      onSuccess: () => {
-        setIsSubmitting(false)
-      },
-    })
-  }
+    setIsSubmitting(true);
+    createOrg.mutate(
+      { ...data, vatNumber: `DE${data.vatNumber}` },
+      {
+        onError: () => {
+          setIsSubmitting(false);
+        },
+        onSuccess: () => {
+          setIsSubmitting(false);
+        },
+      }
+    );
+  };
 
   if (redirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <LogoLoader size={64} color="var(--primary)" />
       </div>
-    )
+    );
   }
 
   return (
@@ -238,12 +234,18 @@ export default function OnboardingForm() {
                         scale: currentStep === step.id ? 1.1 : 1,
                       }}
                     >
-                      {currentStep > step.id ? <Check className="w-3 h-3 md:w-5 md:h-5" /> : step.id}
+                      {currentStep > step.id ? (
+                        <Check className="w-3 h-3 md:w-5 md:h-5" />
+                      ) : (
+                        step.id
+                      )}
                     </motion.div>
                     {index < steps.length - 1 && (
                       <div
                         className={`w-8 md:w-20 h-1 mx-2 md:mx-4 transition-colors ${
-                          currentStep > step.id ? "bg-[var(--primary)]" : "bg-[var(--muted)]"
+                          currentStep > step.id
+                            ? "bg-[var(--primary)]"
+                            : "bg-[var(--muted)]"
                         }`}
                       />
                     )}
@@ -252,7 +254,9 @@ export default function OnboardingForm() {
               </div>
             </div>
             <div className="mt-4 md:mt-6 text-center px-4">
-              <h2 className="text-xl md:text-2xl font-bold text-[var(--primary)]">{steps[currentStep - 1].title}</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-[var(--primary)]">
+                {steps[currentStep - 1].title}
+              </h2>
               <p className="text-[var(--muted-foreground)] mt-1 md:mt-2 text-sm md:text-base">
                 {steps[currentStep - 1].description}
               </p>
@@ -272,7 +276,9 @@ export default function OnboardingForm() {
                   {currentStep === 1 && (
                     <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
                       <CardHeader className="pb-4 md:pb-8 px-4 md:px-6">
-                        <CardTitle className="text-lg md:text-xl">Wählen Sie Ihren Organisationstyp</CardTitle>
+                        <CardTitle className="text-lg md:text-xl">
+                          Wählen Sie Ihren Organisationstyp
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="px-4 md:px-8 pb-4 md:pb-8">
                         <FormField
@@ -283,8 +289,9 @@ export default function OnboardingForm() {
                               <FormControl>
                                 <div className="grid grid-cols-1 gap-4">
                                   {organizationTypes.map((type) => {
-                                    const Icon = type.icon
-                                    const isSelected = field.value === type.value
+                                    const Icon = type.icon;
+                                    const isSelected =
+                                      field.value === type.value;
                                     return (
                                       <motion.div
                                         key={type.value}
@@ -293,9 +300,13 @@ export default function OnboardingForm() {
                                       >
                                         <Card
                                           className={`cursor-pointer transition-all relative ${
-                                            isSelected ? type.selectedColor : type.color
+                                            isSelected
+                                              ? type.selectedColor
+                                              : type.color
                                           }`}
-                                          onClick={() => field.onChange(type.value)}
+                                          onClick={() =>
+                                            field.onChange(type.value)
+                                          }
                                         >
                                           {isSelected && (
                                             <motion.div
@@ -308,14 +319,16 @@ export default function OnboardingForm() {
                                           )}
                                           <CardContent className="p-4 md:p-6 text-center">
                                             <Icon className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 md:mb-4 text-[var(--muted-foreground)]" />
-                                            <h3 className="text-base md:text-lg font-semibold mb-2">{type.title}</h3>
+                                            <h3 className="text-base md:text-lg font-semibold mb-2">
+                                              {type.title}
+                                            </h3>
                                             <p className="text-xs md:text-sm text-[var(--muted-foreground)]">
                                               {type.description}
                                             </p>
                                           </CardContent>
                                         </Card>
                                       </motion.div>
-                                    )
+                                    );
                                   })}
                                 </div>
                               </FormControl>
@@ -331,9 +344,12 @@ export default function OnboardingForm() {
                   {currentStep === 2 && (
                     <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
                       <CardHeader className="px-4 md:px-6 pb-4 md:pb-6">
-                        <CardTitle className="text-lg md:text-xl">Grundlegende Informationen</CardTitle>
+                        <CardTitle className="text-lg md:text-xl">
+                          Grundlegende Informationen
+                        </CardTitle>
                         <CardDescription className="text-sm">
-                          Geben Sie die wichtigsten Daten Ihrer Organisation ein.
+                          Geben Sie die wichtigsten Daten Ihrer Organisation
+                          ein.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4 md:space-y-6 px-4 md:px-8 pb-4 md:pb-8">
@@ -347,7 +363,9 @@ export default function OnboardingForm() {
                                 <Input
                                   placeholder="z.B. Mustermann Logistik GmbH"
                                   {...field}
-                                  onChange={(e) => handleNameChange(e.target.value)}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.value)
+                                  }
                                 />
                               </FormControl>
                               <FormMessage />
@@ -390,7 +408,8 @@ export default function OnboardingForm() {
                                 />
                               </FormControl>
                               <FormDescription className="text-xs md:text-sm">
-                                Optional: Beschreiben Sie Ihre Organisation in wenigen Sätzen.
+                                Optional: Beschreiben Sie Ihre Organisation in
+                                wenigen Sätzen.
                               </FormDescription>
                             </FormItem>
                           )}
@@ -403,7 +422,9 @@ export default function OnboardingForm() {
                   {currentStep === 3 && (
                     <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
                       <CardHeader className="px-4 md:px-6 pb-4 md:pb-6">
-                        <CardTitle className="text-lg md:text-xl">Kontaktinformationen</CardTitle>
+                        <CardTitle className="text-lg md:text-xl">
+                          Kontaktinformationen
+                        </CardTitle>
                         <CardDescription className="text-sm">
                           Wie können Geschäftspartner Sie erreichen?
                         </CardDescription>
@@ -419,7 +440,11 @@ export default function OnboardingForm() {
                                 <FormControl>
                                   <div className="relative">
                                     <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input placeholder="+49 123 456789" className="pl-10" {...field} />
+                                    <Input
+                                      placeholder="+49 123 456789"
+                                      className="pl-10"
+                                      {...field}
+                                    />
                                   </div>
                                 </FormControl>
                               </FormItem>
@@ -458,7 +483,10 @@ export default function OnboardingForm() {
                               <FormItem>
                                 <FormLabel>Straße und Hausnummer</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Musterstraße 123" {...field} />
+                                  <Input
+                                    placeholder="Musterstraße 123"
+                                    {...field}
+                                  />
                                 </FormControl>
                               </FormItem>
                             )}
@@ -483,7 +511,10 @@ export default function OnboardingForm() {
                                 <FormItem>
                                   <FormLabel>Stadt</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Musterstadt" {...field} />
+                                    <Input
+                                      placeholder="Musterstadt"
+                                      {...field}
+                                    />
                                   </FormControl>
                                 </FormItem>
                               )}
@@ -495,7 +526,10 @@ export default function OnboardingForm() {
                                 <FormItem>
                                   <FormLabel>Land</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Deutschland" {...field} />
+                                    <Input
+                                      placeholder="Deutschland"
+                                      {...field}
+                                    />
                                   </FormControl>
                                 </FormItem>
                               )}
@@ -510,9 +544,12 @@ export default function OnboardingForm() {
                   {currentStep === 4 && (
                     <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
                       <CardHeader className="px-4 md:px-6 pb-4 md:pb-6">
-                        <CardTitle className="text-lg md:text-xl">Zusätzliche Details</CardTitle>
+                        <CardTitle className="text-lg md:text-xl">
+                          Zusätzliche Details
+                        </CardTitle>
                         <CardDescription className="text-sm">
-                          Weitere Informationen für eine vollständige Registrierung.
+                          Weitere Informationen für eine vollständige
+                          Registrierung.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4 md:space-y-6 px-4 md:px-8 pb-4 md:pb-8">
@@ -522,16 +559,32 @@ export default function OnboardingForm() {
                             name="vatNumber"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>USt-IdNr.</FormLabel>
+                                <FormLabel>USt-IdNr. *</FormLabel>
                                 <FormControl>
                                   <div className="relative">
-                                    <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input placeholder="DE123456789" className="pl-10" {...field} />
+                                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <span className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-500 font-medium select-none text-sm">DE</span>
+                                    <Input
+                                      type="text"
+                                      maxLength={9}
+                                      pattern="[0-9]*"
+                                      inputMode="numeric"
+                                      className="pl-20" // icon (left-3) + 'DE' (left-10) + spacing
+                                      placeholder="123456789"
+                                      value={field.value}
+                                      onChange={e => {
+                                        // Only allow digits
+                                        const val = e.target.value.replace(/\D/g, "");
+                                        field.onChange(val);
+                                      }}
+                                      aria-label="USt-IdNr. (nur 9 Ziffern)"
+                                    />
                                   </div>
                                 </FormControl>
                                 <FormDescription className="text-xs">
-                                  Umsatzsteuer-Identifikationsnummer
+                                  Umsatzsteuer-Identifikationsnummer (z.B. DE123456789)
                                 </FormDescription>
+                                <FormMessage />
                               </FormItem>
                             )}
                           />
@@ -543,10 +596,28 @@ export default function OnboardingForm() {
                                 <FormLabel>Handelsregisternummer</FormLabel>
                                 <FormControl>
                                   <div className="relative">
-                                    <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input placeholder="HRB 12345" className="pl-10" {...field} />
+                                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <span className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-500 font-medium select-none text-sm">HRB</span>
+                                    <Input
+                                      type="text"
+                                      maxLength={10}
+                                      pattern="[0-9]*"
+                                      inputMode="numeric"
+                                      className="pl-20"
+                                      placeholder="12345"
+                                      value={field.value}
+                                      onChange={e => {
+                                        // Only allow digits
+                                        const val = e.target.value.replace(/\D/g, "");
+                                        field.onChange(val);
+                                      }}
+                                      aria-label="Handelsregisternummer (nur Ziffern)"
+                                    />
                                   </div>
                                 </FormControl>
+                                <FormDescription className="text-xs">
+                                  Handelsregisternummer (z.B. HRB12345)
+                                </FormDescription>
                               </FormItem>
                             )}
                           />
@@ -559,7 +630,9 @@ export default function OnboardingForm() {
                   {currentStep === 5 && (
                     <Card className="bg-[var(--card)] text-[var(--card-foreground)] rounded-[var(--radius-lg)] font-sans">
                       <CardHeader className="px-4 md:px-6 pb-4 md:pb-2">
-                        <CardTitle className="text-lg md:text-xl">Zusammenfassung</CardTitle>
+                        <CardTitle className="text-lg md:text-xl">
+                          Zusammenfassung
+                        </CardTitle>
                         <CardDescription className="text-sm">
                           Überprüfen Sie Ihre Angaben vor der Registrierung.
                         </CardDescription>
@@ -577,8 +650,13 @@ export default function OnboardingForm() {
                                 ) : (
                                   <Truck className="w-5 h-5 text-green-600" />
                                 )}
-                                <Badge variant="secondary" className="text-sm px-3 py-1">
-                                  {form.getValues("type") === "shipper" ? "Versender" : "Spediteur"}
+                                <Badge
+                                  variant="secondary"
+                                  className="text-sm px-3 py-1"
+                                >
+                                  {form.getValues("type") === "shipper"
+                                    ? "Versender"
+                                    : "Spediteur"}
                                 </Badge>
                               </div>
                             </div>
@@ -589,22 +667,26 @@ export default function OnboardingForm() {
                               </h4>
                               <div className="space-y-3 text-sm">
                                 <div className="flex flex-col md:flex-row md:justify-between gap-1">
-                                  <span className="font-medium text-muted-foreground">Name:</span>
-                                  <span className="md:text-right">{form.getValues("name")}</span>
-                                </div>
-                                <div className="flex flex-col md:flex-row md:justify-between gap-1">
-                                  <span className="font-medium text-muted-foreground">Slug:</span>
-                                  <span className="md:text-right font-mono text-xs bg-muted px-2 py-1 rounded w-fit">
-                                    {form.getValues("slug")}
+                                  <span className="font-medium text-muted-foreground">
+                                    Name:
+                                  </span>
+                                  <span className="md:text-right">
+                                    {form.getValues("name")}
                                   </span>
                                 </div>
                                 <div className="flex flex-col md:flex-row md:justify-between gap-1">
-                                  <span className="font-medium text-muted-foreground">E-Mail:</span>
-                                  <span className="md:text-right break-all">{form.getValues("email")}</span>
+                                  <span className="font-medium text-muted-foreground">
+                                    E-Mail:
+                                  </span>
+                                  <span className="md:text-right break-all">
+                                    {form.getValues("email")}
+                                  </span>
                                 </div>
                                 {form.getValues("description") && (
                                   <div className="pt-3 border-t">
-                                    <span className="font-medium text-muted-foreground block mb-2">Beschreibung:</span>
+                                    <span className="font-medium text-muted-foreground block mb-2">
+                                      Beschreibung:
+                                    </span>
                                     <p className="text-sm text-muted-foreground italic">
                                       {form.getValues("description")}
                                     </p>
@@ -624,21 +706,30 @@ export default function OnboardingForm() {
                                 <div className="space-y-3 text-sm">
                                   {form.getValues("phone") && (
                                     <div className="flex flex-col md:flex-row md:justify-between gap-1">
-                                      <span className="font-medium text-muted-foreground">Telefon:</span>
-                                      <span className="md:text-right">{form.getValues("phone")}</span>
+                                      <span className="font-medium text-muted-foreground">
+                                        Telefon:
+                                      </span>
+                                      <span className="md:text-right">
+                                        {form.getValues("phone")}
+                                      </span>
                                     </div>
                                   )}
                                   {form.getValues("website") && (
                                     <div className="flex flex-col md:flex-row md:justify-between gap-1">
-                                      <span className="font-medium text-muted-foreground">Website:</span>
+                                      <span className="font-medium text-muted-foreground">
+                                        Website:
+                                      </span>
                                       <span className="md:text-right text-blue-600 hover:underline break-all">
                                         {form.getValues("website")}
                                       </span>
                                     </div>
                                   )}
-                                  {(form.getValues("address") || form.getValues("city")) && (
+                                  {(form.getValues("address") ||
+                                    form.getValues("city")) && (
                                     <div className="pt-3 border-t">
-                                      <span className="font-medium text-muted-foreground block mb-2">Adresse:</span>
+                                      <span className="font-medium text-muted-foreground block mb-2">
+                                        Adresse:
+                                      </span>
                                       <p className="text-sm md:text-right">
                                         {[
                                           form.getValues("address"),
@@ -655,7 +746,8 @@ export default function OnboardingForm() {
                               </div>
                             )}
 
-                            {(form.getValues("vatNumber") || form.getValues("registrationNumber")) && (
+                            {(form.getValues("vatNumber") ||
+                              form.getValues("registrationNumber")) && (
                               <div className="bg-muted/30 p-4 md:p-6 rounded-lg">
                                 <h4 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wide">
                                   Weitere Details
@@ -663,7 +755,9 @@ export default function OnboardingForm() {
                                 <div className="space-y-3 text-sm">
                                   {form.getValues("vatNumber") && (
                                     <div className="flex flex-col md:flex-row md:justify-between gap-1">
-                                      <span className="font-medium text-muted-foreground">USt-IdNr.:</span>
+                                      <span className="font-medium text-muted-foreground">
+                                        USt-IdNr.:
+                                      </span>
                                       <span className="md:text-right font-mono text-xs bg-muted px-2 py-1 rounded w-fit">
                                         {form.getValues("vatNumber")}
                                       </span>
@@ -671,7 +765,9 @@ export default function OnboardingForm() {
                                   )}
                                   {form.getValues("registrationNumber") && (
                                     <div className="flex flex-col md:flex-row md:justify-between gap-1">
-                                      <span className="font-medium text-muted-foreground">HRB:</span>
+                                      <span className="font-medium text-muted-foreground">
+                                        HRB:
+                                      </span>
                                       <span className="md:text-right font-mono text-xs bg-muted px-2 py-1 rounded w-fit">
                                         {form.getValues("registrationNumber")}
                                       </span>
@@ -686,8 +782,9 @@ export default function OnboardingForm() {
                         <div className="border-t pt-6 md:pt-8">
                           <div className="bg-blue-50 border border-blue-200 p-4 md:p-6 rounded-lg">
                             <p className="text-sm text-blue-800">
-                              <strong>Hinweis:</strong> Nach der Erstellung können Sie alle Angaben in den Einstellungen
-                              Ihrer Organisation bearbeiten.
+                              <strong>Hinweis:</strong> Nach der Erstellung
+                              können Sie alle Angaben in den Einstellungen Ihrer
+                              Organisation bearbeiten.
                             </p>
                           </div>
                         </div>
@@ -731,11 +828,17 @@ export default function OnboardingForm() {
                       disabled={isSubmitting}
                       className="flex items-center space-x-2 bg-primary"
                     >
-                      {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      {isSubmitting && (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      )}
                       <span className="hidden sm:inline">
-                        {isSubmitting ? "Erstelle Organisation.." : "Organisation erstellen"}
+                        {isSubmitting
+                          ? "Erstelle Organisation.."
+                          : "Organisation erstellen"}
                       </span>
-                      <span className="sm:hidden">{isSubmitting ? "Erstelle.." : "Erstellen"}</span>
+                      <span className="sm:hidden">
+                        {isSubmitting ? "Erstelle.." : "Erstellen"}
+                      </span>
                     </Button>
                   )}
                 </div>
@@ -745,5 +848,5 @@ export default function OnboardingForm() {
         </div>
       </div>
     </div>
-  )
+  );
 }

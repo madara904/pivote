@@ -135,10 +135,9 @@ export const organization = pgTable("organization", {
   city: text("city"),
   postalCode: text("postal_code"),
   country: text("country"),
-  vatNumber: text("vat_number"),
+  vatNumber: text("vat_number").unique(),
   registrationNumber: text("registration_number"),
   logo: text("logo"),
-  primaryColor: text("primary_color"),
   settings: text("settings"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at")

@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 
 const orgSchema = z.object({
   name: z.string().min(2, "Name ist erforderlich"),
-  slug: z.string().min(2, "Slug ist erforderlich"),
   email: z.string().email("Gültige Email ist erforderlich"),
   type: z.enum(["shipper", "forwarder"]),
+  vatNumber: z.string().min(1, "USt-IdNr. ist erforderlich"),
 });
 
 type OrgForm = z.infer<typeof orgSchema>;
@@ -32,11 +32,11 @@ export default function OrganizationCrudTest() {
   // Forms
   const createForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
-    defaultValues: { name: "", slug: "", email: "", type: "shipper" },
+    defaultValues: { name: "", email: "", type: "shipper", vatNumber: "" },
   });
   const editForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
-    defaultValues: { name: "", slug: "", email: "", type: "shipper" },
+    defaultValues: { name: "", email: "", type: "shipper", vatNumber: "" },
   });
 
   // Set edit form values when org selected
@@ -46,9 +46,9 @@ export default function OrganizationCrudTest() {
     if (org) {
       editForm.reset({
         name: org.name,
-        slug: org.slug,
         email: org.email,
         type: org.type,
+        vatNumber: org.vatNumber || "",
       });
     }
   }, [selectedOrgId, editMode, orgsQuery.data, editForm]);
@@ -105,8 +105,8 @@ export default function OrganizationCrudTest() {
         <h2 className="font-bold mb-2">Organisation erstellen</h2>
         <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-2">
           <Input placeholder="Name" {...createForm.register("name")}/>
-          <Input placeholder="Slug" {...createForm.register("slug")}/>
           <Input placeholder="Email" {...createForm.register("email")}/>
+          <Input placeholder="USt-IdNr." {...createForm.register("vatNumber")}/>
           <select {...createForm.register("type")}
             className="input w-full border rounded px-2 py-1">
             <option value="shipper">Shipper</option>
@@ -152,8 +152,8 @@ export default function OrganizationCrudTest() {
           <h2 className="font-bold mb-2">Organisation bearbeiten</h2>
           <form onSubmit={editForm.handleSubmit(handleEdit)} className="space-y-2">
             <Input placeholder="Name" {...editForm.register("name")}/>
-            <Input placeholder="Slug" {...editForm.register("slug")}/>
             <Input placeholder="Email" {...editForm.register("email")}/>
+            <Input placeholder="USt-IdNr." {...editForm.register("vatNumber")}/>
             <select {...editForm.register("type")}
               className="input w-full border rounded px-2 py-1">
               <option value="shipper">Shipper</option>

@@ -28,7 +28,6 @@
   --card-foreground: oklch(0 0 0);
   --popover: oklch(0.9911 0 0);
   --popover-foreground: oklch(0 0 0);
-  --primary: hsl(262, 83%, 60%); /* fallback for browsers that don't support OKLCH */
   --primary: oklch(0.55 0.2713 275);
   --primary-foreground: #fff;
   --secondary: oklch(0.9540 0.0063 255.4755);
@@ -78,7 +77,6 @@
   --card-foreground: oklch(0.9551 0 0);
   --popover: oklch(0.2568 0.0076 274.6528);
   --popover-foreground: oklch(0.9551 0 0);
-  --primary: hsl(262, 83%, 50%); /* fallback for browsers that don't support OKLCH */
   --primary: oklch(0.6132 0.2294 291.7437);
   --primary-foreground: #fff;
   --secondary: oklch(0.2940 0.0130 272.9312);

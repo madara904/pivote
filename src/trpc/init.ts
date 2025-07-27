@@ -21,9 +21,10 @@ export const createTRPCContext = async (): Promise<TRPCContext> => {
   };
 };
 
-const t = initTRPC.context<TRPCContext>().create({});
+export const t = initTRPC.context<TRPCContext>().create({});
 
 export const createTRPCRouter = t.router;
+export const mergeRouters = t.mergeRouters;
 export const createCallerFactory = t.createCallerFactory;
 export const baseProcedure = t.procedure;
 export const protectedProcedure = t.procedure;

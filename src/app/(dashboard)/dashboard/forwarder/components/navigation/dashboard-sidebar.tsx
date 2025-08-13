@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DashboardUserButton } from "./dashboard-user-button";
+import { SearchForm } from "./dashboard-search-form";
 
 const menuItems = {
   main: [
@@ -71,6 +71,11 @@ const DashboardSidebar = ({
     >
       <SidebarContent>
       <SidebarHeader>
+        {/* Search form for desktop */}
+        <div className="hidden md:block px-3 py-2">
+          <SearchForm />
+        </div>
+        
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -96,7 +101,7 @@ const DashboardSidebar = ({
               {menuItems.settings.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
+                  <Link href={item.url} onClick={() => setOpenMobile(false)}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -108,9 +113,6 @@ const DashboardSidebar = ({
         </SidebarGroup>
       </SidebarHeader>
       </SidebarContent>
-      <SidebarFooter className="">
-          <DashboardUserButton />
-      </SidebarFooter>
     </Sidebar>
   );
 };

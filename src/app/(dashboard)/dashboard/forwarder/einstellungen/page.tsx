@@ -1,19 +1,17 @@
-import SettingsView from "./components/view/settings-view";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
-import { Suspense } from "react";
 import { LogoLoader } from "@/components/ui/loader";
+import SettingsView from "./components/view/settings-view";
+import { requireForwarderAccess } from "@/lib/auth-utils";
+import { Suspense } from "react";
 
 export default async function EinstellungenPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) redirect("/sign-in");
+  await requireForwarderAccess();
 
   return (
-    <Suspense fallback={<LogoLoader />}>
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[400px]">
+        <LogoLoader />
+      </div>
+    }>
       <SettingsView />
     </Suspense>
   );

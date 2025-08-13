@@ -239,6 +239,7 @@ export const crudRouter = createTRPCRouter({
             ...(input.slug && { slug: input.slug }),
             ...(input.email && { email: input.email }),
             ...(input.type && { type: input.type }),
+            ...(input.vatNumber && { vatNumber: input.vatNumber }),
             updatedAt: new Date(),
           })
           .where(eq(organization.id, input.organizationId))

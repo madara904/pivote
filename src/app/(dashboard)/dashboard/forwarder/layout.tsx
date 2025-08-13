@@ -12,7 +12,7 @@ const Layout = ({ children }: Props) => {
       <SidebarProvider 
         className="flex flex-col"
         style={{
-          "--sidebar-width": "16rem",
+          "--sidebar-width": "15rem",
           "--sidebar-width-mobile": "20rem",
         }}
       >

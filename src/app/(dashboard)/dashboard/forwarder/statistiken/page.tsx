@@ -1,4 +1,8 @@
-export default function ReportsPage() {
+import { requireForwarderAccess } from "@/lib/auth-utils";
+
+export default async function ReportsPage() {
+  await requireForwarderAccess();
+
   return (
     <div>
       <h1>Berichte Seite</h1>

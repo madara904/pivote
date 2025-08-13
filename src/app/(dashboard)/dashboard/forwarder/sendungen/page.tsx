@@ -1,4 +1,8 @@
-export default function ShipmentsPage() {
+import { requireForwarderAccess } from "@/lib/auth-utils";
+
+export default async function SendungenPage() {
+  await requireForwarderAccess();
+
   return (
     <div>
       <h1>Sendungen Seite</h1>

@@ -29,7 +29,7 @@ export function SearchForm({ ...props }: React.ComponentProps<"form">) {
         <SidebarInput
           id="search"
           placeholder="Schnellsuche..."
-          className="h-8 pl-7 pr-12"
+          className="h-7 pl-7 pr-12"
           onClick={() => setCommandOpen(true)}
           readOnly
         />

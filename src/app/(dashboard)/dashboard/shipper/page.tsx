@@ -1,9 +1,15 @@
+import { requireShipperAccess } from "@/lib/auth-utils";
 
+const ShipperDashboard = async () => {
+  const { user, organization } = await requireShipperAccess();
 
-const DashboardCompany = () => {
   return (
-    <div>Dashboard Company</div>
+    <div>
+      <h1>Shipper Dashboard</h1>
+      <p>Welcome, {user.name} from {organization.name}</p>
+      <p>Organization Type: {organization.type}</p>
+    </div>
   )
 }
 
-export default DashboardCompany
+export default ShipperDashboard

@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut, useSession } from "@/lib/auth-client";
-import { ChevronsUpDown, Gem, LogOut, Settings } from "lucide-react";
+import { Gem, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -42,24 +42,21 @@ export const DashboardUserButton = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-lg shadow p-3 w-full flex items-center justify-between hover:bg-secondary overflow-hidden cursor-pointer">
+      <DropdownMenuTrigger className="rounded-full p-1 hover:bg-secondary cursor-pointer">
         {data.user.image ? (
-          <Avatar>
+          <Avatar className="h-8 w-8">
             <AvatarImage src={data.user.image} />
           </Avatar>
         ) : (
-          <Avatar>
-            <AvatarFallback>{getInitials(data.user.name)}</AvatarFallback>
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="text-xs">{getInitials(data.user.name)}</AvatarFallback>
           </Avatar>
         )}
-        <div className="grid flex-1 text-left text-sm leading-tight">
-          <span className="ml-2 truncate text-sm">{data.user.name}</span>
-        </div>
-        <ChevronsUpDown className="ml-auto size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="center">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium">{data.user.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {data.user.email}
             </p>

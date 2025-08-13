@@ -8,11 +8,15 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSession } from "@/lib/auth-client";
+import { DashboardUserButton } from "./dashboard-user-button";
+import { DashboardCommand } from "./dashboard-command";
 
-import { SearchForm } from "./dashboard-search-form";
 import { Slash } from "lucide-react";
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/logo";
 
@@ -22,8 +26,24 @@ interface BreadcrumbItem {
   isLast?: boolean;
 }
 
+
+
 export function SiteHeader() {
   const pathname = usePathname();
+  const { data, isPending } = useSession();
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setCommandOpen((open) => !open);
+      }
+    };
+
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const pathSegments = pathname
@@ -68,7 +88,7 @@ export function SiteHeader() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/dashboard/forwarder">
-                <Logo className="h-7 w-auto text-primary" />
+                <Logo className="h-6 w-auto text-primary" />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -91,7 +111,24 @@ export function SiteHeader() {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
-        <SearchForm className="w-full sm:ml-auto sm:w-auto" />
+        
+
+        <div className="hidden md:flex items-center ml-auto">
+          <DashboardUserButton />
+        </div>
+        
+
+        <div className="flex items-center gap-2 ml-auto md:hidden">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8"
+            onClick={() => setCommandOpen(true)}
+          >
+            <Search className="h-4 w-4 opacity-70" />
+          </Button>
+          <DashboardUserButton />
+        </div>
       </div>
       <div className="flex h-10 w-full items-center border-t px-4 md:hidden">
         <Breadcrumb>
@@ -123,6 +160,7 @@ export function SiteHeader() {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
+      <DashboardCommand open={commandOpen} setOpen={setCommandOpen} />
     </header>
   );
 }

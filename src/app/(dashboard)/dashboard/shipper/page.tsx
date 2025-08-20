@@ -6,8 +6,8 @@ const ShipperDashboard = async () => {
   return (
     <div>
       <h1>Shipper Dashboard</h1>
-      <p>Welcome, {user.name} from {organization.name}</p>
-      <p>Organization Type: {organization.type}</p>
+      <p>Welcome, {user.name} from {organization?.name}</p>
+      <p>Organization Type: {organization?.type}</p>
     </div>
   )
 }

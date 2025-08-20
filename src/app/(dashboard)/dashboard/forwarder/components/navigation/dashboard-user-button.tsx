@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { signOut, useSession } from "@/lib/auth-client";
 import { Gem, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
@@ -36,7 +37,15 @@ export const DashboardUserButton = () => {
     });
   };
 
-  if (isPending || !data ) {
+  if (isPending) {
+    return (
+      <div className="flex items-center space-x-2">
+        <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+    );
+  }
+
+  if (!data) {
     return null;
   }
 

@@ -5,20 +5,12 @@ import { db } from "@/db";
 import { organizationMember } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { getSessionCookie } from "better-auth/cookies";
 
-// Cache the session lookup with headers passed as parameter
-const getSessionCached = unstable_cache(
-  async (headersList: Headers) => {
-    return auth.api.getSession({ headers: headersList });
-  },
-  ['user-session'],
-  { 
-    revalidate: 24 * 60 * 60, // 24 hours - cache until logout
-    tags: ['session']
-  }
-);
+// Better Auth already handles session caching through cookieCache
+// The issue is that getSession() with headers still bypasses cache in production
 
-// Cache membership lookup - extended duration since users shouldn't change org
+// Cache membership lookup by user ID - this works fine
 const getMembershipCached = unstable_cache(
   async (userId: string) => {
     return db.query.organizationMember.findFirst({
@@ -28,38 +20,82 @@ const getMembershipCached = unstable_cache(
   },
   ['user-membership'],
   { 
-    revalidate: 24 * 60 * 60, // 24 hours - cache until logout
+    revalidate: 24 * 60 * 60, // 24 hours
     tags: ['membership']
   }
 );
 
-// Combined cached function - headers passed as parameter
-const getFullUserContextCached = unstable_cache(
-  async (headersList: Headers) => {
-    const session = await auth.api.getSession({ headers: headersList });
-    if (!session?.user?.id) {
-      return null;
-    }
-
-    const membership = await db.query.organizationMember.findFirst({
-      where: eq(organizationMember.userId, session.user.id),
-      with: { organization: true },
-    });
-
-    return {
-      user: session.user,
-      organization: membership?.organization ?? null,
-    };
-  },
-  ['full-user-context'],
-  { 
-    revalidate: 24 * 60 * 60, // 24 hours - cache until logout
-    tags: ['session', 'membership']
+// Simple and reliable approach - recommended to start with
+async function getAccessContextSimple(): Promise<AccessContext | null> {
+  const headersList = await headers();
+  
+  // Get session - Better Auth should handle its own caching here
+  const session = await auth.api.getSession({ headers: headersList });
+  
+  if (!session?.user?.id) {
+    return null;
   }
-);
 
+  // Only cache the database lookup part
+  const membership = await getMembershipCached(session.user.id);
+
+  return {
+    user: session.user,
+    organization: membership?.organization ?? null,
+  };
+}
+
+// Option 1: Use Better Auth's built-in session method (recommended)
+async function getAccessContext(): Promise<AccessContext | null> {
+  // Better Auth's getSession should respect cookieCache
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+  
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  // Only cache the database lookup, not the session
+  const membership = await getMembershipCached(session.user.id);
+
+  return {
+    user: session.user,
+    organization: membership?.organization ?? null,
+  };
+}
+
+// Option 2: Use the session cookie approach (for middleware-style checks)
+// This is more efficient as it doesn't hit the database for session validation
+async function getAccessContextOptimized(): Promise<AccessContext | null> {
+  const headersList = await headers();
+  
+  // First check if session cookie exists (fast)
+  const sessionCookie = getSessionCookie(headersList);
+  if (!sessionCookie) {
+    return null;
+  }
+
+  // If cookie exists, get the full session
+  const session = await auth.api.getSession({ headers: headersList });
+  
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  // Cache the database lookup
+  const membership = await getMembershipCached(session.user.id);
+
+  return {
+    user: session.user,
+    organization: membership?.organization ?? null,
+  };
+}
+
+
+// Types
 type AccessContext = {
-  user: NonNullable<Awaited<ReturnType<typeof getSessionCached>>>["user"];
+  user: NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>["user"];
   organization: NonNullable<
     Awaited<ReturnType<typeof getMembershipCached>>
   >["organization"] | null;
@@ -70,14 +106,10 @@ type AccessCondition = {
   redirectTo: string | ((ctx: AccessContext) => string);
 };
 
-// Get headers outside cache and pass them in
-async function getAccessContext(): Promise<AccessContext | null> {
-  const headersList = await headers();
-  return await getFullUserContextCached(headersList);
-}
-
+// Main functions using the simple reliable approach
 export async function requireAccess(conditions: AccessCondition[]) {
-  const ctx = await getAccessContext();
+  // Start with the simple approach first
+  const ctx = await getAccessContextSimple(); // Change this to test different approaches
   
   if (!ctx) {
     redirect("/sign-in");
@@ -95,7 +127,7 @@ export async function requireAccess(conditions: AccessCondition[]) {
 }
 
 async function getAccessContextWithRedirect(): Promise<AccessContext> {
-  const ctx = await getAccessContext();
+  const ctx = await getAccessContextSimple(); // Use simple approach
   if (!ctx) {
     redirect("/sign-in");
   }
@@ -155,15 +187,18 @@ export async function requireAnyOrganizationAccess(): Promise<
 }
 
 // Cache invalidation helpers
-export function invalidateSession() {
-  // This would need to be called after login/logout
-  // revalidateTag('session');
-}
-
-export function invalidateMembership() {
-  // Call this when you need to force refresh membership data
-  // Usually not needed since cache is set to 24 hours and invalidates on logout
+export function invalidateUserCache(userId: string) {
   revalidateTag('membership');
 }
 
-export { getAccessContext, getAccessContextWithRedirect };
+export function invalidateAllUserCache() {
+  revalidateTag('membership');
+}
+
+// Public exports
+export { 
+  getAccessContext,
+  getAccessContextWithRedirect,
+  getAccessContextSimple,
+  getAccessContextOptimized,
+};

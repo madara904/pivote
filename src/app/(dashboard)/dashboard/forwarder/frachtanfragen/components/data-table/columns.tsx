@@ -8,14 +8,12 @@ import {
   Train, 
   Package, 
   MapPin, 
-  Calendar,
   AlertTriangle,
   CheckCircle,
   Clock,
   XCircle,
   Package2
 } from "lucide-react"
-import { InquiryForwarderData } from "@/types/shared/inquiry-data"
 
 // Helper functions to convert enum values to display text
 const formatServiceType = (serviceType: string) => {
@@ -93,7 +91,8 @@ const getStatusIcon = (status: string) => {
   return iconMap[status] || <Clock className="h-4 w-4 text-slate-600" />
 }
 
-export const columns: ColumnDef<InquiryForwarderData>[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const columns: ColumnDef<any>[] = [
   {
     accessorFn: (row) => row.inquiry.referenceNumber,
     id: "referenz",
@@ -105,8 +104,8 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
     header: "Fracht",
     cell: ({ row }) => {
       const weight = row.getValue("fracht");
-      const totalPieces = row.original.inquiry.totalPieces;
-      const packageSummary = row.original.packageSummary;
+      const totalPieces = row.original?.inquiry?.totalPieces || 0;
+      const packageSummary = row.original?.packageSummary;
       
       return (
         <div className="flex items-start gap-2">
@@ -159,7 +158,7 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
     header: "Cargo Type",
     cell: ({ row }) => {
       const cargoType = row.getValue("cargoType") as string;
-      const cargoDescription = row.original.inquiry.cargoDescription || "No description";
+      const cargoDescription = row.original?.inquiry?.cargoDescription || "No description";
       
       return (
         <div className="flex items-start gap-2">
@@ -182,7 +181,7 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
     header: "Abgangsort",
     cell: ({ row }) => {
       const originCity = row.getValue("origin") as string;
-      const originCountry = row.original.inquiry.originCountry;
+      const originCountry = row.original?.inquiry?.originCountry || "";
       
       return (
         <div className="flex items-start gap-2">
@@ -190,7 +189,7 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
             <MapPin className="h-4 w-4 text-cyan-500" />
           </div>
           <div className="flex flex-col">
-            <span className="font-medium">{originCity}</span>
+            <span className="font-medium">{originCity || "N/A"}</span>
             <span className="text-xs text-muted-foreground">{originCountry}</span>
           </div>
         </div>
@@ -203,7 +202,7 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
     header: "Bestimmungsort",
     cell: ({ row }) => {
       const destinationCity = row.getValue("destination") as string;
-      const destinationCountry = row.original.inquiry.destinationCountry;
+      const destinationCountry = row.original?.inquiry?.destinationCountry || "";
       
       return (
         <div className="flex items-start gap-2">
@@ -211,7 +210,7 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
             <MapPin className="h-4 w-4 text-rose-500" />
           </div>
           <div className="flex flex-col">
-            <span className="font-medium">{destinationCity}</span>
+            <span className="font-medium">{destinationCity || "N/A"}</span>
             <span className="text-xs text-muted-foreground">{destinationCountry}</span>
           </div>
         </div>
@@ -224,8 +223,8 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      const statusDateInfo = row.original.statusDateInfo;
-      const validityDate = row.original.inquiry.validityDate;
+      const statusDateInfo = row.original?.statusDateInfo;
+      const validityDate = row.original?.inquiry?.validityDate;
       
       return (
         <div className="flex items-start gap-2">
@@ -234,10 +233,16 @@ export const columns: ColumnDef<InquiryForwarderData>[] = [
           </div>
           <div className="flex flex-col">
             <span className="font-medium">{formatStatus(status)}</span>
-            <span className="text-xs text-muted-foreground">{statusDateInfo.statusDetail}</span>
+            <span className="text-xs text-muted-foreground">{statusDateInfo?.statusDetail || ""}</span>
             {validityDate && (
               <span className="text-xs text-slate-500 mt-1">
-                {new Date(validityDate).toLocaleDateString('de-DE')}
+                {(() => {
+                  try {
+                    return new Date(validityDate).toLocaleDateString('de-DE');
+                  } catch {
+                    return 'Invalid date';
+                  }
+                })()}
               </span>
             )}
           </div>

@@ -24,7 +24,7 @@ import {
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { signUp, signIn, language } from "@/lib/auth-client";
+import { signUp, signIn } from "@/lib/auth-client";
 import Logo from "@/components/logo";
 import { useRouter } from "next/navigation";
 
@@ -76,9 +76,7 @@ export const RegisterForm = () => {
           router.push("/onboarding");
         },
         onError: ({ error }) => {
-          const errorMessage = error.code
-            ? language.getErrorMessage(error.code)
-            : error.message;
+          const errorMessage = error.message;
           setError(errorMessage);
           setLoading(false);
         },

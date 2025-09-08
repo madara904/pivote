@@ -7,4 +7,4 @@ export const membershipRouter = createTRPCRouter({
     const memberships = await getUserMemberships(db, session.user.id);
     return memberships.map((m) => m.organization);
   }),
-}); 
+});

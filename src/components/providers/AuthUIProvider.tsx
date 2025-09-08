@@ -4,7 +4,6 @@ import { AuthUIProvider } from "@daveyplate/better-auth-ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { germanUILocalization } from "@/lib/custom-plugins/language/error-messages";
 
 export function AuthUIProviders({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -36,7 +35,6 @@ export function AuthUIProviders({ children }: { children: ReactNode }) {
         CALLBACK: "dashboard",
         ORGANIZATION: "einstellungen",
       }}
-      localization={germanUILocalization}
     >
       {children}
     </AuthUIProvider>

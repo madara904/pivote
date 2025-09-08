@@ -4,13 +4,10 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { organizationMember } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { revalidateTag, unstable_cache } from "next/cache";
-import { getSessionCookie } from "better-auth/cookies";
+import { unstable_cache } from "next/cache";
+import { revalidateTag } from "next/cache";
 
-// Better Auth already handles session caching through cookieCache
-// The issue is that getSession() with headers still bypasses cache in production
-
-// Cache membership lookup by user ID - this works fine
+// Much more aggressive caching for membership - users rarely change orgs
 const getMembershipCached = unstable_cache(
   async (userId: string) => {
     return db.query.organizationMember.findFirst({
@@ -20,78 +17,28 @@ const getMembershipCached = unstable_cache(
   },
   ['user-membership'],
   { 
-    revalidate: 24 * 60 * 60, // 24 hours
-    tags: ['membership']
+    revalidate: 60 * 60 * 24 * 7, // 7 days - much longer since org membership rarely changes
+    tags: ['membership'] // User-specific tag will be added dynamically
   }
 );
 
-// Simple and reliable approach - recommended to start with
-async function getAccessContextSimple(): Promise<AccessContext | null> {
-  const headersList = await headers();
-  
-  // Get session - Better Auth should handle its own caching here
-  const session = await auth.api.getSession({ headers: headersList });
-  
-  if (!session?.user?.id) {
-    return null;
+// Cache the access context based on user ID (no headers() inside cache)
+const getAccessContextCached = unstable_cache(
+  async (userId: string) => {
+    // This membership lookup is now heavily cached
+    const membership = await getMembershipCached(userId);
+
+    return {
+      userId,
+      organization: membership?.organization ?? null,
+    };
+  },
+  ['access-context'],
+  { 
+    revalidate: 5 * 60, // 5 minutes for the combined context
+    tags: ['access-context', 'membership']
   }
-
-  // Only cache the database lookup part
-  const membership = await getMembershipCached(session.user.id);
-
-  return {
-    user: session.user,
-    organization: membership?.organization ?? null,
-  };
-}
-
-// Option 1: Use Better Auth's built-in session method (recommended)
-async function getAccessContext(): Promise<AccessContext | null> {
-  // Better Auth's getSession should respect cookieCache
-  const session = await auth.api.getSession({
-    headers: await headers()
-  });
-  
-  if (!session?.user?.id) {
-    return null;
-  }
-
-  // Only cache the database lookup, not the session
-  const membership = await getMembershipCached(session.user.id);
-
-  return {
-    user: session.user,
-    organization: membership?.organization ?? null,
-  };
-}
-
-// Option 2: Use the session cookie approach (for middleware-style checks)
-// This is more efficient as it doesn't hit the database for session validation
-async function getAccessContextOptimized(): Promise<AccessContext | null> {
-  const headersList = await headers();
-  
-  // First check if session cookie exists (fast)
-  const sessionCookie = getSessionCookie(headersList);
-  if (!sessionCookie) {
-    return null;
-  }
-
-  // If cookie exists, get the full session
-  const session = await auth.api.getSession({ headers: headersList });
-  
-  if (!session?.user?.id) {
-    return null;
-  }
-
-  // Cache the database lookup
-  const membership = await getMembershipCached(session.user.id);
-
-  return {
-    user: session.user,
-    organization: membership?.organization ?? null,
-  };
-}
-
+);
 
 // Types
 type AccessContext = {
@@ -106,10 +53,27 @@ type AccessCondition = {
   redirectTo: string | ((ctx: AccessContext) => string);
 };
 
-// Main functions using the simple reliable approach
+// Main function to get access context with session
+async function getAccessContext(): Promise<AccessContext | null> {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+  
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  // Get cached access context
+  const cachedContext = await getAccessContextCached(session.user.id);
+
+  return {
+    user: session.user,
+    organization: cachedContext.organization,
+  };
+}
+
 export async function requireAccess(conditions: AccessCondition[]) {
-  // Start with the simple approach first
-  const ctx = await getAccessContextSimple(); // Change this to test different approaches
+  const ctx = await getAccessContext(); // Uses the main function, not cached version
   
   if (!ctx) {
     redirect("/sign-in");
@@ -127,7 +91,7 @@ export async function requireAccess(conditions: AccessCondition[]) {
 }
 
 async function getAccessContextWithRedirect(): Promise<AccessContext> {
-  const ctx = await getAccessContextSimple(); // Use simple approach
+  const ctx = await getAccessContext(); // Uses the main function, not cached version
   if (!ctx) {
     redirect("/sign-in");
   }
@@ -135,7 +99,7 @@ async function getAccessContextWithRedirect(): Promise<AccessContext> {
 }
 
 export async function requireForwarderAccess() {
-  const ctx = await getAccessContextWithRedirect();
+  const ctx = await getAccessContextWithRedirect(); // Uses the main function, not cached version
   
   if (!ctx.organization) {
     redirect("/onboarding");
@@ -149,7 +113,7 @@ export async function requireForwarderAccess() {
 }
 
 export async function requireShipperAccess() {
-  const ctx = await getAccessContextWithRedirect();
+  const ctx = await getAccessContextWithRedirect(); // Uses the main function, not cached version
   
   if (!ctx.organization) {
     redirect("/onboarding");
@@ -163,7 +127,7 @@ export async function requireShipperAccess() {
 }
 
 export async function requireNoOrganization() {
-  const ctx = await getAccessContextWithRedirect();
+  const ctx = await getAccessContextWithRedirect(); // Uses the main function, not cached version
   
   if (ctx.organization) {
     redirect("/dashboard");
@@ -175,7 +139,7 @@ export async function requireNoOrganization() {
 export async function requireAnyOrganizationAccess(): Promise<
   Omit<AccessContext, "organization"> & { organization: NonNullable<AccessContext["organization"]> }
 > {
-  const ctx = await getAccessContextWithRedirect();
+  const ctx = await getAccessContextWithRedirect(); // Uses the main function, not cached version
   
   if (!ctx.organization) {
     redirect("/onboarding");
@@ -186,19 +150,20 @@ export async function requireAnyOrganizationAccess(): Promise<
   };
 }
 
-// Cache invalidation helpers
-export function invalidateUserCache(userId: string) {
+// Cache invalidation utilities
+export async function invalidateUserMembershipCache(userId: string) {
+  // Invalidate the specific user's membership cache
   revalidateTag('membership');
+  revalidateTag('access-context');
 }
 
-export function invalidateAllUserCache() {
+// More granular cache invalidation for specific user
+export async function invalidateSpecificUserCache(userId: string) {
+  // This would require a more complex caching strategy with user-specific tags
+  // For now, we'll invalidate the general membership cache
   revalidateTag('membership');
+  revalidateTag('access-context');
 }
 
-// Public exports
-export { 
-  getAccessContext,
-  getAccessContextWithRedirect,
-  getAccessContextSimple,
-  getAccessContextOptimized,
-};
+// Export the main function for cases where you need fresh data
+export { getAccessContext };

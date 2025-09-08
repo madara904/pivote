@@ -6,6 +6,7 @@ import { protectedProcedure, createTRPCRouter, TRPCContext } from "@/trpc/init";
 import { slugify } from "./utils";
 
 
+
 const createOrgSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -250,6 +251,7 @@ export const crudRouter = createTRPCRouter({
             message: "Organisation nicht gefunden.",
           });
         }
+        
         return updated;
       } catch (err: unknown) {
         console.error("DB error in editOrganization:", err);
@@ -303,6 +305,7 @@ export const crudRouter = createTRPCRouter({
             message: "Organisation nicht gefunden.",
           });
         }
+        
         return { success: true };
       } catch (err: unknown) {
         console.error("DB error in deleteOrganization:", err);

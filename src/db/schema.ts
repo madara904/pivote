@@ -31,6 +31,7 @@ export const inquiryStatusEnum = pgEnum("inquiry_status", [
   "sent",
   "closed",
   "cancelled",
+  "offen",
 ]);
 export const quotationStatusEnum = pgEnum("quotation_status", [
   "pending",
@@ -63,6 +64,10 @@ export const chargeTypeEnum = pgEnum("charge_type", [
   "insurance",
   "other",
 ]);
+
+// ============================================================================
+// TABLE DEFINITIONS - ALL TABLES FIRST
+// ============================================================================
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -234,16 +239,9 @@ export const inquiry = pgTable("inquiry", {
   destinationCountry: text("destination_country").notNull(),
   cargoType: cargoTypeEnum("cargo_type").notNull().default("general"),
   cargoDescription: text("cargo_description"),
-  pieces: integer("pieces").notNull(),
-  grossWeight: decimal("gross_weight", { precision: 10, scale: 2 }).notNull(),
-  chargeableWeight: decimal("chargeable_weight", { precision: 10, scale: 2 }),
-  dimensions: text("dimensions"),
   readyDate: timestamp("ready_date").notNull(),
   deliveryDate: timestamp("delivery_date"),
-  temperature: text("temperature"),
-  specialHandling: text("special_handling"),
-  insuranceRequired: boolean("insurance_required").default(false),
-  customsClearance: boolean("customs_clearance").default(false),
+  validityDate: timestamp("validity_date"),
   status: inquiryStatusEnum("status").notNull().default("draft"),
   shipperOrganizationId: text("shipper_organization_id")
     .notNull()
@@ -251,6 +249,35 @@ export const inquiry = pgTable("inquiry", {
   createdById: text("created_by_id")
     .notNull()
     .references(() => user.id),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const inquiryPackage = pgTable("inquiry_package", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  inquiryId: text("inquiry_id")
+    .notNull()
+    .references(() => inquiry.id, { onDelete: "cascade" }),
+  packageNumber: text("package_number").notNull(),
+  description: text("description"),
+  pieces: integer("pieces").notNull().default(1),
+  grossWeight: decimal("gross_weight", { precision: 10, scale: 3 }).notNull(),
+  chargeableWeight: decimal("chargeable_weight", { precision: 10, scale: 3 }),
+  length: decimal("length", { precision: 8, scale: 2 }),
+  width: decimal("width", { precision: 8, scale: 2 }),
+  height: decimal("height", { precision: 8, scale: 2 }),
+  volume: decimal("volume", { precision: 10, scale: 6 }),
+  temperature: text("temperature"),
+  specialHandling: text("special_handling"),
+  isDangerous: boolean("is_dangerous").default(false),
+  dangerousGoodsClass: text("dangerous_goods_class"),
+  unNumber: text("un_number"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),
@@ -366,16 +393,143 @@ export const chargeTemplate = pgTable("charge_template", {
     .notNull(),
 });
 
-export const organizationMemberRelations = relations(organizationMember, ({ one }) => ({
-  organization: one(organization, {
-    fields: [organizationMember.organizationId],
-    references: [organization.id],
+// ============================================================================
+// RELATIONS - ALL RELATIONS AFTER ALL TABLES
+// ============================================================================
+
+export const userRelations = relations(user, ({ many }) => ({
+  organizationMemberships: many(organizationMember),
+  createdInquiries: many(inquiry),
+  createdQuotations: many(quotation),
+  sessions: many(session),
+  accounts: many(account),
+  sentInvitations: many(organizationInvitation, {
+    relationName: "invitedBy"
+  }),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
+  }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, {
+    fields: [account.userId],
+    references: [user.id],
   }),
 }));
 
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(organizationMember),
+  invitations: many(organizationInvitation),
+  inquiriesAsShipper: many(inquiry, {
+    relationName: "shipperOrganization"
+  }),
+  quotationsAsForwarder: many(quotation, {
+    relationName: "forwarderOrganization"
+  }),
+  receivedInquiries: many(inquiryForwarder),
+  chargeTemplates: many(chargeTemplate),
 }));
+
+export const organizationMemberRelations = relations(organizationMember, ({ one }) => ({
+  organization: one(organization, {
+    fields: [organizationMember.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [organizationMember.userId],
+    references: [user.id],
+  }),
+}));
+
+export const organizationInvitationRelations = relations(organizationInvitation, ({ one }) => ({
+  organization: one(organization, {
+    fields: [organizationInvitation.organizationId],
+    references: [organization.id],
+  }),
+  invitedUser: one(user, {
+    fields: [organizationInvitation.invitedUserId],
+    references: [user.id],
+    relationName: "invitedUser"
+  }),
+  invitedBy: one(user, {
+    fields: [organizationInvitation.invitedById],
+    references: [user.id],
+    relationName: "invitedBy"
+  }),
+}));
+
+export const inquiryRelations = relations(inquiry, ({ one, many }) => ({
+  shipperOrganization: one(organization, {
+    fields: [inquiry.shipperOrganizationId],
+    references: [organization.id],
+    relationName: "shipperOrganization"
+  }),
+  createdBy: one(user, {
+    fields: [inquiry.createdById],
+    references: [user.id],
+  }),
+  packages: many(inquiryPackage),
+  sentToForwarders: many(inquiryForwarder),
+  quotations: many(quotation),
+}));
+
+export const inquiryPackageRelations = relations(inquiryPackage, ({ one }) => ({
+  inquiry: one(inquiry, {
+    fields: [inquiryPackage.inquiryId],
+    references: [inquiry.id],
+  }),
+}));
+
+export const inquiryForwarderRelations = relations(inquiryForwarder, ({ one }) => ({
+  inquiry: one(inquiry, {
+    fields: [inquiryForwarder.inquiryId],
+    references: [inquiry.id],
+  }),
+  forwarderOrganization: one(organization, {
+    fields: [inquiryForwarder.forwarderOrganizationId], 
+    references: [organization.id],
+  }),
+}));
+
+export const quotationRelations = relations(quotation, ({ one, many }) => ({
+  inquiry: one(inquiry, {
+    fields: [quotation.inquiryId],
+    references: [inquiry.id],
+  }),
+  forwarderOrganization: one(organization, {
+    fields: [quotation.forwarderOrganizationId],
+    references: [organization.id],
+    relationName: "forwarderOrganization"
+  }),
+  createdBy: one(user, {
+    fields: [quotation.createdById],
+    references: [user.id],
+  }),
+  charges: many(quotationCharge),
+}));
+
+export const quotationChargeRelations = relations(quotationCharge, ({ one }) => ({
+  quotation: one(quotation, {
+    fields: [quotationCharge.quotationId],
+    references: [quotation.id],
+  }),
+}));
+
+export const chargeTemplateRelations = relations(chargeTemplate, ({ one }) => ({
+  organization: one(organization, {
+    fields: [chargeTemplate.organizationId],
+    references: [organization.id],
+  }),
+}));
+
+// ============================================================================
+// TYPE EXPORTS
+// ============================================================================
 
 export type InsertUser = typeof user.$inferInsert;
 export type SelectUser = typeof user.$inferSelect;
@@ -383,12 +537,12 @@ export type InsertOrganization = typeof organization.$inferInsert;
 export type SelectOrganization = typeof organization.$inferSelect;
 export type InsertOrganizationMember = typeof organizationMember.$inferInsert;
 export type SelectOrganizationMember = typeof organizationMember.$inferSelect;
-export type InsertOrganizationInvitation =
-  typeof organizationInvitation.$inferInsert;
-export type SelectOrganizationInvitation =
-  typeof organizationInvitation.$inferSelect;
+export type InsertOrganizationInvitation = typeof organizationInvitation.$inferInsert;
+export type SelectOrganizationInvitation = typeof organizationInvitation.$inferSelect;
 export type InsertInquiry = typeof inquiry.$inferInsert;
 export type SelectInquiry = typeof inquiry.$inferSelect;
+export type InsertInquiryPackage = typeof inquiryPackage.$inferInsert;
+export type SelectInquiryPackage = typeof inquiryPackage.$inferSelect;
 export type InsertInquiryForwarder = typeof inquiryForwarder.$inferInsert;
 export type SelectInquiryForwarder = typeof inquiryForwarder.$inferSelect;
 export type InsertQuotation = typeof quotation.$inferInsert;

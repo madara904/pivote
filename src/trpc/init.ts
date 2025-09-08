@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { auth } from '@/lib/auth';
 import { TRPCError } from '@trpc/server';
 import { headers } from 'next/headers';
+import superjson from 'superjson';
 
 export type TRPCContext = {
   db: typeof db;
@@ -21,7 +22,9 @@ export const createTRPCContext = async (): Promise<TRPCContext> => {
   };
 };
 
-export const t = initTRPC.context<TRPCContext>().create({});
+export const t = initTRPC.context<TRPCContext>().create({
+  transformer: superjson,
+});
 
 export const createTRPCRouter = t.router;
 export const mergeRouters = t.mergeRouters;

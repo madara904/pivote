@@ -23,7 +23,19 @@ export const forwarderRouter = createTRPCRouter({
         throw new Error("Organisation ist kein Spediteur");
       }
       
-      // Add ordering and limit for better performance
+      // Quick existence check first - much faster than full query with joins
+      // This prevents expensive joins when there are no inquiries
+      const hasInquiries = await db.query.inquiryForwarder.findFirst({
+        where: eq(inquiryForwarder.forwarderOrganizationId, membership.organization.id),
+        columns: { id: true } // Only select ID, not full record
+      });
+      
+      // Early return if no inquiries - saves heavy joins and processing
+      if (!hasInquiries) {
+        return [];
+      }
+      
+      // Only run full query if there are inquiries
       const inquiriesForForwarder = await db.query.inquiryForwarder.findMany({
         where: eq(inquiryForwarder.forwarderOrganizationId, membership.organization.id),
         with: {

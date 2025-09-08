@@ -23,9 +23,9 @@ export default async function ForwarderInquiriesPage() {
         <Separator />
       </div>
       <HydrateClient>
-          <Suspense fallback={<div>Loading...</div>}>
-            <InquiryView />
-          </Suspense>
+        <Suspense fallback={"loading..."}>
+          <InquiryView />
+        </Suspense>
       </HydrateClient>
     </>
   );

@@ -1,12 +1,12 @@
 import { HydrateClient, trpc } from "@/trpc/server";
-
+import { requireForwarderAccess } from "@/lib/auth-utils";
 import { Separator } from "@/components/ui/separator";
 import InquiryView from "./components/inquiry-view";
 import { Suspense } from "react";
 
 
 export default async function ForwarderInquiriesPage() {
-
+await requireForwarderAccess();
 
   void trpc.inquiry.forwarder.getMyInquiries.prefetch();
 

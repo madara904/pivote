@@ -5,11 +5,14 @@ import { columns } from "./data-table/columns"
 import { DataTable } from "./data-table/data-table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
+import InquiryHeader from "./inquiry-header"
 
 const InquiryView = () => {
 
-  // Use the fast query for testing performance
-  const [data, {isError}] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery()
+  // Use the original working query
+  const [data, {isError}] = trpc.inquiry.forwarder.getMyInquiries.useSuspenseQuery()
+
+  // state für Filter, Sortierung, Suche
 
   if (isError) {
     return (
@@ -37,6 +40,7 @@ const InquiryView = () => {
 
   return (
     <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
+      <InquiryHeader />
       <DataTable data={data} columns={columns}/>
     </div>
   )

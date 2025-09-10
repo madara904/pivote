@@ -39,7 +39,7 @@ export function TRPCProvider(
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        httpLink({
+        httpBatchLink({
           transformer: superjson,
           url: getUrl(),
           fetch(url, options) {

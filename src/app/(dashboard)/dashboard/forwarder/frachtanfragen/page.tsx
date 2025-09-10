@@ -8,7 +8,7 @@ import { Suspense } from "react";
 export default async function ForwarderInquiriesPage() {
   await requireForwarderAccess();
 
-  void trpc.inquiry.forwarder.getMyInquiries.prefetch();
+  void trpc.inquiry.forwarder.getMyInquiries.prefetch;
 
   return (
     <>

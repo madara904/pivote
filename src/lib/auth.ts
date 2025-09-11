@@ -34,13 +34,18 @@ export const auth = betterAuth({
         enabled: true,
         maxAge: 5 * 60, 
       },
+      additionalFields: {
+        orgType: {
+          type: "string",
+        }
+      }
     },
   hooks: {
   },
   plugins: [
     localization({
       defaultLocale: "de",
-      fallbackLocale: "default",
+      fallbackLocale: "de",
       translations: {
         "de": {
           USER_NOT_FOUND: "Benutzer nicht gefunden",
@@ -93,33 +98,10 @@ export const auth = betterAuth({
           FAILED_TO_UNLINK_LAST_ACCOUNT: "The last linked account cannot be unlinked",
           ACCOUNT_NOT_FOUND: "Account not found",
           ORGANIZATION_ALREADY_EXISTS: "This organization already exists"
-        },
-        "fr": {
-          USER_NOT_FOUND: "Utilisateur non trouvé",
-          FAILED_TO_CREATE_USER: "Échec de la création de l'utilisateur",
-          FAILED_TO_CREATE_SESSION: "Échec de la création de la session",
-          FAILED_TO_UPDATE_USER: "Échec de la mise à jour de l'utilisateur",
-          FAILED_TO_GET_SESSION: "Échec de la récupération de la session",
-          INVALID_PASSWORD: "Mot de passe invalide",
-          INVALID_EMAIL: "Veuillez saisir une adresse e-mail valide",
-          INVALID_EMAIL_OR_PASSWORD: "Adresse e-mail ou mot de passe invalide",
-          SOCIAL_ACCOUNT_ALREADY_LINKED: "Ce compte de réseau social est déjà lié",
-          PROVIDER_NOT_FOUND: "Fournisseur non trouvé",
-          INVALID_TOKEN: "Jeton invalide",
-          ID_TOKEN_NOT_SUPPORTED: "Jeton d'identité non pris en charge",
-          FAILED_TO_GET_USER_INFO: "Échec de la récupération des informations utilisateur",
-          USER_EMAIL_NOT_FOUND: "Adresse e-mail non trouvée",
-          EMAIL_NOT_VERIFIED: "Adresse e-mail non vérifiée",
-          PASSWORD_TOO_SHORT: "Le mot de passe est trop court",
-          PASSWORD_TOO_LONG: "Le mot de passe est trop long",
-          USER_ALREADY_EXISTS: "Cette adresse e-mail est déjà utilisée",
-          EMAIL_CAN_NOT_BE_UPDATED: "L'adresse e-mail ne peut pas être mise à jour",
-          CREDENTIAL_ACCOUNT_NOT_FOUND: "Identifiants non trouvés",
-          SESSION_EXPIRED: "Votre session a expiré. Veuillez vous reconnecter",
-          FAILED_TO_UNLINK_LAST_ACCOUNT: "Le dernier compte lié ne peut pas être délié",
-          ACCOUNT_NOT_FOUND: "Compte non trouvé"
         }
       }
     })
   ]
 });
+
+export type Session = typeof auth.$Infer.Session

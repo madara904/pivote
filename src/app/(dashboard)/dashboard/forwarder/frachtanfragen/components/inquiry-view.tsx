@@ -5,25 +5,22 @@ import { columns } from "./data-table/columns"
 import { DataTable } from "./data-table/data-table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle } from "lucide-react"
-import { processInquiryData } from "./data-utils"
-import { useMemo } from "react"
+import InquiryHeader from "./inquiry-header"
 
 const InquiryView = () => {
-  const [rawData, { error }] = trpc.inquiry.forwarder.getMyInquiries.useSuspenseQuery()
 
-  // Process data on client side for better performance
-  const data = useMemo(() => {
-    if (!rawData) return []
-    return rawData.map(processInquiryData).filter(Boolean)
-  }, [rawData])
+  // Use the original working query
+  const [data, {isError}] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery()
 
-  if (error) {
+  // state für Filter, Sortierung, Suche
+
+  if (isError) {
     return (
       <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Fehler beim Laden der Frachtanfragen: {error.message}
+            Fehler beim Laden der Frachtanfragen: {isError}
           </AlertDescription>
         </Alert>
       </div>
@@ -40,8 +37,10 @@ const InquiryView = () => {
     )
   }
 
+
   return (
     <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
+      <InquiryHeader />
       <DataTable data={data} columns={columns}/>
     </div>
   )

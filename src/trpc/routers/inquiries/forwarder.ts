@@ -2,6 +2,7 @@ import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
 import { eq, and, sql, desc, count } from "drizzle-orm";
 import { inquiryForwarder, organizationMember, inquiry, organization, user, inquiryPackage } from "@/db/schema";
 import { z } from "zod";
+import { alias } from "drizzle-orm/pg-core";
 
 export const forwarderRouter = createTRPCRouter({
 
@@ -57,15 +58,13 @@ export const forwarderRouter = createTRPCRouter({
       const startTime = Date.now();
       
       try {
-        console.log('🚀 Starting getMyInquiriesFast query...');
+        console.log('🚀 Starting fixed getMyInquiriesFast query...');
         
-        if (!session?.user?.id) {
-          throw new Error('Not authenticated');
-        }
-    
+        // Create proper table alias - THIS IS THE KEY FIX
+        const shipperOrg = alias(organization, 'shipper_org');
+        
         const queryStart = Date.now();
         
-        // SINGLE optimized query - start from user's membership, join everything in one go
         const result = await db
           .select({
             // inquiry_forwarder fields
@@ -89,14 +88,14 @@ export const forwarderRouter = createTRPCRouter({
             status: inquiry.status,
             validityDate: inquiry.validityDate,
             
-            // shipper organization fields (using alias to avoid conflict)
-            shipperName: sql<string>`shipper_org.name`,
-            shipperEmail: sql<string>`shipper_org.email`,
+            // FIXED: Use proper alias fields instead of raw SQL
+            shipperName: shipperOrg.name,
+            shipperEmail: shipperOrg.email,
             
             // created by user fields
             createdByName: user.name,
             
-            // aggregated package fields
+            // Optimized aggregations
             totalPieces: sql<number>`COALESCE(SUM(${inquiryPackage.pieces}), 0)`,
             totalGrossWeight: sql<number>`COALESCE(SUM(${inquiryPackage.grossWeight}), 0)`,
             totalChargeableWeight: sql<number>`COALESCE(SUM(${inquiryPackage.chargeableWeight}), 0)`,
@@ -107,25 +106,17 @@ export const forwarderRouter = createTRPCRouter({
             specialHandling: sql<boolean>`BOOL_OR(${inquiryPackage.specialHandling} IS NOT NULL)`
           })
           .from(organizationMember)
-          // Get user's forwarder organization
           .innerJoin(organization, 
             and(
               eq(organizationMember.organizationId, organization.id),
               eq(organization.type, 'forwarder')
             )
           )
-          // Get inquiries sent to this forwarder
           .innerJoin(inquiryForwarder, eq(organization.id, inquiryForwarder.forwarderOrganizationId))
-          // Get the actual inquiry
           .innerJoin(inquiry, eq(inquiryForwarder.inquiryId, inquiry.id))
-          // Get shipper organization (using alias to avoid table name conflict)
-          .innerJoin(
-            sql`${organization} AS shipper_org`,
-            eq(inquiry.shipperOrganizationId, sql`shipper_org.id`)
-          )
-          // Get user who created the inquiry
+          // FIXED: Use proper alias join instead of raw SQL
+          .innerJoin(shipperOrg, eq(inquiry.shipperOrganizationId, shipperOrg.id))
           .innerJoin(user, eq(inquiry.createdById, user.id))
-          // Left join packages for aggregation
           .leftJoin(inquiryPackage, eq(inquiry.id, inquiryPackage.inquiryId))
           .where(
             and(
@@ -152,17 +143,18 @@ export const forwarderRouter = createTRPCRouter({
             inquiry.cargoDescription,
             inquiry.status,
             inquiry.validityDate,
-            sql`shipper_org.name`,
-            sql`shipper_org.email`,
+            // FIXED: Use alias fields in GROUP BY
+            shipperOrg.name,
+            shipperOrg.email,
             user.name
           )
           .orderBy(desc(inquiryForwarder.createdAt))
           .limit(50);
         
-        console.log(`⏱️ Single query time: ${Date.now() - queryStart}ms`);
+        console.log(`⏱️ Fixed query time: ${Date.now() - queryStart}ms`);
         console.log(`📊 Found ${result.length} inquiries`);
-    
-        // Transform the result to match expected format
+  
+        // Same transformation logic...
         const processStart = Date.now();
         const transformedResult = result.map((row) => ({
           id: row.id,
@@ -214,14 +206,13 @@ export const forwarderRouter = createTRPCRouter({
               : ""
           }
         }));
-    
+  
         console.log(`⏱️ Processing time: ${Date.now() - processStart}ms`);
-        console.log(`✅ Total getMyInquiriesFast time: ${Date.now() - startTime}ms`);
+        console.log(`✅ Total time: ${Date.now() - startTime}ms`);
         
         return transformedResult;
       } catch (error) {
         console.error('Error fetching forwarder inquiries:', error);
-        console.log(`❌ Failed after: ${Date.now() - startTime}ms`);
         throw new Error('Failed to fetch inquiries');
       }
     })

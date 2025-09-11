@@ -13,13 +13,12 @@ export type TRPCContext = {
 export const createTRPCContext = async (): Promise<TRPCContext> => {
   const hdrs = await headers();
   const session = await auth.api.getSession({ headers: hdrs });
-  if (!session || !session.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+  
+  if (!session?.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
-  return {
-    db,
-    session: session,
-  };
+  
+  return { db, session };
 };
 
 export const t = initTRPC.context<TRPCContext>().create({

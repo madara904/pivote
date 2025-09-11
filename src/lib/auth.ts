@@ -4,8 +4,18 @@ import { localization } from "better-auth-localization";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { env } from "./env/env";
+import { sendEmail } from "./send-email";
 
 export const auth = betterAuth({
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendEmail({
+          to: user.email,
+          subject: 'Verify your email address',
+          text: `Click the link to verify your email: ${url}`
+      })
+  }
+},
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
@@ -23,6 +33,13 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    sendResetPassword: async ({user, url, token}, request) => {
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your password",
+        text: `Click the link to reset your password: ${url}`,
+      });
+    }
   },
   account: {
     accountLinking: {

@@ -24,9 +24,10 @@ import {
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { signUp, signIn } from "@/lib/auth-client";
+import { signUp, signIn, sendVerificationEmail } from "@/lib/auth-client";
 import Logo from "@/components/logo";
 import { useRouter } from "next/navigation";
+import { dataTagSymbol } from "@tanstack/react-query";
 
 const formSchema = z
   .object({
@@ -73,6 +74,7 @@ export const RegisterForm = () => {
       {
         onSuccess: () => {
           setLoading(false);
+          sendVerificationEmail({email: data.email, callbackURL:"/"})
           router.push("/onboarding");
         },
         onError: ({ error }) => {

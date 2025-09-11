@@ -8,21 +8,21 @@ export const requireOrgType = (requiredType: "forwarder" | "shipper") =>
     // Get fresh session to ensure we have orgType
     const session = await auth.api.getSession({ headers: await headers() });
     
-    if (!session?.session.orgType) {
+    if (!session?.user.orgType) {
       throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
     }
     
-    if (session?.session.orgType !== requiredType) {
+    if (session?.user.orgType !== requiredType) {
       throw new TRPCError({ 
         code: "FORBIDDEN", 
-        message: `Must be ${requiredType}, but you are ${session?.session.orgType}` 
+        message: `Must be ${requiredType}, but you are ${session?.user.orgType}` 
       });
     }
     
     return next({ 
       ctx: { 
         ...ctx, 
-        org: { type: session?.session.orgType }
-      } 
+        org: { type: session?.user.orgType }
+      }
     });
   });

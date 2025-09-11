@@ -13,7 +13,13 @@ export const auth = betterAuth({
   trustedOrigins: ["https://pivote.vercel.app", "https://pivote.de"],  
   user: {
     deleteUser: { enabled: true },
-    changeEmail: {enabled: true}
+    changeEmail: {enabled: true},
+    additionalFields: {
+      orgType: {
+        type: "string",
+        required: false,
+      }
+    }
   },
   emailAndPassword: {
     enabled: true,
@@ -34,11 +40,6 @@ export const auth = betterAuth({
         enabled: true,
         maxAge: 5 * 60, 
       },
-      additionalFields: {
-        orgType: {
-          type: "string",
-        }
-      }
     },
   hooks: {
   },

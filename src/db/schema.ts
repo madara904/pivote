@@ -80,6 +80,7 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  orgType: text("org_type"),
 });
 
 export const session = pgTable("session", {
@@ -95,7 +96,6 @@ export const session = pgTable("session", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  orgType: text("org_type"),
 });
 
 export const account = pgTable("account", {

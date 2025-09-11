@@ -11,17 +11,23 @@ export const forwarderRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get membership with organization
-      const membership = await db.query.organizationMember.findFirst({
-        where: eq(organizationMember.userId, session.user.id),
-        with: { organization: true }
-      });
+      // Use join for better performance instead of separate queries
+      const membershipResult = await db
+        .select({
+          organizationId: organizationMember.organizationId,
+          organizationType: organization.type,
+        })
+        .from(organizationMember)
+        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
+        .where(eq(organizationMember.userId, session.user.id))
+        .limit(1);
       
-      if (!membership?.organization) {
+      if (!membershipResult.length) {
         throw new Error("Benutzer ist nicht Teil einer Organisation");
       }
 
-      if (membership.organization.type !== 'forwarder') {
+      const membership = membershipResult[0];
+      if (membership.organizationType !== 'forwarder') {
         throw new Error("Organisation ist kein Spediteur");
       }
       
@@ -29,7 +35,7 @@ export const forwarderRouter = createTRPCRouter({
       const inquiryForwarderRecord = await db.query.inquiryForwarder.findFirst({
         where: and(
           eq(inquiryForwarder.inquiryId, input.inquiryId),
-          eq(inquiryForwarder.forwarderOrganizationId, membership.organization.id)
+          eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId)
         ),
         with: {
           inquiry: {
@@ -112,20 +118,28 @@ export const forwarderRouter = createTRPCRouter({
       const { db, session } = ctx;
       
 
-      const membership = await db.query.organizationMember.findFirst({
-        where: eq(organizationMember.userId, session.user.id),
-        with: { organization: true }
-      });
+      // Use join for better performance instead of separate queries
+      const membershipResult = await db
+        .select({
+          organizationId: organizationMember.organizationId,
+          organizationType: organization.type,
+        })
+        .from(organizationMember)
+        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
+        .where(eq(organizationMember.userId, session.user.id))
+        .limit(1);
       
-      if (!membership?.organization) {
+      if (!membershipResult.length) {
         throw new Error("Benutzer ist nicht Teil einer Organisation");
       }
+
+      const membership = membershipResult[0];
       
 
       const inquiryForwarderRecord = await db.query.inquiryForwarder.findFirst({
         where: and(
           eq(inquiryForwarder.inquiryId, input.inquiryId),
-          eq(inquiryForwarder.forwarderOrganizationId, membership.organization.id)
+          eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId)
         )
       });
       
@@ -159,24 +173,32 @@ export const forwarderRouter = createTRPCRouter({
       }
 
 
-      const membership = await db.query.organizationMember.findFirst({
-        where: eq(organizationMember.userId, session.user.id),
-        with: { organization: true }
-      });
+      // Use join for better performance instead of separate queries
+      const membershipResult = await db
+        .select({
+          organizationId: organizationMember.organizationId,
+          organizationType: organization.type,
+          organizationName: organization.name,
+        })
+        .from(organizationMember)
+        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
+        .where(eq(organizationMember.userId, session.user.id))
+        .limit(1);
       
-      if (!membership?.organization) {
+      if (!membershipResult.length) {
         console.log('❌ No organization found for user:', session.user.id);
         return [];
       }
 
-      if (membership.organization.type !== 'forwarder') {
-        console.log('❌ User organization is not a forwarder:', membership.organization.type);
+      const membership = membershipResult[0];
+      if (membership.organizationType !== 'forwarder') {
+        console.log('❌ User organization is not a forwarder:', membership.organizationType);
         throw new Error("Organisation ist kein Spediteur");
       }
 
       const drizzleStart = Date.now();
       
-      // Use Drizzle ORM with proper joins and aggregations
+
       const result = await db
         .select({
           // inquiry_forwarder fields
@@ -222,7 +244,7 @@ export const forwarderRouter = createTRPCRouter({
         .innerJoin(organization, eq(inquiry.shipperOrganizationId, organization.id))
         .innerJoin(user, eq(inquiry.createdById, user.id))
         .leftJoin(inquiryPackage, eq(inquiry.id, inquiryPackage.inquiryId))
-        .where(eq(inquiryForwarder.forwarderOrganizationId, membership.organization.id))
+        .where(eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId))
         .groupBy(
           inquiryForwarder.id,
           inquiryForwarder.inquiryId,

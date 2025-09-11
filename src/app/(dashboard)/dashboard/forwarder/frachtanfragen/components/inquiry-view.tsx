@@ -10,7 +10,7 @@ import InquiryHeader from "./inquiry-header"
 const InquiryView = () => {
 
   // Use the original working query
-  const [data, {isError}] = trpc.inquiry.forwarder.getMyInquiries.useSuspenseQuery()
+  const [data, {isError}] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery()
 
   // state für Filter, Sortierung, Suche
 

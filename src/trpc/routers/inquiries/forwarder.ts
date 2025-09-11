@@ -4,130 +4,7 @@ import { inquiryForwarder, organizationMember, inquiry, organization, user, inqu
 import { z } from "zod";
 
 export const forwarderRouter = createTRPCRouter({
-  getMyInquiries: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
-    const { db, session } = ctx;
-    const startTime = Date.now();
-    
-    try {
-      console.log('🚀 Starting getMyInquiries query...');
 
-      // Get membership first (needed for validation)
-      const membershipStart = Date.now();
-      const membership = await db.query.organizationMember.findFirst({
-        where: eq(organizationMember.userId, session.user.id),
-        with: { organization: true }
-      });
-      console.log(`⏱️ Membership query: ${Date.now() - membershipStart}ms`);
-      
-      if (!membership?.organization) {
-        console.log('No organization found for user:', session.user.id);
-        return [];
-      }
-
-      if (membership.organization.type !== 'forwarder') {
-        console.log('User organization is not a forwarder:', membership.organization.type);
-        throw new Error("Organisation ist kein Spediteur");
-      }
-      
-      // Single optimized query with all relations
-      const inquiryStart = Date.now();
-      const inquiriesForForwarder = await db.query.inquiryForwarder.findMany({
-        where: eq(inquiryForwarder.forwarderOrganizationId, membership.organization.id),
-        with: {
-          inquiry: {
-            with: {
-              packages: true,
-              shipperOrganization: {
-                columns: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              },
-              createdBy: {
-                columns: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: (inquiryForwarder, { desc }) => [desc(inquiryForwarder.createdAt)],
-        limit: 50
-      });
-      console.log(`⏱️ Main inquiry query: ${Date.now() - inquiryStart}ms`);
-      console.log(`📊 Found ${inquiriesForForwarder.length} inquiries`);
-
-      // Process data server-side to reduce client-side computation
-      const processStart = Date.now();
-      const result = inquiriesForForwarder
-        .filter(record => record.inquiry !== null)
-        .map(record => {
-          const inquiry = record.inquiry!;
-          const packages = inquiry.packages || [];
-          
-          // Calculate totals server-side
-          const totalPieces = packages.reduce((sum, pkg) => sum + pkg.pieces, 0);
-          const totalGrossWeight = packages.reduce((sum, pkg) => sum + parseFloat(pkg.grossWeight), 0);
-          const totalChargeableWeight = packages.reduce((sum, pkg) => sum + parseFloat(pkg.chargeableWeight || '0'), 0);
-          const totalVolume = packages.reduce((sum, pkg) => sum + parseFloat(pkg.volume || '0'), 0);
-          
-          const packageSummary = packages.length > 0 ? {
-            count: packages.length,
-            hasDangerousGoods: packages.some(pkg => !!pkg.isDangerous),
-            temperatureControlled: packages.some(pkg => !!pkg.temperature),
-            specialHandling: packages.some(pkg => !!pkg.specialHandling)
-          } : null;
-          
-          const statusDateInfo = {
-            formattedSentDate: record.sentAt ? record.sentAt.toLocaleDateString('de-DE') : '',
-            formattedViewedDate: record.viewedAt ? record.viewedAt.toLocaleDateString('de-DE') : null,
-            statusDetail: inquiry.status === "sent" && record.viewedAt 
-              ? `Viewed ${record.viewedAt.toLocaleDateString('de-DE')}`
-              : inquiry.status === "sent" 
-              ? `Sent ${record.sentAt.toLocaleDateString('de-DE')}`
-              : inquiry.status === "draft"
-              ? "Not sent yet"
-              : ""
-          };
-
-          return {
-            id: record.id,
-            inquiryId: record.inquiryId,
-            forwarderOrganizationId: record.forwarderOrganizationId,
-            sentAt: record.sentAt,
-            viewedAt: record.viewedAt,
-            createdAt: record.createdAt,
-            inquiry: {
-              ...inquiry,
-              packages,
-              totalPieces,
-              totalGrossWeight: totalGrossWeight.toFixed(2),
-              totalChargeableWeight: totalChargeableWeight > 0 ? totalChargeableWeight.toFixed(2) : null,
-              totalVolume: totalVolume.toFixed(3),
-              dimensionsSummary: packages.length > 0 
-                ? packages.map(pkg => 
-                    `${pkg.length || 0}×${pkg.width || 0}×${pkg.height || 0}cm`
-                  ).join(", ")
-                : "Keine Abmessungen"
-            },
-            packageSummary,
-            statusDateInfo
-          };
-        });
-      
-      console.log(`⏱️ Data processing: ${Date.now() - processStart}ms`);
-      console.log(`✅ Total getMyInquiries time: ${Date.now() - startTime}ms`);
-      
-      return result;
-    } catch (error) {
-      console.error('Error fetching forwarder inquiries:', error);
-      console.log(`❌ Failed after: ${Date.now() - startTime}ms`);
-      throw new Error('Failed to fetch inquiries');
-    }
-  }),
 
   getInquiryById: protectedProcedure
     .input(z.object({ inquiryId: z.string() }))
@@ -266,7 +143,7 @@ export const forwarderRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  // Optimized version using Drizzle ORM with proper joins
+
   getMyInquiriesFast: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
     const { db, session } = ctx;
     const startTime = Date.now();
@@ -281,7 +158,7 @@ export const forwarderRouter = createTRPCRouter({
         throw new Error('Not authenticated');
       }
 
-      // Get membership first
+
       const membership = await db.query.organizationMember.findFirst({
         where: eq(organizationMember.userId, session.user.id),
         with: { organization: true }
@@ -397,9 +274,9 @@ export const forwarderRouter = createTRPCRouter({
           status: row.status,
           validityDate: row.validityDate,
           totalPieces: row.totalPieces,
-          totalGrossWeight: row.totalGrossWeight.toFixed(2),
-          totalChargeableWeight: row.totalChargeableWeight.toFixed(2),
-          totalVolume: row.totalVolume.toFixed(3),
+          totalGrossWeight: row.totalGrossWeight ? Number(row.totalGrossWeight).toFixed(2) : '0.00',
+          totalChargeableWeight: row.totalChargeableWeight ? Number(row.totalChargeableWeight).toFixed(2) : '0.00',
+          totalVolume: row.totalVolume ? Number(row.totalVolume).toFixed(3) : '0.000',
           shipperOrganization: {
             name: row.shipperName,
             email: row.shipperEmail

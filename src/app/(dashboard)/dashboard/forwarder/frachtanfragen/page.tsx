@@ -6,9 +6,8 @@ import { Suspense } from "react";
 
 
 export default async function ForwarderInquiriesPage() {
-  await requireForwarderAccess();
+await requireForwarderAccess();
 
-  await trpc.inquiry.forwarder.getMyInquiriesFast.prefetch()
 
   return (
     <>
@@ -22,11 +21,9 @@ export default async function ForwarderInquiriesPage() {
         </div>
         <Separator />
       </div>
-      <HydrateClient>
         <Suspense fallback={"loading..."}>
           <InquiryView />
         </Suspense>
-      </HydrateClient>
     </>
   );
 }

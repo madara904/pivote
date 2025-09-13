@@ -3,7 +3,6 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, or, ne } from "drizzle-orm";
 import { organization, organizationMember, user } from "@/db/schema";
 import { protectedProcedure, createTRPCRouter, TRPCContext } from "@/trpc/init";
-import { slugify } from "./utils";
 
 
 
@@ -31,7 +30,6 @@ type CreateOrgInput = z.infer<typeof createOrgSchema>;
 const editOrgSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().min(2).optional(),
-  slug: z.string().min(2).optional(),
   email: z.string().email().optional(),
   type: z.enum(["shipper", "forwarder"]).optional(),
   vatNumber: z
@@ -64,7 +62,6 @@ export const crudRouter = createTRPCRouter({
       }
       const existingOrg = await db.query.organization.findFirst({
         where: or(
-          eq(organization.slug, slugify(input.name)),
           eq(organization.name, input.name),
           eq(organization.vatNumber, input.vatNumber)
         ),
@@ -72,11 +69,9 @@ export const crudRouter = createTRPCRouter({
       
       console.log("Conflict check:", {
         inputName: input.name,
-        inputSlug: slugify(input.name),
         inputVatNumber: input.vatNumber,
         existingOrg: existingOrg ? {
           name: existingOrg.name,
-          slug: existingOrg.slug,
           vatNumber: existingOrg.vatNumber
         } : null
       });
@@ -94,12 +89,6 @@ export const crudRouter = createTRPCRouter({
             message: `Die UST-ID '${input.vatNumber}' ist bereits vergeben. Bitte prüfe deine Eingabe.`,
           });
         }
-        if (existingOrg.slug === slugify(input.name)) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: `Der Slug '${slugify(input.name)}' ist bereits vergeben. Bitte wähle einen anderen Namen für die Organisation.`,
-          });
-        }
       }
       try {
         // 1. Create the organization
@@ -107,7 +96,6 @@ export const crudRouter = createTRPCRouter({
           .insert(organization)
           .values({
             name: input.name,
-            slug: slugify(input.name),
             email: input.email,
             type: input.type,
             description: input.description,
@@ -146,12 +134,16 @@ export const crudRouter = createTRPCRouter({
           .returning();
 
         // 4. Update user's org_type to match the organization type
-        await db
+        console.log("Updating user orgType:", { userId: session.user.id, orgType: input.type });
+        const updateResult = await db
           .update(user)
           .set({
             orgType: input.type,
           })
-          .where(eq(user.id, session.user.id));
+          .where(eq(user.id, session.user.id))
+          .returning();
+        
+        console.log("User update result:", updateResult);
 
         return {
           organization: org,
@@ -161,7 +153,6 @@ export const crudRouter = createTRPCRouter({
         console.error("DB error in createOrganization:", err);
         console.error("Error details:", {
           name: input.name,
-          slug: slugify(input.name),
           vatNumber: input.vatNumber,
           error: err
         });
@@ -207,13 +198,12 @@ export const crudRouter = createTRPCRouter({
             message: "Nur der Besitzer kann die Organisation bearbeiten.",
           });
         }
-        // Check for name, slug, or vatNumber conflicts if being changed
-        if (input.name || input.slug || input.vatNumber) {
+        // Check for name or vatNumber conflicts if being changed
+        if (input.name || input.vatNumber) {
           const conflictOrg = await db.query.organization.findFirst({
             where: and(
               or(
                 input.name ? eq(organization.name, input.name) : undefined,
-                input.slug ? eq(organization.slug, input.slug) : undefined,
                 input.vatNumber ? eq(organization.vatNumber, input.vatNumber) : undefined
               ),
               // Exclude the current organization
@@ -225,12 +215,6 @@ export const crudRouter = createTRPCRouter({
               throw new TRPCError({
                 code: "CONFLICT",
                 message: `Diese Organisation '${input.name}' existiert bereits! Bitte wähle einen anderen Namen.`,
-              });
-            }
-            if (input.slug && conflictOrg.slug === input.slug) {
-              throw new TRPCError({
-                code: "CONFLICT",
-                message: `Der Slug '${input.slug}' ist bereits vergeben. Bitte wähle einen anderen Slug.`,
               });
             }
             if (input.vatNumber && conflictOrg.vatNumber === input.vatNumber) {
@@ -246,7 +230,6 @@ export const crudRouter = createTRPCRouter({
           .update(organization)
           .set({
             ...(input.name && { name: input.name }),
-            ...(input.slug && { slug: input.slug }),
             ...(input.email && { email: input.email }),
             ...(input.type && { type: input.type }),
             ...(input.vatNumber && { vatNumber: input.vatNumber }),

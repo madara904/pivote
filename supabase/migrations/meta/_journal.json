@@ -29,6 +29,13 @@
       "when": 1757734038399,
       "tag": "0003_wooden_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1757781204462,
+      "tag": "0004_striped_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

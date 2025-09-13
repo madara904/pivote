@@ -1,4 +1,3 @@
-import { HydrateClient, trpc } from "@/trpc/server";
 import { requireForwarderAccess } from "@/lib/auth-utils";
 import InquiryDetailView from "./components/inquiry-detail-view";
 
@@ -14,12 +13,10 @@ export default async function InquiryDetailPage({ params }: InquiryDetailPagePro
   // Await params before using its properties
   const { id } = await params;
 
-  // Prefetch the inquiry detail data
-  await trpc.inquiry.forwarder.getInquiryDetail.prefetch({ inquiryId: id });
+  // Remove prefetch to eliminate server-side latency
+  // Let the client handle the query with proper loading states
 
   return (
-    <HydrateClient>
-      <InquiryDetailView inquiryId={id} />
-    </HydrateClient>
+    <InquiryDetailView inquiryId={id} />
   );
 }

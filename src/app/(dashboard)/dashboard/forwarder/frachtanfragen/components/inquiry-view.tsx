@@ -1,12 +1,13 @@
-"use client"
+"use client";
 
-import { trpc } from "@/trpc/client"
-import { createColumns } from "./data-table/columns"
-import { DataTable } from "./data-table/data-table"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle } from "lucide-react"
-import InquiryHeader from "./inquiry-header"
-import { useRouter } from "next/navigation"
+import { trpc } from "@/trpc/client";
+import { createColumns } from "./data-table/columns";
+import { DataTable } from "./data-table/data-table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+import InquiryHeader from "./inquiry-header";
+import { useRouter } from "next/navigation";
+import { DotLoading } from "@/components/ui/dot-loading";
 
 // Type for inquiry data - matches the actual return type from the API
 type InquiryData = {
@@ -58,23 +59,35 @@ type InquiryData = {
 const InquiryView = () => {
   const router = useRouter();
 
-  // Use the prefetched data - this will be immediately available
-  const { data, isError, error } = trpc.inquiry.forwarder.getMyInquiriesFast.useQuery()
 
-  // Handle row click navigation
+  const { data, isError, error, isPending } =
+    trpc.inquiry.forwarder.getMyInquiriesFast.useQuery();
+
+ 
   const handleRowClick = (row: InquiryData) => {
     router.push(`/dashboard/forwarder/frachtanfragen/${row.inquiryId}`);
   };
 
-  // Handle view detail action
+
   const handleViewDetail = (inquiryId: string) => {
     router.push(`/dashboard/forwarder/frachtanfragen/${inquiryId}`);
   };
 
-  // Create columns with the view detail handler
   const columns = createColumns(handleViewDetail);
 
-  // state für Filter, Sortierung, Suche
+
+  if (isPending) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="text-center space-y-2">
+          <DotLoading size="md" />
+          <p className="text-center py-8 text-muted-foreground">
+            Lade Frachtanfragen
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isError) {
     return (
@@ -82,11 +95,12 @@ const InquiryView = () => {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Fehler beim Laden der Frachtanfragen: {error?.message || 'Unbekannter Fehler'}
+            Fehler beim Laden der Frachtanfragen:{" "}
+            {error?.message || "Unbekannter Fehler"}
           </AlertDescription>
         </Alert>
       </div>
-    )
+    );
   }
 
   if (!data || data.length === 0) {
@@ -96,16 +110,15 @@ const InquiryView = () => {
           Keine Frachtanfragen gefunden.
         </div>
       </div>
-    )
+    );
   }
-
 
   return (
     <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
       <InquiryHeader />
-      <DataTable data={data} columns={columns} onRowClick={handleRowClick}/>
+      <DataTable data={data} columns={columns} onRowClick={handleRowClick} />
     </div>
-  )
-}
+  );
+};
 
-export default InquiryView
+export default InquiryView;

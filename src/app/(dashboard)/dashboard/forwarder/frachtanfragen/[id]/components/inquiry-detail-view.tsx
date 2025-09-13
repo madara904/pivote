@@ -29,6 +29,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import QuotationModal from "./quotation-modal";
+import { DotLoading } from "@/components/ui/dot-loading";
 
 interface InquiryDetailViewProps {
   inquiryId: string;
@@ -38,27 +39,15 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
   const router = useRouter();
   const utils = trpc.useUtils();
 
-  const { data, isError, error, isLoading } =
+  const { data, isError, error, isPending } =
     trpc.inquiry.forwarder.getInquiryDetail.useQuery({ inquiryId });
   const { data: quotationCheck } =
     trpc.quotation.forwarder.checkQuotationExists.useQuery({ inquiryId });
 
-  if (isLoading) {
+  if (isPending) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-32 bg-gray-200 rounded"></div>
-            </div>
-            <div className="space-y-4">
-              <div className="h-32 bg-gray-200 rounded"></div>
-              <div className="h-24 bg-gray-200 rounded"></div>
-            </div>
-          </div>
-        </div>
+      <div className="flex-1 flex items-center justify-center py-20">
+        <DotLoading size="md" />
       </div>
     );
   }

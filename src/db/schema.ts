@@ -137,7 +137,6 @@ export const organization = pgTable("organization", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
   description: text("description"),
   type: organizationTypeEnum("type").notNull().default("shipper"),
   email: text("email").notNull(),

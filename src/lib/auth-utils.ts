@@ -25,7 +25,9 @@ async function getAccessContext(): Promise<AccessContext | null> {
 
   return {
     user: session.user,
-    orgType: session.user.orgType as "shipper" | "forwarder" | null
+    orgType: session.user.orgType === "NULL" || session.user.orgType === null || session.user.orgType === undefined 
+      ? null 
+      : session.user.orgType as "shipper" | "forwarder"
   };
 }
 
@@ -58,6 +60,7 @@ async function getAccessContextWithRedirect(): Promise<AccessContext> {
 export async function requireForwarderAccess() {
   const ctx = await getAccessContextWithRedirect();
   
+  // Fixed: Check if user has no organization type
   if (!ctx.orgType) {
     redirect("/onboarding");
   }
@@ -72,6 +75,7 @@ export async function requireForwarderAccess() {
 export async function requireShipperAccess() {
   const ctx = await getAccessContextWithRedirect();
   
+  // Fixed: Check if user has no organization type
   if (!ctx.orgType) {
     redirect("/onboarding");
   }

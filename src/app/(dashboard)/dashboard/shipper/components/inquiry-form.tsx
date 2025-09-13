@@ -132,6 +132,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
         destinationCountry: formData.get("destinationCountry") as string,
         cargoType: formData.get("cargoType") as "general" | "dangerous" | "perishable" | "fragile" | "oversized",
         cargoDescription: formData.get("cargoDescription") as string || undefined,
+        incoterms: formData.get("incoterms") as string,
         readyDate: formData.get("readyDate") as string,
         deliveryDate: formData.get("deliveryDate") as string || undefined,
         validityDate: formData.get("validityDate") as string || undefined,
@@ -270,7 +271,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
           <CardDescription>Details zur zu transportierenden Fracht</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="cargoType">Frachttyp *</Label>
               <Select name="cargoType" required>
@@ -283,6 +284,23 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
                   <SelectItem value="perishable">Verderblich</SelectItem>
                   <SelectItem value="fragile">Empfindlich</SelectItem>
                   <SelectItem value="oversized">Übergröße</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="incoterms">Incoterms *</Label>
+              <Select name="incoterms" required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Incoterms wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EXW">EXW - Ex Works</SelectItem>
+                  <SelectItem value="FCA">FCA - Free Carrier</SelectItem>
+                  <SelectItem value="CPT">CPT - Carriage Paid To</SelectItem>
+                  <SelectItem value="CIP">CIP - Carriage and Insurance Paid To</SelectItem>
+                  <SelectItem value="DAP">DAP - Delivered at Place</SelectItem>
+                  <SelectItem value="DPU">DPU - Delivered at Place Unloaded</SelectItem>
+                  <SelectItem value="DDP">DDP - Delivered Duty Paid</SelectItem>
                 </SelectContent>
               </Select>
             </div>

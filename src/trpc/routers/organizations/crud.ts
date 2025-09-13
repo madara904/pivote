@@ -144,6 +144,15 @@ export const crudRouter = createTRPCRouter({
             isActive: true,
           })
           .returning();
+
+        // 4. Update user's org_type to match the organization type
+        await db
+          .update(user)
+          .set({
+            orgType: input.type,
+          })
+          .where(eq(user.id, session.user.id));
+
         return {
           organization: org,
           membership,

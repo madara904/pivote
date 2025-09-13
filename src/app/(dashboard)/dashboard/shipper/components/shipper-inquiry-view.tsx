@@ -11,8 +11,8 @@ import InquiryForm from "./inquiry-form"
 const ShipperInquiryView = () => {
 
   // Get forwarders and inquiries
-  const [forwardersData, { isError: forwardersError }] = trpc.inquiry.shipper.getAllForwarders.useSuspenseQuery();
-  const [inquiriesData, { isError: inquiriesError }] = trpc.inquiry.shipper.getMyInquiries.useSuspenseQuery();
+  const { data: forwardersData, isError: forwardersError, isLoading: forwardersLoading } = trpc.inquiry.shipper.getAllForwarders.useQuery();
+  const { data: inquiriesData, isError: inquiriesError, isLoading: inquiriesLoading } = trpc.inquiry.shipper.getMyInquiries.useQuery();
 
   if (forwardersError || inquiriesError) {
     return (
@@ -27,8 +27,18 @@ const ShipperInquiryView = () => {
     )
   }
 
+  if (forwardersLoading || inquiriesLoading) {
+    return (
+      <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
+  }
+
   // Transform forwarders data to match expected type
-  const forwarders = forwardersData.map(forwarder => ({
+  const forwarders = (forwardersData || []).map(forwarder => ({
     ...forwarder,
     city: forwarder.city || '',
     country: forwarder.country || '',
@@ -36,7 +46,7 @@ const ShipperInquiryView = () => {
   }))
 
   // Transform inquiries data to match expected type
-  const inquiries = inquiriesData.map(inquiry => ({
+  const inquiries = (inquiriesData || []).map(inquiry => ({
     ...inquiry,
     sentToForwarders: inquiry.sentToForwarders.map(forwarder => ({
       ...forwarder,

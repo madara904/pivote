@@ -3,9 +3,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Package, Eye, Calendar, MapPin, Truck } from "lucide-react"
+import { Package, Eye, Calendar, MapPin, Truck, FileText, Euro } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
+import { useState } from "react"
+import QuotationView from "./quotation-view"
 
 interface Package {
   id: string
@@ -68,13 +70,29 @@ interface InquiryListProps {
   inquiries: Inquiry[]
 }
 
+interface Quotation {
+  id: string
+  quotationNumber: string
+  totalPrice: number
+  currency: string
+  status: string
+  forwarderOrganization: {
+    id: string
+    name: string
+    email: string
+  }
+  createdAt: Date
+}
+
 const InquiryList = ({ inquiries }: InquiryListProps) => {
+  const [selectedInquiryId, setSelectedInquiryId] = useState<string | null>(null)
+  const [showQuotations, setShowQuotations] = useState(false)
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
         return <Badge variant="secondary">Entwurf</Badge>
-      case "sent":
-        return <Badge variant="default">Gesendet</Badge>
+      case "offen":
+        return <Badge variant="default">Offen</Badge>
       case "closed":
         return <Badge variant="outline">Geschlossen</Badge>
       case "cancelled":
@@ -134,6 +152,23 @@ const InquiryList = ({ inquiries }: InquiryListProps) => {
     )
   }
 
+  if (showQuotations && selectedInquiryId) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowQuotations(false)}
+          >
+            ← Zurück zur Übersicht
+          </Button>
+          <h2 className="text-xl font-semibold">Angebote für Anfrage {inquiries.find(i => i.id === selectedInquiryId)?.referenceNumber}</h2>
+        </div>
+        <QuotationView inquiryId={selectedInquiryId} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {inquiries.map((inquiry) => (
@@ -148,9 +183,20 @@ const InquiryList = ({ inquiries }: InquiryListProps) => {
               </div>
               <div className="flex items-center gap-2">
                 {getStatusBadge(inquiry.status)}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedInquiryId(inquiry.id)
+                    setShowQuotations(true)
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Angebote
+                </Button>
                 <Button variant="outline" size="sm">
                   <Eye className="h-4 w-4 mr-2" />
-                  Anzeigen
+                  Details
                 </Button>
               </div>
             </div>

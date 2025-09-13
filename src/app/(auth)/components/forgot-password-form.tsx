@@ -1,11 +1,10 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-import { CircleAlert, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { CircleAlert, Mail, ArrowLeft, CheckCircle } from "lucide-react";
 
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,29 +19,25 @@ import {
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signIn } from "@/lib/auth-client";
+import { forgetPassword } from "@/lib/auth-client";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
 import * as React from "react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email ist erforderlich!" }),
-  password: z.string().min(1, { message: "Passwort ist erforderlich!" }),
 });
 
-export const LoginForm = () => {
-  const router = useRouter();
+export const ForgotPasswordForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [success, setSuccess] = useState<boolean>(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   });
 
@@ -50,18 +45,16 @@ export const LoginForm = () => {
     setError(null);
     setLoading(true);
 
-    signIn.email(
+    forgetPassword(
       {
         email: data.email,
-        password: data.password,
+        redirectTo: "/reset",
       },
       {
         onSuccess: () => {
-          toast.success(
-            "Anmeldung erfolgreich! Sie werden in Kürze weitergeleitet..."
-          );
-          router.push("/dashboard");
+          setSuccess(true);
           setLoading(false);
+          toast.success("Passwort-Reset E-Mail wurde gesendet!");
         },
         onError: ({ error }) => {
           const errorMessage = error.message;
@@ -73,9 +66,124 @@ export const LoginForm = () => {
     );
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  if (success) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center justify-center flex-col">
+          <div className="flex items-center justify-center rounded-full bg-primary w-14 h-14">
+            <Logo className="h-8 mt-2 text-primary-foreground" />
+          </div>
+          <h1 className="text-3xl pt-2">Pivote</h1>
+        </div>
+        <Card className="overflow-hidden p-0">
+          <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">
+            <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center">
+              <div className="flex flex-col gap-6 w-full max-w-sm">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 mx-auto">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold">E-Mail gesendet!</h2>
+                  <p className="text-muted-foreground">
+                    Wir haben Ihnen eine E-Mail mit einem Link zum Zurücksetzen Ihres Passworts gesendet.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Überprüfen Sie Ihr E-Mail-Postfach und klicken Sie auf den Link, um Ihr Passwort zurückzusetzen.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <Link href="/sign-in">
+                      <Button variant="outline" className="w-full h-10">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Zurück zur Anmeldung
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setSuccess(false);
+                        form.reset();
+                      }}
+                      className="w-full h-10"
+                    >
+                      Erneut senden
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="hidden md:flex flex-col gap-y-6 items-center justify-center bg-gradient-to-r from-primary/70 to-primary/95 p-8 text-primary-foreground">
+              <div className="flex flex-col items-center text-center space-y-2">
+                <h1 className="text-3xl font-bold">Passwort vergessen? 🔐</h1>
+                <p className="text-wrap text-sm">
+                  Kein Problem! Wir helfen Ihnen dabei, wieder Zugang zu Ihrem Konto zu erhalten.
+                </p>
+              </div>
+              <svg
+                className="max-w-full text-primary-foreground"
+                width="270"
+                height="200"
+                viewBox="50 40 100 120"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="20"
+                  y="50"
+                  width="200"
+                  height="200"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  rx="4"
+                />
+                <circle cx="30" cy="60" r="3" fill="currentColor" />
+                <circle cx="40" cy="60" r="3" fill="currentColor" />
+                <circle cx="50" cy="60" r="3" fill="currentColor" />
+                <g transform="translate(50,80) scale(2.2)">
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M15.6809 5.34814C14.0521 5.34814 12.7265 6.66395 12.7265 8.29353C12.7265 9.92311 14.0521 11.2389 15.6809 11.2389C17.3097 11.2389 18.6353 9.92311 18.6353 8.29353C18.6353 6.66395 17.3097 5.34814 15.6809 5.34814ZM14.2265 8.29353C14.2265 7.49816 14.8748 6.84814 15.6809 6.84814C16.487 6.84814 17.1353 7.49816 17.1353 8.29353C17.1353 9.0889 16.487 9.73891 15.6809 9.73891C14.8748 9.73891 14.2265 9.0889 14.2265 8.29353Z"
+                    fill="currentColor"
+                  ></path>
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M9.52998 20.8783C9.86298 20.414 9.97017 19.9429 9.96222 19.5233C10.3544 19.6387 10.7424 19.6533 11.1141 19.5828C11.8825 19.437 12.4511 18.9512 12.7527 18.5507L12.758 18.5437L12.7631 18.5366C13.2883 17.8043 13.2872 17.0543 13.1586 16.5164C13.0956 16.2528 13.0021 16.0361 12.9245 15.8846C12.8853 15.8081 12.849 15.746 12.8207 15.7005C12.8132 15.6885 12.8063 15.6775 12.7999 15.6677C12.7112 15.5021 12.6111 15.3719 12.5269 15.2737L12.5359 15.2647L13.0001 14.8024C13.3817 14.9849 13.7957 15.0999 14.1583 15.1749C14.744 15.2962 15.3171 15.3369 15.6807 15.3369C19.582 15.3369 22.75 12.1863 22.75 8.29344C22.75 4.40056 19.582 1.25 15.6807 1.25C11.7794 1.25 8.61144 4.40056 8.61144 8.29344C8.61144 9.2105 8.82018 9.99588 9.02588 10.549C9.07825 10.6898 9.13081 10.8166 9.18035 10.9279L1.92511 18.1535C1.66869 18.4089 1.36789 18.853 1.27697 19.4092C1.17837 20.0124 1.34031 20.6829 1.92511 21.2654L2.80687 22.1435C2.82046 22.1571 2.83457 22.1701 2.84916 22.1825C3.10385 22.3999 3.53164 22.6513 4.04572 22.7273C4.59712 22.8088 5.23527 22.6818 5.77579 22.1435L6.34232 21.5793C6.87523 21.8849 7.43853 21.9545 7.95941 21.8548C8.63497 21.7254 9.19686 21.321 9.51964 20.8924L9.5249 20.8854L9.52998 20.8783ZM10.1114 8.29344C10.1114 5.23477 12.602 2.75 15.6807 2.75C18.7594 2.75 21.25 5.23477 21.25 8.29344C21.25 11.3521 18.7594 13.8369 15.6807 13.8369C15.4075 13.8369 14.9372 13.8044 14.4623 13.7061C13.9654 13.6032 13.5752 13.4504 13.3674 13.2779C13.0699 13.031 12.6332 13.0508 12.3592 13.3237L11.4774 14.2019C11.2757 14.4028 11.0818 14.6305 10.9794 14.8933C10.8499 15.2261 10.8912 15.5463 11.0394 15.8121C11.1273 15.9697 11.2689 16.1202 11.3278 16.183L11.3476 16.2042C11.4173 16.2811 11.4555 16.3314 11.4834 16.387L11.5098 16.4397L11.54 16.4817L11.5468 16.4924C11.5558 16.507 11.5712 16.533 11.5895 16.5685C11.6267 16.6412 11.6709 16.7445 11.6997 16.8652C11.7544 17.0937 11.7538 17.3656 11.5494 17.6551C11.4087 17.8384 11.1424 18.0506 10.8345 18.1091C10.5769 18.1579 10.1571 18.1261 9.59673 17.5681C9.30409 17.2766 8.83089 17.2766 8.53825 17.5681L8.24433 17.8608C7.96748 18.1365 7.94891 18.5782 8.20054 18.8761C8.20194 18.8778 8.2058 18.8826 8.2116 18.8903C8.22363 18.9062 8.24339 18.9336 8.2668 18.9704C8.31483 19.0461 8.37128 19.1508 8.41138 19.2706C8.48694 19.4963 8.49882 19.7374 8.31639 19.9966C8.19643 20.1519 7.95303 20.3287 7.67726 20.3815C7.4429 20.4264 7.14284 20.3931 6.8045 20.0562C6.51186 19.7647 6.03866 19.7647 5.74602 20.0562L4.7173 21.0807C4.55241 21.2449 4.4068 21.2643 4.26505 21.2434C4.09729 21.2186 3.93333 21.1293 3.84077 21.0562L2.9836 20.2025C2.74543 19.9653 2.73591 19.7821 2.75733 19.6511C2.78643 19.4731 2.89711 19.3025 2.9836 19.2163L10.6279 11.6033C10.8747 11.3575 10.9185 10.9735 10.7333 10.6784L10.7311 10.6748C10.7284 10.6703 10.7232 10.6615 10.7158 10.6487C10.7012 10.6231 10.6781 10.5814 10.6494 10.5251C10.5918 10.4123 10.5122 10.2423 10.4318 10.0262C10.2701 9.59135 10.1114 8.98632 10.1114 8.29344ZM8.20054 18.8761C8.20192 18.8777 8.2033 18.8793 8.20469 18.881L8.20354 18.8796L8.20054 18.8761Z"
+                    fill="currentColor"
+                  ></path>
+                  <line
+                    x1="28"
+                    y1="8"
+                    x2="38"
+                    y2="8"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1="28"
+                    y1="14"
+                    x2="34"
+                    y2="14"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                  />
+                </g>
+              </svg>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
+          Durch die Anmeldung stimmen Sie unseren{" "}
+          <a href="#">Nutzungsbedingungen</a> und{" "}
+          <a href="#">Datenschutzrichtlinien</a> zu.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -90,6 +198,12 @@ export const LoginForm = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 md:p-8">
               <div className="flex flex-col gap-6">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold">Passwort vergessen?</h2>
+                  <p className="text-muted-foreground">
+                    Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.
+                  </p>
+                </div>
                 <div className="grid gap-4">
                   <FormField
                     control={form.control}
@@ -116,44 +230,6 @@ export const LoginForm = () => {
                       </FormItem>
                     )}
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          Passwort
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <div className="absolute left-0 top-1 bottom-1 flex items-center pl-3 pr-3 border-r border-border">
-                              <Lock className="text-muted-foreground h-4 w-4" />
-                            </div>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="********"
-                              className="h-10 pl-12 pr-10"
-                              {...field}
-                            />
-                            <button
-                              type="button"
-                              onClick={togglePasswordVisibility}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                              tabIndex={-1}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4 cursor-pointer" />
-                              ) : (
-                                <Eye className="h-4 w-4 cursor-pointer" />
-                              )}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 {!!error && (
                   <Alert className="bg-destructive/10 border-none animate-in fade-in slide-in-from-top-2 duration-300">
@@ -161,60 +237,21 @@ export const LoginForm = () => {
                     <AlertTitle className="text-sm">{error}</AlertTitle>
                   </Alert>
                 )}
-                <div className="items-center">
-                  <Link
-                    href="/forgot"
-                    className="ml-auto text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    Passwort vergessen?
-                  </Link>
-                </div>
                 <Button
                   type="submit"
                   variant={"default"}
                   className="w-full h-10 font-medium"
                   disabled={loading}
                 >
-                  {loading ? "Wird angemeldet.." : "Anmelden"}
-                </Button>
-                <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-                  <span className="bg-card text-muted-foreground relative z-10 px-2 text-xs">
-                    Oder fortfahren mit
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    form.clearErrors();
-                    signIn.social({
-                      provider: "github",
-                      callbackURL: "/dashboard",
-                    });
-                  }}
-                  variant="outline"
-                  className={cn("w-full h-10 gap-2")}
-                  disabled={loading}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="1em"
-                    height="1em"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      fill="currentColor"
-                      d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
-                    ></path>
-                  </svg>
-                  Github
+                  {loading ? "Wird gesendet..." : "Reset-Link senden"}
                 </Button>
                 <div className="text-center text-sm">
-                  Noch kein Konto?{" "}
                   <Link
-                    href="/sign-up"
-                    className="underline underline-offset-4"
+                    href="/sign-in"
+                    className="text-primary hover:text-primary/90 transition-colors font-medium"
                   >
-                    Registrieren
+                    <ArrowLeft className="w-4 h-4 inline mr-1" />
+                    Zurück zur Anmeldung
                   </Link>
                 </div>
               </div>
@@ -222,9 +259,9 @@ export const LoginForm = () => {
           </Form>
           <div className="hidden md:flex flex-col gap-y-6 items-center justify-center bg-gradient-to-r from-primary/70 to-primary/95 p-8 text-primary-foreground">
             <div className="flex flex-col items-center text-center space-y-2">
-              <h1 className="text-3xl font-bold">Willkommen zurück 👋</h1>
+              <h1 className="text-3xl font-bold">Passwort vergessen? 🔐</h1>
               <p className="text-wrap text-sm">
-                Melden Sie sich bei Ihrem Konto an
+                Kein Problem! Wir helfen Ihnen dabei, wieder Zugang zu Ihrem Konto zu erhalten.
               </p>
             </div>
             <svg

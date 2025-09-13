@@ -33,11 +33,12 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    sendResetPassword: async ({user, url, token}, request) => {
+    sendResetPassword: async ({user, token}) => {
+      const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset?token=${token}`;
       await sendEmail({
         to: user.email,
         subject: "Reset your password",
-        text: `Click the link to reset your password: ${url}`,
+        text: `Click the link to reset your password: ${resetUrl}`,
       });
     }
   },

@@ -9,8 +9,8 @@ import InquiryHeader from "./inquiry-header"
 
 const InquiryView = () => {
 
-  // Use the original working query
-  const [data, {isError}] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery()
+  // Use the prefetched data - this will be immediately available
+  const { data, isError, error } = trpc.inquiry.forwarder.getMyInquiriesFast.useQuery()
 
   // state für Filter, Sortierung, Suche
 
@@ -20,7 +20,7 @@ const InquiryView = () => {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Fehler beim Laden der Frachtanfragen: {isError}
+            Fehler beim Laden der Frachtanfragen: {error?.message || 'Unbekannter Fehler'}
           </AlertDescription>
         </Alert>
       </div>

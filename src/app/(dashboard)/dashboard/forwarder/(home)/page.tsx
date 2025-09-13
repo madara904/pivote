@@ -1,25 +1,29 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
-import DashboardOverviewHead from "../components/view/modules/dashboard-overview-head";
-import DashboardBottom from "../components/view/modules/dashboard-last-table";
-import DashboardMetrics from "../components/view/modules/dashboard-metrics";
-import DashboardPerformance from "../components/view/modules/dashboard-performance";
-import DashboardQuickActions from "../components/view/modules/dashboard-quick-action";
+import DashboardOverviewHead from "../../components/dashboard-overview-head";
+import DashboardBottom from "../../components/dashboard-last-table";
+import DashboardPerformance from "../../components/dashboard-performance";
+import DashboardAsymmetricalGrid from "../../components/dashboard-asymmetrical-grid";
+import DashboardStatusCards from "../../components/dashboard-status-cards";
+import DashboardGrowBusiness from "../../components/dashboard-grow-business";
 
 export default async function ForwarderDashboard() {
  await requireForwarderAccess();
 
   return (
-    <main>
-      <div className="space-y-6">
-        <DashboardOverviewHead />
-        <DashboardMetrics />
-        <DashboardQuickActions />
+    <>
+      <DashboardOverviewHead />
+      <main className="container mx-auto">
+        <DashboardAsymmetricalGrid />
+        <DashboardStatusCards />
 
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-3 w-full max-w-full">
+        {/* Bottom Section - Quotation Status */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <DashboardBottom />
           <DashboardPerformance />
         </div>
-      </div>
-    </main>
+
+        <DashboardGrowBusiness />
+      </main>
+    </>
   );
 }

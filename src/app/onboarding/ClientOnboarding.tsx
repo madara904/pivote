@@ -44,6 +44,7 @@ import { LogoLoader } from "@/components/ui/loader";
 import { trpc } from "@/trpc/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
 
 const organizationSchema = z.object({
   name: z.string().min(2, "Name muss mindestens 2 Zeichen lang sein"),
@@ -122,16 +123,23 @@ export default function OnboardingForm() {
   const router = useRouter();
 
   const createOrg = trpc.organization.createOrganization.useMutation({
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       setOrgType(variables.type);
       setRedirecting(true);
-      setTimeout(() => {
-        if (variables.type === "forwarder") {
-          router.push("/dashboard/forwarder");
-        } else {
-          router.push("/dashboard/shipper");
-        }
-      }, 800);
+      
+      // Force refresh the session by disabling cookie cache
+      try {
+        await authClient.getSession({ query: { disableCookieCache: true } });
+      } catch (error) {
+        console.error("Failed to refresh session:", error);
+      }
+      
+      // Use window.location.href for a hard redirect to ensure fresh session
+      if (variables.type === "forwarder") {
+        window.location.href = "/dashboard/forwarder";
+      } else {
+        window.location.href = "/dashboard/shipper";
+      }
     },
     onError: (error) => {
       toast.error(error.message ?? "Fehler beim Erstellen der Organisation.");

@@ -4,14 +4,6 @@ import { and, eq, gt } from "drizzle-orm";
 import { organizationInvitation } from "@/db/schema";
 import { organizationMember } from "@/db/schema";
 
-export function slugify(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim();
-}
 
 export function generateSecureToken(): string {
   return randomBytes(32).toString("base64url");

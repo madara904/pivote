@@ -8,6 +8,34 @@
       "when": 1753153051416,
       "tag": "0000_wise_doctor_doom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1757726202919,
+      "tag": "0001_gigantic_azazel",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1757726238892,
+      "tag": "0002_goofy_sphinx",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1757734038399,
+      "tag": "0003_wooden_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1757781204462,
+      "tag": "0004_striped_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

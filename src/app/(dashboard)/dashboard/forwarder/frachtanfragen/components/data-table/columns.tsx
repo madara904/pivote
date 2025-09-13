@@ -12,8 +12,11 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Package2
+  Package2,
+  Eye,
+  MoreHorizontal
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 // Helper functions to convert enum values to display text
 const formatServiceType = (serviceType: string) => {
@@ -91,8 +94,54 @@ const getStatusIcon = (status: string) => {
   return iconMap[status] || <Clock className="h-4 w-4 text-slate-600" />
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const columns: ColumnDef<any>[] = [
+// Type for inquiry data - matches the actual return type from the API
+type InquiryData = {
+  id: string;
+  inquiryId: string;
+  forwarderOrganizationId: string;
+  sentAt: Date;
+  viewedAt: Date | null;
+  createdAt: Date;
+  inquiry: {
+    id: string;
+    referenceNumber: string;
+    title: string;
+    serviceType: string;
+    originCity: string;
+    originCountry: string;
+    destinationCity: string;
+    destinationCountry: string;
+    cargoType: string;
+    cargoDescription: string | null;
+    status: string;
+    validityDate: Date | null;
+    totalPieces: number;
+    totalGrossWeight: string;
+    totalChargeableWeight: string;
+    totalVolume: string;
+    shipperOrganization: {
+      name: string;
+      email: string;
+    };
+    createdBy: {
+      name: string;
+    };
+  };
+  packageSummary: {
+    count: number;
+    hasDangerousGoods: boolean;
+    temperatureControlled: boolean;
+    specialHandling: boolean;
+  };
+  statusDateInfo: {
+    formattedSentDate: string;
+    formattedViewedDate: string | null;
+    statusDetail: string;
+  };
+  quotationStatus?: string | null;
+};
+
+export const createColumns = (onViewDetail: (inquiryId: string) => void): ColumnDef<InquiryData>[] => [
   {
     accessorFn: (row) => row.inquiry.referenceNumber,
     id: "referenz",
@@ -225,14 +274,19 @@ export const columns: ColumnDef<any>[] = [
       const status = row.getValue("status") as string;
       const statusDateInfo = row.original?.statusDateInfo;
       const validityDate = row.original?.inquiry?.validityDate;
+      const quotationStatus = row.original?.quotationStatus;
+      
+      // If quotation is rejected, show "Abgelehnt" instead of inquiry status
+      const displayStatus = quotationStatus === 'rejected' ? 'Abgelehnt' : formatStatus(status);
+      const isRejected = quotationStatus === 'rejected';
       
       return (
         <div className="flex items-start gap-2">
           <div className="mt-0.5">
-            {getStatusIcon(status)}
+            {isRejected ? <AlertTriangle className="h-4 w-4 text-red-500" /> : getStatusIcon(status)}
           </div>
           <div className="flex flex-col">
-            <span className="font-medium">{formatStatus(status)}</span>
+            <span className={`font-medium ${isRejected ? 'text-red-600' : ''}`}>{displayStatus}</span>
             <span className="text-xs text-muted-foreground">{statusDateInfo?.statusDetail || ""}</span>
             {validityDate && (
               <span className="text-xs text-slate-500 mt-1">
@@ -246,6 +300,39 @@ export const columns: ColumnDef<any>[] = [
               </span>
             )}
           </div>
+        </div>
+      );
+    },
+  },
+  {
+    id: "actions",
+    header: "Aktionen",
+    cell: ({ row }) => {
+      return (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewDetail(row.original.inquiryId);
+            }}
+            className="h-8 w-8 p-0"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Additional actions can be added here
+              console.log('More actions for inquiry:', row.original.inquiryId);
+            }}
+            className="h-8 w-8 p-0"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
         </div>
       );
     },

@@ -27,18 +27,20 @@ export const invitationStatusEnum = pgEnum("invitation_status", [
   "expired",
 ]);
 export const inquiryStatusEnum = pgEnum("inquiry_status", [
-  "draft",
-  "sent",
-  "closed",
-  "cancelled",
-  "offen",
+  "draft",        // Shipper creating inquiry
+  "offen",        // Sent to forwarders, open for quotations
+  "awarded",      // Shipper accepted a quotation
+  "closed",       // All quotations rejected or inquiry manually closed
+  "cancelled",    // Inquiry cancelled by shipper
+  "expired",      // Inquiry expired by validity date
 ]);
 export const quotationStatusEnum = pgEnum("quotation_status", [
-  "pending",
-  "submitted",
-  "accepted",
-  "rejected",
-  "expired",
+  "draft",        // Forwarder creating quotation
+  "submitted",    // Forwarder submitted quotation (angeboten/ausstehend)
+  "accepted",     // Shipper accepted quotation
+  "rejected",     // Shipper rejected quotation
+  "withdrawn",    // Forwarder withdrew quotation
+  "expired",      // Quotation expired by validUntil date
 ]);
 export const serviceTypeEnum = pgEnum("service_type", [
   "air_freight",
@@ -135,7 +137,6 @@ export const organization = pgTable("organization", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
   description: text("description"),
   type: organizationTypeEnum("type").notNull().default("shipper"),
   email: text("email").notNull(),
@@ -244,10 +245,13 @@ export const inquiry = pgTable("inquiry", {
   destinationCountry: text("destination_country").notNull(),
   cargoType: cargoTypeEnum("cargo_type").notNull().default("general"),
   cargoDescription: text("cargo_description"),
+  incoterms: text("incoterms").notNull(), // Add incoterms to inquiry
   readyDate: timestamp("ready_date").notNull(),
   deliveryDate: timestamp("delivery_date"),
   validityDate: timestamp("validity_date"),
   status: inquiryStatusEnum("status").notNull().default("draft"),
+  sentAt: timestamp("sent_at"), // When inquiry was sent to forwarders
+  closedAt: timestamp("closed_at"), // When inquiry was closed/awarded
   shipperOrganizationId: text("shipper_organization_id")
     .notNull()
     .references(() => organization.id, { onDelete: "cascade" }),
@@ -323,19 +327,19 @@ export const quotation = pgTable("quotation", {
     .references(() => organization.id, { onDelete: "cascade" }),
   totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("EUR"),
-  airlineCode: text("airline_code"),
-  flightNumber: text("flight_number"),
+  airlineFlight: text("airline_flight"), // Combined airline code and flight number
   transitTime: integer("transit_time"),
   validUntil: timestamp("valid_until").notNull(),
-  paymentTerms: text("payment_terms"),
-  incoterms: text("incoterms"),
   notes: text("notes"),
   terms: text("terms"),
-  status: quotationStatusEnum("status").notNull().default("pending"),
-  submittedAt: timestamp("submitted_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-  respondedAt: timestamp("responded_at"),
+  preCarriage: decimal("pre_carriage", { precision: 12, scale: 2 }).default("0"), // Pre-carriage cost
+  mainCarriage: decimal("main_carriage", { precision: 12, scale: 2 }).default("0"), // Main carriage cost
+  onCarriage: decimal("on_carriage", { precision: 12, scale: 2 }).default("0"), // On-carriage cost
+  additionalCharges: decimal("additional_charges", { precision: 12, scale: 2 }).default("0"), // Additional charges
+  status: quotationStatusEnum("status").notNull().default("draft"),
+  submittedAt: timestamp("submitted_at"), // When quotation was submitted (not default)
+  respondedAt: timestamp("responded_at"), // When shipper responded (accepted/rejected)
+  withdrawnAt: timestamp("withdrawn_at"), // When forwarder withdrew quotation
   createdById: text("created_by_id")
     .notNull()
     .references(() => user.id),
@@ -347,31 +351,7 @@ export const quotation = pgTable("quotation", {
     .notNull(),
 });
 
-export const quotationCharge = pgTable("quotation_charge", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => randomUUID()),
-  quotationId: text("quotation_id")
-    .notNull()
-    .references(() => quotation.id, { onDelete: "cascade" }),
-  chargeType: chargeTypeEnum("charge_type").notNull(),
-  chargeName: text("charge_name").notNull(),
-  chargeCode: text("charge_code"),
-  unitPrice: decimal("unit_price", { precision: 12, scale: 4 }),
-  quantity: decimal("quantity", { precision: 10, scale: 2 }),
-  unit: text("unit"),
-  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
-  currency: text("currency").notNull().default("EUR"),
-  location: text("location"),
-  description: text("description"),
-  isOptional: boolean("is_optional").default(false),
-  createdAt: timestamp("created_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-  updatedAt: timestamp("updated_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-});
+// Removed quotationCharge table - charges are now columns in quotation table
 
 export const chargeTemplate = pgTable("charge_template", {
   id: text("id")
@@ -515,15 +495,10 @@ export const quotationRelations = relations(quotation, ({ one, many }) => ({
     fields: [quotation.createdById],
     references: [user.id],
   }),
-  charges: many(quotationCharge),
+  // charges are now columns in quotation table
 }));
 
-export const quotationChargeRelations = relations(quotationCharge, ({ one }) => ({
-  quotation: one(quotation, {
-    fields: [quotationCharge.quotationId],
-    references: [quotation.id],
-  }),
-}));
+// Removed quotationCharge relations - charges are now columns in quotation table
 
 export const chargeTemplateRelations = relations(chargeTemplate, ({ one }) => ({
   organization: one(organization, {
@@ -552,7 +527,6 @@ export type InsertInquiryForwarder = typeof inquiryForwarder.$inferInsert;
 export type SelectInquiryForwarder = typeof inquiryForwarder.$inferSelect;
 export type InsertQuotation = typeof quotation.$inferInsert;
 export type SelectQuotation = typeof quotation.$inferSelect;
-export type InsertQuotationCharge = typeof quotationCharge.$inferInsert;
-export type SelectQuotationCharge = typeof quotationCharge.$inferSelect;
+// Removed quotationCharge types - charges are now columns in quotation table
 export type InsertChargeTemplate = typeof chargeTemplate.$inferInsert;
 export type SelectChargeTemplate = typeof chargeTemplate.$inferSelect;

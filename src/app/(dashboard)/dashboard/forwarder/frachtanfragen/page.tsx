@@ -21,13 +21,12 @@ function InquiryViewFallback() {
 
 export default async function ForwarderInquiriesPage() {
   await requireForwarderAccess();
-  
-  
+
   // Prefetch the inquiries data for Suspense
-  await trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
+   trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
 
   return (
-    <HydrateClient>
+    <>
       <div className="p-4">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -38,10 +37,11 @@ export default async function ForwarderInquiriesPage() {
         </div>
         <Separator />
       </div>
-      
-      <Suspense fallback={<InquiryViewFallback />}>
-        <InquiryView />
-      </Suspense>
-    </HydrateClient>
+      <HydrateClient>
+        <Suspense fallback={<InquiryViewFallback />}>
+          <InquiryView />
+        </Suspense>
+      </HydrateClient>
+    </>
   );
 }

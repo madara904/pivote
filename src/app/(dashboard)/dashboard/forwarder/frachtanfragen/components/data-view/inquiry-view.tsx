@@ -2,62 +2,11 @@
 
 import { trpc } from "@/trpc/client";
 import { FreightInquiryTable } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/freight-inquiry-table";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
 import InquiryHeader from "./inquiry-header";
 import { useRouter } from "next/navigation";
 import { QuotationModal } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/quotation-modal";
 import { useState } from "react";
 import { toast } from "sonner";
-
-// Type for inquiry data - matches the actual return type from the API
-type InquiryData = {
-  id: string;
-  inquiryId: string;
-  forwarderOrganizationId: string;
-  sentAt: Date;
-  viewedAt: Date | null;
-  createdAt: Date;
-  inquiry: {
-    id: string;
-    referenceNumber: string;
-    title: string;
-    serviceType: string;
-    originCity: string;
-    originCountry: string;
-    destinationCity: string;
-    destinationCountry: string;
-    cargoType: string;
-    cargoDescription: string | null;
-    status: string;
-    validityDate: Date | null;
-    totalPieces: number;
-    totalGrossWeight: string;
-    totalChargeableWeight: string;
-    totalVolume: string;
-    shipperOrganization: {
-      name: string;
-      email: string;
-    };
-    createdBy: {
-      name: string;
-    };
-  };
-  packageSummary: {
-    count: number;
-    hasDangerousGoods: boolean;
-    temperatureControlled: boolean;
-    specialHandling: boolean;
-  };
-  statusDateInfo: {
-    formattedSentDate: string;
-    formattedViewedDate: string | null;
-    statusDetail: string;
-  };
-  quotationStatus?: string | null;
-  quotationPrice?: string | null;
-  quotationCurrency?: string | null;
-};
 
 const InquiryView = () => {
   const router = useRouter();
@@ -66,9 +15,9 @@ const InquiryView = () => {
   const [selectedInquiryReference, setSelectedInquiryReference] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
-  // FIXED: Properly destructure the useSuspenseQuery result
-  const [data] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
-    staleTime: 10 * 1000, // 10 seconds
+  // Use useSuspenseQuery correctly - it returns [data, query] tuple in tRPC v11
+  const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
+    staleTime: 1000, // 1 second 
   });
 
   const handleSendReminder = (inquiryId: string) => {
@@ -113,8 +62,8 @@ const InquiryView = () => {
     setSelectedInquiryReference(null);
   };
 
-  // Transform the data to match the new component interface
-  const transformedData = data?.map((item: InquiryData) => {
+  // Transform the data to match the FreightInquiryTable interface
+  const transformedData = inquiryData?.map((item) => {
     return {
       id: item.inquiryId, 
       referenceNumber: item.inquiry.referenceNumber,
@@ -129,7 +78,7 @@ const InquiryView = () => {
       cargoType: item.inquiry.cargoType,
       cargoDescription: item.inquiry.cargoDescription,
       weight: item.inquiry.totalGrossWeight,
-      unit: "kg",
+      unit: "kg" as const,
       pieces: item.inquiry.totalPieces,
       shipperName: item.inquiry.shipperOrganization.name,
       origin: {
@@ -144,7 +93,7 @@ const InquiryView = () => {
   }) || [];
 
   // Handle empty state - no loading state needed with Suspense
-  if (!data || data.length === 0) {
+  if (!inquiryData || inquiryData.length === 0) {
     return (
       <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
         <InquiryHeader />

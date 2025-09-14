@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import InquiryHeader from "./inquiry-header";
 import { useRouter } from "next/navigation";
-import { DotLoading } from "@/components/ui/dot-loading";
 import { QuotationModal } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/quotation-modal";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -67,10 +66,10 @@ const InquiryView = () => {
   const [selectedInquiryReference, setSelectedInquiryReference] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
-  const { data, isError, error, isPending } =
-    trpc.inquiry.forwarder.getMyInquiriesFast.useQuery(undefined, {
-      staleTime: 10 * 1000, // 10 seconds
-    });
+  // FIXED: Properly destructure the useSuspenseQuery result
+  const [data] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
+    staleTime: 10 * 1000, // 10 seconds
+  });
 
   const handleSendReminder = (inquiryId: string) => {
     // TODO: Implement reminder functionality
@@ -114,10 +113,8 @@ const InquiryView = () => {
     setSelectedInquiryReference(null);
   };
 
-
   // Transform the data to match the new component interface
   const transformedData = data?.map((item: InquiryData) => {
-    
     return {
       id: item.inquiryId, 
       referenceNumber: item.inquiry.referenceNumber,
@@ -146,37 +143,11 @@ const InquiryView = () => {
     };
   }) || [];
 
-
-  if (isPending) {
-    return (
-      <div className="flex-1 flex items-center justify-center py-20">
-        <div className="text-center space-y-2">
-          <DotLoading size="md" />
-          <p className="text-center py-8 text-muted-foreground">
-            Lade Frachtanfragen
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Fehler beim Laden der Frachtanfragen:{" "}
-            {error?.message || "Unbekannter Fehler"}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
+  // Handle empty state - no loading state needed with Suspense
   if (!data || data.length === 0) {
     return (
       <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
+        <InquiryHeader />
         <div className="text-center py-8 text-muted-foreground">
           <img 
             src="/empty.svg" 

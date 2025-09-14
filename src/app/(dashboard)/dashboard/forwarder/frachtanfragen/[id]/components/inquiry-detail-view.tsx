@@ -25,11 +25,14 @@ import {
   Ruler,
   Thermometer,
   Shield,
+  FileText,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import QuotationModal from "./quotation-modal";
+import { QuotationModal as ReadOnlyQuotationModal } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/quotation-modal";
 import { DotLoading } from "@/components/ui/dot-loading";
+import { useState } from "react";
 
 interface InquiryDetailViewProps {
   inquiryId: string;
@@ -38,6 +41,7 @@ interface InquiryDetailViewProps {
 const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
   const router = useRouter();
   const utils = trpc.useUtils();
+  const [isQuotationModalOpen, setIsQuotationModalOpen] = useState(false);
 
   const { data, isError, error, isPending } =
     trpc.inquiry.forwarder.getInquiryDetail.useQuery({ inquiryId });
@@ -123,7 +127,7 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
   const formatStatus = (status: string) => {
     const statusMap: Record<string, string> = {
       draft: "Entwurf",
-      offen: "Offen",
+      open: "Offen",
       awarded: "Vergeben",
       closed: "Geschlossen",
       cancelled: "Storniert",
@@ -135,7 +139,7 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
   const getStatusIcon = (status: string) => {
     const iconMap: Record<string, React.ReactNode> = {
       draft: <Clock className="h-4 w-4 text-slate-600" />,
-      offen: <CheckCircle className="h-4 w-4 text-blue-400" />,
+      open: <CheckCircle className="h-4 w-4 text-blue-400" />,
       awarded: <CheckCircle className="h-4 w-4 text-green-400" />,
       closed: <XCircle className="h-4 w-4 text-gray-400" />,
       cancelled: <XCircle className="h-4 w-4 text-red-400" />,
@@ -172,7 +176,7 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
               variant={
                 isQuotationRejected
                   ? "destructive"
-                  : inquiry.status === "offen"
+                  : inquiry.status === "open"
                     ? "default"
                     : "secondary"
               }
@@ -181,10 +185,24 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
             </Badge>
           </div>
           <div className="flex flex-wrap gap-2">
-            <QuotationModal
-              inquiryId={inquiryId}
-              onQuotationCreated={handleQuotationCreated}
-            />
+            { quotation?.status !== "submitted" && (
+              <QuotationModal
+                inquiryId={inquiryId}
+                onQuotationCreated={handleQuotationCreated}
+                inquiryStatus={inquiry.status}
+              />
+            )}
+            {quotation?.status === "submitted" && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsQuotationModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Angebot anzeigen
+              </Button>
+            )}
             <Button variant="outline" size="sm">
               Nachricht senden
             </Button>
@@ -249,31 +267,37 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
                   <MapPin className="h-4 w-4" />
                   Route
                 </h4>
-                <div className="flex items-center justify-between relative">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-12 h-12 bg-cyan-100 rounded-full mb-2">
-                      <MapPin className="h-6 w-6 text-cyan-600" />
+                <div className="flex items-center relative">
+                  {/* Origin */}
+                  <div className="flex-1 min-w-0 text-center">
+                    <div className="flex items-center justify-center w-8 h-8 sm:w-12 sm:h-12 bg-cyan-100 rounded-full mb-2 mx-auto">
+                      <MapPin className="h-4 w-4 sm:h-6 sm:w-6 text-cyan-500" />
                     </div>
-                    <p className="font-semibold">{inquiry.originCity}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-bold text-sm sm:text-base truncate">
+                      {inquiry.originCity}
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
                       {inquiry.originCountry}
                     </p>
                   </div>
 
                   {/* Connecting Line */}
-                  <div className="flex-1 mx-6 relative">
+                  <div className="flex-1 mx-4 relative">
                     <div className="h-px bg-gray-300 absolute top-1/2 left-0 right-0 transform -translate-y-1/2"></div>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-2">
                       {getServiceTypeIcon(inquiry.serviceType)}
                     </div>
                   </div>
 
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-12 h-12 bg-rose-100 rounded-full mb-2">
-                      <MapPin className="h-6 w-6 text-rose-600" />
+                  {/* Destination */}
+                  <div className="flex-1 min-w-0 text-center">
+                    <div className="flex items-center justify-center w-8 h-8 sm:w-12 sm:h-12 bg-red-100 rounded-full mb-2 mx-auto">
+                      <MapPin className="h-4 w-4 sm:h-6 sm:w-6 text-rose-400" />
                     </div>
-                    <p className="font-semibold">{inquiry.destinationCity}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-bold text-sm sm:text-base truncate">
+                      {inquiry.destinationCity}
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
                       {inquiry.destinationCountry}
                     </p>
                   </div>
@@ -575,6 +599,14 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
           </Card>
         </div>
       </div>
+
+      {/* Read-only Quotation Modal */}
+      <ReadOnlyQuotationModal
+        isOpen={isQuotationModalOpen}
+        onClose={() => setIsQuotationModalOpen(false)}
+        inquiryId={inquiryId}
+        inquiryReferenceNumber={inquiry.referenceNumber}
+      />
     </div>
   );
 };

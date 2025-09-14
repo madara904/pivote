@@ -11,13 +11,17 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
 
 interface ResponsiveModalProps {
   children: React.ReactNode;
   open: boolean;
   title: string;
   onOpenChange: (open: boolean) => void;
-  maxWidth?: string;
+  className?: string;
+  contentClassName?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
 }
 
 export const ResponsiveModal = ({
@@ -25,6 +29,9 @@ export const ResponsiveModal = ({
   open,
   title,
   onOpenChange,
+  contentClassName,
+  headerClassName,
+  bodyClassName,
 }: ResponsiveModalProps) => {
   const isMobile = useIsMobile();
 
@@ -45,11 +52,11 @@ export const ResponsiveModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[75vw] max-h-[90vh] flex flex-col p-0 sm:max-w-none">
-        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
+      <DialogContent className={cn("w-[75vw] max-h-[90vh] flex flex-col p-0 sm:max-w-none sm:!max-w-none", contentClassName)}>
+        <DialogHeader className={cn("flex-shrink-0 px-6 pt-6 pb-2", headerClassName)}>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 pb-6 min-h-0">
+        <div className={cn("flex-1 overflow-y-auto px-6 pb-6 min-h-0", bodyClassName)}>
           {children}
         </div>
       </DialogContent>

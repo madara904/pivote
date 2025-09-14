@@ -67,15 +67,6 @@ export const crudRouter = createTRPCRouter({
         ),
       });
       
-      console.log("Conflict check:", {
-        inputName: input.name,
-        inputVatNumber: input.vatNumber,
-        existingOrg: existingOrg ? {
-          name: existingOrg.name,
-          vatNumber: existingOrg.vatNumber
-        } : null
-      });
-      
       if (existingOrg) {
         if (existingOrg.name === input.name) {
           throw new TRPCError({
@@ -134,7 +125,6 @@ export const crudRouter = createTRPCRouter({
           .returning();
 
         // 4. Update user's org_type to match the organization type
-        console.log("Updating user orgType:", { userId: session.user.id, orgType: input.type });
         const updateResult = await db
           .update(user)
           .set({
@@ -143,19 +133,11 @@ export const crudRouter = createTRPCRouter({
           .where(eq(user.id, session.user.id))
           .returning();
         
-        console.log("User update result:", updateResult);
-
         return {
           organization: org,
           membership,
         };
       } catch (err: unknown) {
-        console.error("DB error in createOrganization:", err);
-        console.error("Error details:", {
-          name: input.name,
-          vatNumber: input.vatNumber,
-          error: err
-        });
         if (typeof err === "object" && err !== null && "code" in err) {
           const code = (err as { code?: string }).code;
           if (code === "23505") {
@@ -246,7 +228,6 @@ export const crudRouter = createTRPCRouter({
         
         return updated;
       } catch (err: unknown) {
-        console.error("DB error in editOrganization:", err);
         if (typeof err === "object" && err !== null && "code" in err) {
           const code = (err as { code?: string }).code;
           if (code === "23505") {
@@ -300,7 +281,6 @@ export const crudRouter = createTRPCRouter({
         
         return { success: true };
       } catch (err: unknown) {
-        console.error("DB error in deleteOrganization:", err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Ein unerwarteter Fehler ist aufgetreten.",

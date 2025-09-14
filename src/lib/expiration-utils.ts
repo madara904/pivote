@@ -1,9 +1,12 @@
 import { eq, and, lt } from "drizzle-orm";
 import { inquiry, quotation } from "@/db/schema";
+import { db } from '@/db';
 
 // Cache to prevent frequent expiration checks
 let lastExpirationCheck = 0;
 const EXPIRATION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+type DbType = typeof db;
 
 /**
  * Check and update expired inquiries and quotations
@@ -11,7 +14,7 @@ const EXPIRATION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
  * Now optimized to only run every 5 minutes instead of on every request
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function checkAndUpdateExpiredItems(db: any) {
+export async function checkAndUpdateExpiredItems(db: DbType) {
   const now = Date.now();
   
   // Only run expiration check every 5 minutes
@@ -34,7 +37,7 @@ export async function checkAndUpdateExpiredItems(db: any) {
       .from(inquiry)
       .where(
         and(
-          eq(inquiry.status, "offen"),
+          eq(inquiry.status, "open"),
           lt(inquiry.validityDate, currentDate)
         )
       )
@@ -49,7 +52,7 @@ export async function checkAndUpdateExpiredItems(db: any) {
       })
       .where(
         and(
-          eq(inquiry.status, "offen"),
+          eq(inquiry.status, "open"),
           lt(inquiry.validityDate, currentDate)
         )
       )
@@ -81,15 +84,12 @@ export async function checkAndUpdateExpiredItems(db: any) {
       )
       .returning({ id: quotation.id }) : [];
 
-    console.log(`🕒 Expired ${expiredInquiries.length} inquiries and ${expiredQuotations.length} quotations`);
-    
     return {
       expiredInquiries: expiredInquiries.length,
       expiredQuotations: expiredQuotations.length,
       skipped: false
     };
   } catch (error) {
-    console.error("Error checking expired items:", error);
     return {
       expiredInquiries: 0,
       expiredQuotations: 0,

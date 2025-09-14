@@ -62,10 +62,20 @@ export function SiteHeader() {
 
       if (segment === "dashboard" || currentPath === "/dashboard/forwarder") return;
 
-      const label = segment
-        .split("-")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
+      // Check if segment is a UUID (contains hyphens and is long)
+      const isUUID = segment.includes("-") && segment.length > 20;
+      
+      let label: string;
+      if (isUUID) {
+        // Truncate UUID to show first 8 characters + "..."
+        label = `${segment.substring(0, 8)}...`;
+      } else {
+        // Normal processing for non-UUID segments
+        label = segment
+          .split("-")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+      }
 
       breadcrumbs.push({
         label,

@@ -1,5 +1,5 @@
 import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
-import { eq, and, sql, desc, count, ne } from "drizzle-orm";
+import { eq, and, sql, desc, count, ne, isNull } from "drizzle-orm";
 import { inquiryForwarder, organizationMember, inquiry, organization, user, inquiryPackage, quotation } from "@/db/schema";
 import { z } from "zod";
 import { alias } from "drizzle-orm/pg-core";
@@ -99,8 +99,10 @@ export const forwarderRouter = createTRPCRouter({
             // created by user fields
             createdByName: user.name,
             
-            // quotation status
+            // quotation status and price
             quotationStatus: quotation.status,
+            quotationPrice: quotation.totalPrice,
+            quotationCurrency: quotation.currency,
             
             // Optimized aggregations
             totalPieces: sql<number>`COALESCE(SUM(${inquiryPackage.pieces}), 0)`,
@@ -133,7 +135,9 @@ export const forwarderRouter = createTRPCRouter({
             and(
               eq(organizationMember.userId, session.user.id),
               eq(organizationMember.isActive, true),
-              ne(inquiry.status, "closed")
+              ne(inquiry.status, "closed"),
+              // Show all inquiries - drafts should be visible so users can edit/delete them
+              // The UI will handle showing appropriate actions based on quotation status
             )
           )
           .groupBy(
@@ -159,7 +163,9 @@ export const forwarderRouter = createTRPCRouter({
             shipperOrg.name,
             shipperOrg.email,
             user.name,
-            quotation.status
+            quotation.status,
+            quotation.totalPrice,
+            quotation.currency
           )
           .orderBy(desc(inquiryForwarder.createdAt))
           .limit(50);
@@ -210,15 +216,17 @@ export const forwarderRouter = createTRPCRouter({
           statusDateInfo: {
             formattedSentDate: row.sentAt ? row.sentAt.toLocaleDateString('de-DE') : '',
             formattedViewedDate: row.viewedAt ? row.viewedAt.toLocaleDateString('de-DE') : null,
-            statusDetail: row.status === "offen" && row.viewedAt 
+            statusDetail: row.status === "open" && row.viewedAt 
               ? `Viewed ${row.viewedAt.toLocaleDateString('de-DE')}`
-              : row.status === "offen" && row.sentAt
+              : row.status === "open" && row.sentAt
               ? `Sent ${row.sentAt.toLocaleDateString('de-DE')}`
               : row.status === "draft"
               ? "Not sent yet"
               : ""
           },
-          quotationStatus: row.quotationStatus
+          quotationStatus: row.quotationStatus,
+          quotationPrice: row.quotationPrice,
+          quotationCurrency: row.quotationCurrency
         }));
   
         console.log(`⏱️ Processing time: ${Date.now() - processStart}ms`);
@@ -235,9 +243,6 @@ export const forwarderRouter = createTRPCRouter({
     .input(z.object({ inquiryId: z.string() }))
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
-      
-      // Check and update expired items first
-      await checkAndUpdateExpiredItems(db);
       
       // Get user's organization membership
       const membershipResult = await db
@@ -436,9 +441,9 @@ export const forwarderRouter = createTRPCRouter({
         statusDateInfo: {
           formattedSentDate: row.sentAt ? row.sentAt.toLocaleDateString('de-DE') : '',
           formattedViewedDate: row.viewedAt ? row.viewedAt.toLocaleDateString('de-DE') : null,
-          statusDetail: row.status === "offen" && row.viewedAt 
+          statusDetail: row.status === "open" && row.viewedAt 
             ? `Viewed ${row.viewedAt.toLocaleDateString('de-DE')}`
-            : row.status === "offen" && row.sentAt
+            : row.status === "open" && row.sentAt
             ? `Sent ${row.sentAt.toLocaleDateString('de-DE')}`
             : row.status === "draft"
             ? "Not sent yet"
@@ -483,10 +488,17 @@ export const forwarderRouter = createTRPCRouter({
           throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
         }
 
-        // Remove the inquiry from this forwarder's list
+        // Mark the inquiry as rejected for this forwarder
         await db
-          .delete(inquiryForwarder)
+          .update(inquiryForwarder)
+          .set({ rejectedAt: new Date() })
           .where(eq(inquiryForwarder.id, inquiryForwarderRecord.id));
+
+        // Update the inquiry status to rejected
+        await db
+          .update(inquiry)
+          .set({ status: "rejected" })
+          .where(eq(inquiry.id, input.inquiryId));
         
         return { success: true };
       } catch (error) {

@@ -57,9 +57,6 @@ export const LoginForm = () => {
       },
       {
         onSuccess: () => {
-          toast.success(
-            "Anmeldung erfolgreich! Sie werden in Kürze weitergeleitet..."
-          );
           router.push("/dashboard");
           setLoading(false);
         },

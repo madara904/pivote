@@ -47,7 +47,7 @@ export const LogoLoader: React.FC<LogoLoaderProps> = ({
             delay: i * 0.15,
             ease: easeInOut,
             repeat: Infinity,
-            repeatType: "reverse",
+            repeatType: "loop",
           }}
         />
       ))}

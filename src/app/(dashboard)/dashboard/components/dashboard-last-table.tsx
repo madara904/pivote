@@ -16,21 +16,21 @@ const DashboardBottom = () => {
       shipper: "AutoParts Inc",
       service: "Standard-Versand",
       amount: "€8,900",
-      status: "angenommen",
+      status: "accepted",
     },
     {
       id: "QT-2024-003",
       shipper: "Fashion Hub",
       service: "Prioritätsfracht",
       amount: "€3,200",
-      status: "eingereicht",
+      status: "submitted",
     },
     {
       id: "QT-2024-004",
       shipper: "Electronics Co",
       service: "Express-Lieferung",
       amount: "€15,600",
-      status: "abgelehnt",
+      status: "rejected",
     },
   ];
 
@@ -59,16 +59,16 @@ const DashboardBottom = () => {
                 <span className="font-medium text-sm">{quotation.amount}</span>
                 <Badge
                   variant={
-                    quotation.status === "angenommen"
+                    quotation.status === "accepted"
                       ? "default"
-                      : quotation.status === "abgelehnt"
+                      : quotation.status === "rejected"
                         ? "destructive"
                         : "secondary"
                   }
                   className="text-xs"
                 >
-                  {quotation.status === "angenommen" && <CheckCircle className="w-3 h-3 mr-1" />}
-                  {quotation.status === "abgelehnt" && <XCircle className="w-3 h-3 mr-1" />}
+                  {quotation.status === "accepted" && <CheckCircle className="w-3 h-3 mr-1" />}
+                  {quotation.status === "rejected" && <XCircle className="w-3 h-3 mr-1" />}
                   {quotation.status}
                 </Badge>
               </div>

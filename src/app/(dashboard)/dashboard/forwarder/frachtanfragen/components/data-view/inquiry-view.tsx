@@ -4,7 +4,7 @@ import { trpc } from "@/trpc/client";
 import { FreightInquiryTable } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/freight-inquiry-table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import InquiryHeader from "./data-view/inquiry-header";
+import InquiryHeader from "./inquiry-header";
 import { useRouter } from "next/navigation";
 import { DotLoading } from "@/components/ui/dot-loading";
 import { QuotationModal } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/quotation-modal";

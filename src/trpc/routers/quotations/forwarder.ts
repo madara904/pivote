@@ -595,4 +595,113 @@ export const forwarderRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  // Get quotations for a specific inquiry (read-only view)
+  getInquiryQuotations: protectedProcedure
+    .input(z.object({ inquiryId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const { db, session } = ctx;
+      
+      // Get user's organization membership
+      const membershipResult = await db
+        .select({
+          organizationId: organizationMember.organizationId,
+        })
+        .from(organizationMember)
+        .where(eq(organizationMember.userId, session.user.id))
+        .limit(1);
+      
+      if (!membershipResult.length) {
+        throw new Error("Benutzer ist nicht Teil einer Organisation");
+      }
+
+      const membership = membershipResult[0];
+
+      // Get all quotations for this inquiry from this forwarder
+      const quotations = await db
+        .select({
+          id: quotation.id,
+          quotationNumber: quotation.quotationNumber,
+          totalPrice: quotation.totalPrice,
+          currency: quotation.currency,
+          airlineFlight: quotation.airlineFlight,
+          transitTime: quotation.transitTime,
+          validUntil: quotation.validUntil,
+          notes: quotation.notes,
+          terms: quotation.terms,
+          preCarriage: quotation.preCarriage,
+          mainCarriage: quotation.mainCarriage,
+          onCarriage: quotation.onCarriage,
+          additionalCharges: quotation.additionalCharges,
+          status: quotation.status,
+          submittedAt: quotation.submittedAt,
+          respondedAt: quotation.respondedAt,
+          withdrawnAt: quotation.withdrawnAt,
+          createdAt: quotation.createdAt,
+          updatedAt: quotation.updatedAt,
+        })
+        .from(quotation)
+        .where(
+          and(
+            eq(quotation.inquiryId, input.inquiryId),
+            eq(quotation.forwarderOrganizationId, membership.organizationId)
+          )
+        )
+        .orderBy(quotation.createdAt);
+
+      return quotations.map(quotation => ({
+        ...quotation,
+        totalPrice: Number(quotation.totalPrice),
+        preCarriage: Number(quotation.preCarriage),
+        mainCarriage: Number(quotation.mainCarriage),
+        onCarriage: Number(quotation.onCarriage),
+        additionalCharges: Number(quotation.additionalCharges),
+      }));
+    }),
+
+  // Delete draft quotation
+  deleteDraftQuotation: protectedProcedure
+    .input(z.object({ inquiryId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { db, session } = ctx;
+      
+      // Get user's organization membership
+      const membershipResult = await db
+        .select({
+          organizationId: organizationMember.organizationId,
+        })
+        .from(organizationMember)
+        .where(eq(organizationMember.userId, session.user.id))
+        .limit(1);
+      
+      if (!membershipResult.length) {
+        throw new Error("Benutzer ist nicht Teil einer Organisation");
+      }
+
+      const membership = membershipResult[0];
+
+      // Find the draft quotation for this inquiry
+      const existingQuotation = await db
+        .select({ id: quotation.id, status: quotation.status })
+        .from(quotation)
+        .where(
+          and(
+            eq(quotation.inquiryId, input.inquiryId),
+            eq(quotation.forwarderOrganizationId, membership.organizationId),
+            eq(quotation.status, 'draft')
+          )
+        )
+        .limit(1);
+
+      if (!existingQuotation.length) {
+        throw new Error("Kein Entwurf gefunden");
+      }
+
+      // Delete the draft quotation
+      await db
+        .delete(quotation)
+        .where(eq(quotation.id, existingQuotation[0].id));
+
+      return { success: true };
+    }),
 });

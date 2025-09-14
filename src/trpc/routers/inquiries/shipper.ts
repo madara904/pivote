@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
-import { eq, desc, and } from "drizzle-orm";
-import { organization, organizationMember, inquiry, inquiryForwarder, inquiryPackage } from "@/db/schema";
+import { eq, desc, and, ne } from "drizzle-orm";
+import { organization, organizationMember, inquiry, inquiryForwarder, inquiryPackage, quotation } from "@/db/schema";
 import { z } from "zod";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 
@@ -10,8 +10,6 @@ export const shipperRouter = createTRPCRouter({
     const { db } = ctx;
     
     try {
-      console.log('🚀 Getting all forwarders for shipper...');
-      
       // Get all forwarder organizations
       const forwarders = await db.query.organization.findMany({
         where: eq(organization.type, 'forwarder'),
@@ -25,10 +23,8 @@ export const shipperRouter = createTRPCRouter({
         }
       });
       
-      console.log(`📊 Found ${forwarders.length} forwarders`);
       return forwarders;
-    } catch (error) {
-      console.error('Error fetching forwarders:', error);
+    } catch {
       throw new Error('Failed to fetch forwarders');
     }
   }),
@@ -38,8 +34,6 @@ export const shipperRouter = createTRPCRouter({
     const { db, session } = ctx;
     
     try {
-      console.log('🚀 Getting shipper inquiries...');
-      
       // Check and update expired items first
       await checkAndUpdateExpiredItems(db);
       
@@ -50,16 +44,14 @@ export const shipperRouter = createTRPCRouter({
       });
       
       if (!membership?.organization) {
-        console.log('No organization found for user:', session.user.id);
         return [];
       }
 
       if (membership.organization.type !== 'shipper') {
-        console.log('User organization is not a shipper:', membership.organization.type);
         throw new Error("Organisation ist kein Versender");
       }
       
-      // Get inquiries created by this shipper
+      // Get inquiries created by this shipper with quotation data
       const inquiries = await db.query.inquiry.findMany({
         where: eq(inquiry.shipperOrganizationId, membership.organization.id),
         with: {
@@ -81,16 +73,24 @@ export const shipperRouter = createTRPCRouter({
               name: true,
               email: true
             }
+          },
+          quotations: {
+            where: ne(quotation.status, "draft"), // Only submitted quotations
+            columns: {
+              id: true,
+              totalPrice: true,
+              currency: true,
+              status: true
+            },
+            orderBy: [quotation.totalPrice] // Order by price to get the best price first
           }
         },
         orderBy: [desc(inquiry.createdAt)],
         limit: 50
       });
-
-      console.log(`📊 Found ${inquiries.length} inquiries`);
+      
       return inquiries;
-    } catch (error) {
-      console.error('Error fetching shipper inquiries:', error);
+    } catch {
       throw new Error('Failed to fetch inquiries');
     }
   }),
@@ -134,14 +134,6 @@ export const shipperRouter = createTRPCRouter({
       const { db, session } = ctx;
       
       try {
-        console.log('🚀 Creating new inquiry...');
-        console.log('📝 Input data:', {
-          title: input.title,
-          serviceType: input.serviceType,
-          packagesCount: input.packages.length,
-          forwardersCount: input.selectedForwarderIds.length
-        });
-        
         // Get membership first
         const membership = await db.query.organizationMember.findFirst({
           where: eq(organizationMember.userId, session.user.id),
@@ -152,11 +144,8 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Organisation ist kein Versender");
         }
 
-        console.log('🏢 Organization found:', membership.organization.name);
-
         // Generate reference number
         const referenceNumber = `INQ-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-        console.log('🔢 Generated reference number:', referenceNumber);
 
         // Create inquiry
         const inquiryData = {
@@ -176,17 +165,15 @@ export const shipperRouter = createTRPCRouter({
           readyDate: new Date(input.readyDate),
           deliveryDate: input.deliveryDate ? new Date(input.deliveryDate) : null,
           validityDate: input.validityDate ? new Date(input.validityDate) : null,
-          status: 'offen' as const, // Inquiry is sent to forwarders and open for quotations
+          status: 'open' as const, // Inquiry is sent to forwarders and open for quotations
           sentAt: new Date(), // Track when inquiry was sent
           shipperOrganizationId: membership.organization.id,
           createdById: session.user.id
         };
 
-        console.log('💾 Creating inquiry with data:', inquiryData);
         const newInquiry = await db.insert(inquiry).values(inquiryData).returning();
 
         const inquiryId = newInquiry[0].id;
-        console.log('✅ Inquiry created with ID:', inquiryId);
 
         // Create packages
         if (input.packages.length > 0) {
@@ -207,7 +194,6 @@ export const shipperRouter = createTRPCRouter({
             unNumber: pkg.unNumber
           }));
           
-          console.log('📦 Creating packages:', packageData.length);
           await db.insert(inquiryPackage).values(packageData);
         }
 
@@ -219,22 +205,15 @@ export const shipperRouter = createTRPCRouter({
             sentAt: new Date()
           }));
           
-          console.log('📤 Sending to forwarders:', input.selectedForwarderIds.length);
           await db.insert(inquiryForwarder).values(forwarderData);
         }
 
-        console.log(`✅ Inquiry created successfully: ${referenceNumber}`);
         return {
           success: true,
           inquiryId,
           referenceNumber
         };
       } catch (error) {
-        console.error('❌ Error creating inquiry:', error);
-        console.error('Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined
-        });
         throw new Error(`Failed to create inquiry: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }),
@@ -277,8 +256,6 @@ export const shipperRouter = createTRPCRouter({
       const { db, session } = ctx;
       
       try {
-        console.log('🚀 Creating inquiry draft...');
-        
         // Get membership first
         const membership = await db.query.organizationMember.findFirst({
           where: eq(organizationMember.userId, session.user.id),
@@ -346,7 +323,6 @@ export const shipperRouter = createTRPCRouter({
           referenceNumber
         };
       } catch (error) {
-        console.error('❌ Error creating inquiry draft:', error);
         throw new Error(`Failed to create inquiry draft: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }),
@@ -391,11 +367,11 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Frachtanfrage kann nur im Entwurfsstatus gesendet werden");
         }
 
-        // Update inquiry status to offen and set sentAt
+        // Update inquiry status to open and set sentAt
         await db
           .update(inquiry)
           .set({
-            status: 'offen',
+            status: 'open',
             sentAt: new Date()
           })
           .where(eq(inquiry.id, input.inquiryId));
@@ -411,7 +387,6 @@ export const shipperRouter = createTRPCRouter({
 
         return { success: true };
       } catch (error) {
-        console.error('❌ Error sending inquiry to forwarders:', error);
         throw new Error(`Failed to send inquiry: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }),
@@ -449,7 +424,7 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
         }
 
-        if (inquiryResult[0].status !== 'offen') {
+        if (inquiryResult[0].status !== 'open') {
           throw new Error("Frachtanfrage kann nur im offenen Status geschlossen werden");
         }
 
@@ -464,7 +439,6 @@ export const shipperRouter = createTRPCRouter({
 
         return { success: true };
       } catch (error) {
-        console.error('❌ Error closing inquiry:', error);
         throw new Error(`Failed to close inquiry: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }),
@@ -517,7 +491,6 @@ export const shipperRouter = createTRPCRouter({
 
         return { success: true };
       } catch (error) {
-        console.error('❌ Error cancelling inquiry:', error);
         throw new Error(`Failed to cancel inquiry: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     })

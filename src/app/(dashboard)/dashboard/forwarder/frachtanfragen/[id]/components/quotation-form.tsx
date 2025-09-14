@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -17,7 +17,8 @@ import { CalendarIcon, Clock, Plane, Euro } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { useRouter } from "next/navigation"
 
 const quotationFormSchema = z.object({
   currency: z.string().min(1, "Währung ist erforderlich"),
@@ -48,8 +49,8 @@ interface QuotationFormProps {
 }
 
 export default function QuotationForm({ inquiryId, onSuccess, onCancel }: QuotationFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const utils = trpc.useUtils()
+  const router = useRouter()
 
   // Get existing quotation if it exists
   const { data: quotationCheck, isLoading } = trpc.quotation.forwarder.checkQuotationExists.useQuery({ inquiryId })
@@ -91,26 +92,59 @@ export default function QuotationForm({ inquiryId, onSuccess, onCancel }: Quotat
   }
 
   const saveDraftMutation = trpc.quotation.forwarder.saveDraftQuotation.useMutation({
-    onSuccess: (data) => {
-      toast.success(data.isUpdate ? "Entwurf erfolgreich gespeichert!" : "Entwurf erfolgreich erstellt!")
-      // Invalidate relevant caches
-      utils.quotation.forwarder.checkQuotationExists.invalidate({ inquiryId })
-      utils.inquiry.forwarder.getInquiryDetail.invalidate({ inquiryId })
-      utils.inquiry.forwarder.getMyInquiriesFast.invalidate()
-      utils.quotation.forwarder.listQuotations.invalidate()
-      if (data.quotationId) {
-        utils.quotation.forwarder.getQuotation.invalidate({ quotationId: data.quotationId })
-      }
+    onMutate: async (newDraftData) => {
+      // Cancel any outgoing refetches to avoid overwriting our optimistic update
+      await utils.quotation.forwarder.checkQuotationExists.cancel({ inquiryId })
+      
+      // Snapshot the previous value
+      const previousQuotationCheck = utils.quotation.forwarder.checkQuotationExists.getData({ inquiryId })
+      
+      // Optimistically update to show draft exists
+      utils.quotation.forwarder.checkQuotationExists.setData({ inquiryId }, (old) => {
+        if (!old) return old
+        
+        const optimisticQuotation = {
+          id: existingQuotation?.id || `temp-${Date.now()}`,
+          quotationNumber: existingQuotation?.quotationNumber || `QUO-${Date.now()}`,
+          totalPrice: newDraftData.totalPrice.toString(),
+          currency: newDraftData.currency || "EUR",
+          airlineFlight: newDraftData.airlineFlight || null,
+          transitTime: newDraftData.transitTime || null,
+          validUntil: newDraftData.validUntil,
+          notes: newDraftData.notes || null,
+          terms: newDraftData.terms || null,
+          preCarriage: (newDraftData.preCarriage || 0).toString(),
+          mainCarriage: (newDraftData.mainCarriage || 0).toString(),
+          onCarriage: (newDraftData.onCarriage || 0).toString(),
+          additionalCharges: (newDraftData.additionalCharges || 0).toString(),
+          status: 'draft' as const,
+          submittedAt: null,
+          respondedAt: null,
+          withdrawnAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        
+        return {
+          ...old,
+          exists: true,
+          quotation: optimisticQuotation
+        }
+      })
+      
+      // Return context for potential rollback
+      return { previousQuotationCheck }
     },
-    onError: (error) => {
+    onError: (error, newDraftData, context) => {
+      // Rollback on error
+      if (context?.previousQuotationCheck) {
+        utils.quotation.forwarder.checkQuotationExists.setData({ inquiryId }, context.previousQuotationCheck)
+      }
       toast.error(`Fehler: ${error.message}`)
     },
-  })
-
-  const createMutation = trpc.quotation.forwarder.createQuotation.useMutation({
     onSuccess: (data) => {
-      toast.success(data.isUpdate ? "Angebot erfolgreich eingereicht!" : "Angebot erfolgreich erstellt und eingereicht!")
-      // Invalidate relevant caches
+      toast.success(data.isUpdate ? "Entwurf erfolgreich gespeichert!" : "Entwurf erfolgreich erstellt!")
+      // Invalidate relevant caches to ensure consistency
       utils.quotation.forwarder.checkQuotationExists.invalidate({ inquiryId })
       utils.inquiry.forwarder.getInquiryDetail.invalidate({ inquiryId })
       utils.inquiry.forwarder.getMyInquiriesFast.invalidate()
@@ -120,46 +154,138 @@ export default function QuotationForm({ inquiryId, onSuccess, onCancel }: Quotat
       }
       onSuccess?.()
     },
-    onError: (error) => {
+  })
+
+  const deleteDraftMutation = trpc.quotation.forwarder.deleteDraftQuotation.useMutation({
+    onMutate: async () => {
+      // Cancel any outgoing refetches to avoid overwriting our optimistic update
+      await utils.quotation.forwarder.checkQuotationExists.cancel({ inquiryId })
+      
+      // Snapshot the previous value
+      const previousQuotationCheck = utils.quotation.forwarder.checkQuotationExists.getData({ inquiryId })
+      
+      // Optimistically update to show no draft exists
+      utils.quotation.forwarder.checkQuotationExists.setData({ inquiryId }, (old) => {
+        if (!old) return old
+        
+        return {
+          ...old,
+          exists: false,
+          quotation: null as unknown as typeof old.quotation
+        }
+      })
+      
+      // Return context for potential rollback
+      return { previousQuotationCheck }
+    },
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousQuotationCheck) {
+        utils.quotation.forwarder.checkQuotationExists.setData({ inquiryId }, context.previousQuotationCheck)
+      }
       toast.error(`Fehler: ${error.message}`)
+    },
+    onSuccess: () => {
+      toast.success("Entwurf erfolgreich gelöscht!")
+      // Invalidate relevant caches to ensure consistency
+      utils.quotation.forwarder.checkQuotationExists.invalidate({ inquiryId })
+      utils.inquiry.forwarder.getInquiryDetail.invalidate({ inquiryId })
+      utils.inquiry.forwarder.getMyInquiriesFast.invalidate()
+      utils.quotation.forwarder.listQuotations.invalidate()
+      onSuccess?.()
+    },
+  })
+
+  const createMutation = trpc.quotation.forwarder.createQuotation.useMutation({
+    onMutate: async (newQuotationData) => {
+      // Cancel any outgoing refetches to avoid overwriting our optimistic update
+      await utils.quotation.forwarder.checkQuotationExists.cancel({ inquiryId })
+      
+      // Snapshot the previous value
+      const previousQuotationCheck = utils.quotation.forwarder.checkQuotationExists.getData({ inquiryId })
+      
+      // Optimistically update to show quotation is submitted
+      utils.quotation.forwarder.checkQuotationExists.setData({ inquiryId }, (old) => {
+        if (!old) return old
+        
+        const optimisticQuotation = {
+          id: existingQuotation?.id || `temp-${Date.now()}`,
+          quotationNumber: existingQuotation?.quotationNumber || `QUO-${Date.now()}`,
+          totalPrice: newQuotationData.totalPrice.toString(),
+          currency: newQuotationData.currency || "EUR",
+          airlineFlight: newQuotationData.airlineFlight || null,
+          transitTime: newQuotationData.transitTime || null,
+          validUntil: newQuotationData.validUntil,
+          notes: newQuotationData.notes || null,
+          terms: newQuotationData.terms || null,
+          preCarriage: (newQuotationData.preCarriage || 0).toString(),
+          mainCarriage: (newQuotationData.mainCarriage || 0).toString(),
+          onCarriage: (newQuotationData.onCarriage || 0).toString(),
+          additionalCharges: (newQuotationData.additionalCharges || 0).toString(),
+          status: 'submitted' as const,
+          submittedAt: new Date(),
+          respondedAt: null,
+          withdrawnAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        
+        return {
+          ...old,
+          exists: true,
+          quotation: optimisticQuotation
+        }
+      })
+      
+      // Return context for potential rollback
+      return { previousQuotationCheck }
+    },
+    onError: (error, newQuotationData, context) => {
+      // Rollback on error
+      if (context?.previousQuotationCheck) {
+        utils.quotation.forwarder.checkQuotationExists.setData({ inquiryId }, context.previousQuotationCheck)
+      }
+      toast.error(`Fehler: ${error.message}`)
+    },
+    onSuccess: (data) => {
+      toast.success(data.isUpdate ? "Angebot erfolgreich eingereicht!" : "Angebot erfolgreich erstellt und eingereicht!")
+      // Invalidate relevant caches to ensure consistency
+      utils.quotation.forwarder.checkQuotationExists.invalidate({ inquiryId })
+      utils.inquiry.forwarder.getInquiryDetail.invalidate({ inquiryId })
+      utils.inquiry.forwarder.getMyInquiriesFast.invalidate()
+      utils.quotation.forwarder.listQuotations.invalidate()
+      if (data.quotationId) {
+        utils.quotation.forwarder.getQuotation.invalidate({ quotationId: data.quotationId })
+      }
+      onSuccess?.()
     },
   })
 
 
   const onSaveDraft = async (data: QuotationFormData) => {
-    setIsSubmitting(true)
-    try {
-      // Calculate total price
-      const totalPrice = data.preCarriage + data.mainCarriage + data.onCarriage + data.additionalCharges
-      
-      await saveDraftMutation.mutateAsync({
-        inquiryId,
-        totalPrice,
-        ...data,
-      })
-    } catch (error) {
-      console.error("Save draft error:", error)
-    } finally {
-      setIsSubmitting(false)
-    }
+    // Calculate total price
+    const totalPrice = data.preCarriage + data.mainCarriage + data.onCarriage + data.additionalCharges
+    
+    saveDraftMutation.mutate({
+      inquiryId,
+      totalPrice,
+      ...data,
+    })
+  }
+
+  const onDeleteDraft = async () => {
+    deleteDraftMutation.mutate({ inquiryId })
   }
 
   const onSubmit = async (data: QuotationFormData) => {
-    setIsSubmitting(true)
-    try {
-      // Calculate total price
-      const totalPrice = data.preCarriage + data.mainCarriage + data.onCarriage + data.additionalCharges
-      
-      await createMutation.mutateAsync({
-        inquiryId,
-        totalPrice,
-        ...data,
-      })
-    } catch (error) {
-      console.error("Submission error:", error)
-    } finally {
-      setIsSubmitting(false)
-    }
+    // Calculate total price
+    const totalPrice = data.preCarriage + data.mainCarriage + data.onCarriage + data.additionalCharges
+    
+    createMutation.mutate({
+      inquiryId,
+      totalPrice,
+      ...data,
+    })
   }
 
   // Calculate current total for display
@@ -168,6 +294,11 @@ export default function QuotationForm({ inquiryId, onSuccess, onCancel }: Quotat
   const onCarriage = form.watch("onCarriage") || 0
   const additionalCharges = form.watch("additionalCharges") || 0
   const currentTotal = preCarriage + mainCarriage + onCarriage + additionalCharges
+
+  // Get loading states from mutations
+  const isSavingDraft = saveDraftMutation.isPending
+  const isDeletingDraft = deleteDraftMutation.isPending
+  const isSubmittingQuotation = createMutation.isPending
 
   if (isLoading) {
     return (
@@ -389,60 +520,68 @@ export default function QuotationForm({ inquiryId, onSuccess, onCancel }: Quotat
             Abbrechen
           </Button>
 
-          {/* Save Draft Button */}
-          <Button 
-            type="button" 
-            variant="outline" 
-            disabled={currentTotal === 0 || isSubmitting}
-            onClick={form.handleSubmit(onSaveDraft)}
-          >
-            {isSubmitting ? (
-              <>
-                <Clock className="mr-2 h-4 w-4 animate-spin" />
-                Speichere...
-              </>
-            ) : (
-              'Entwurf speichern'
-            )}
-          </Button>
+          {/* Save Draft / Delete Draft Button */}
+          {isEditMode && existingQuotation ? (
+            <ConfirmationDialog
+              title="Entwurf löschen"
+              description="Möchten Sie den Entwurf wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+              confirmText="Löschen"
+              variant="destructive"
+              onConfirm={onDeleteDraft}
+              disabled={isDeletingDraft}
+              loading={isDeletingDraft}
+              loadingText="Lösche..."
+            >
+              <Button 
+                type="button" 
+                variant="destructive" 
+                disabled={isDeletingDraft}
+              >
+                {isDeletingDraft ? (
+                  <>
+                    <Clock className="mr-2 h-4 w-4 animate-spin" />
+                    Lösche...
+                  </>
+                ) : (
+                  'Entwurf löschen'
+                )}
+              </Button>
+            </ConfirmationDialog>
+          ) : (
+            <Button 
+              type="button" 
+              variant="outline" 
+              disabled={currentTotal === 0 || isSavingDraft}
+              onClick={form.handleSubmit(onSaveDraft)}
+            >
+              {isSavingDraft ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4 animate-spin" />
+                  Speichere...
+                </>
+              ) : (
+                'Entwurf speichern'
+              )}
+            </Button>
+          )}
 
           {/* Create/Submit Button */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button type="button" disabled={currentTotal === 0 || isSubmitting}>
-                {isEditMode ? 'Angebot einreichen' : 'Angebot erstellen & einreichen'}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Bestätigung
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {isEditMode 
-                    ? 'Möchten Sie das Angebot wirklich einreichen? Es wird dann an den Versender gesendet.'
-                    : 'Möchten Sie das Angebot wirklich erstellen und einreichen? Es wird dann an den Versender gesendet.'
-                  }
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={form.handleSubmit(onSubmit)}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Clock className="mr-2 h-4 w-4 animate-spin" />
-                      {isEditMode ? 'Reiche ein...' : 'Erstelle & reiche ein...'}
-                    </>
-                  ) : (
-                    isEditMode ? 'Einreichen' : 'Erstellen & einreichen'
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <ConfirmationDialog
+            title="Bestätigung"
+            description={isEditMode 
+              ? 'Möchten Sie das Angebot wirklich einreichen? Es wird dann an den Versender gesendet.'
+              : 'Möchten Sie das Angebot wirklich erstellen und einreichen? Es wird dann an den Versender gesendet.'
+            }
+            confirmText={isEditMode ? 'Einreichen' : 'Erstellen & einreichen'}
+            onConfirm={form.handleSubmit(onSubmit)}
+            disabled={currentTotal === 0 || isSubmittingQuotation}
+            loading={isSubmittingQuotation}
+            loadingText={isEditMode ? 'Reiche ein...' : 'Erstelle & reiche ein...'}
+          >
+            <Button type="button" disabled={currentTotal === 0 || isSubmittingQuotation}>
+              {isEditMode ? 'Angebot einreichen' : 'Angebot erstellen & einreichen'}
+            </Button>
+          </ConfirmationDialog>
         </div>
       </form>
     </div>

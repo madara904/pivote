@@ -142,7 +142,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
 
       await createInquiry.mutateAsync(inquiryData)
     } catch (error) {
-      console.error("Error creating inquiry:", error)
+      // Handle inquiry creation error
     } finally {
       setIsSubmitting(false)
     }

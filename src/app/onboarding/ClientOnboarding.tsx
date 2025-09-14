@@ -131,7 +131,7 @@ export default function OnboardingForm() {
       try {
         await authClient.getSession({ query: { disableCookieCache: true } });
       } catch (error) {
-        console.error("Failed to refresh session:", error);
+        // Handle session refresh error
       }
       
       // Use window.location.href for a hard redirect to ensure fresh session

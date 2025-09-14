@@ -51,14 +51,14 @@ export const DashboardUserButton = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-full p-1 hover:bg-secondary cursor-pointer">
+      <DropdownMenuTrigger className="border rounded-full p-1 hover:bg-secondary cursor-pointer">
         {data.user.image ? (
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-12 w-12">
             <AvatarImage src={data.user.image} />
           </Avatar>
         ) : (
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="text-xs">{getInitials(data.user.name)}</AvatarFallback>
+            <AvatarFallback className="text-sm">{getInitials(data.user.name)}</AvatarFallback>
           </Avatar>
         )}
       </DropdownMenuTrigger>

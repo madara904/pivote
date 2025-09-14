@@ -28,11 +28,12 @@ export const invitationStatusEnum = pgEnum("invitation_status", [
 ]);
 export const inquiryStatusEnum = pgEnum("inquiry_status", [
   "draft",        // Shipper creating inquiry
-  "offen",        // Sent to forwarders, open for quotations
+  "open",         // Sent to forwarders, open for quotations
   "awarded",      // Shipper accepted a quotation
   "closed",       // All quotations rejected or inquiry manually closed
   "cancelled",    // Inquiry cancelled by shipper
   "expired",      // Inquiry expired by validity date
+  "rejected",     // Rejected by forwarder (set by forwarder)
 ]);
 export const quotationStatusEnum = pgEnum("quotation_status", [
   "draft",        // Forwarder creating quotation
@@ -309,6 +310,7 @@ export const inquiryForwarder = pgTable("inquiry_forwarder", {
     .$defaultFn(() => new Date())
     .notNull(),
   viewedAt: timestamp("viewed_at"),
+  rejectedAt: timestamp("rejected_at"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

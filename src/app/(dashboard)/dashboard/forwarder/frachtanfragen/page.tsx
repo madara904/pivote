@@ -1,6 +1,6 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
 import { Separator } from "@/components/ui/separator";
-import InquiryView from "./components/inquiry-view";
+import InquiryView from "./components/data-view/inquiry-view";
 
 export default async function ForwarderInquiriesPage() {
 await requireForwarderAccess();
@@ -13,7 +13,7 @@ await requireForwarderAccess();
       <div className="p-4">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-2xl text-primary font-bold tracking-tight">
               Frachtanfragen
             </h1>
           </div>

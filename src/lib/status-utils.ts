@@ -19,6 +19,11 @@ export type QuotationStatus =
   | "withdrawn" 
   | "expired";
 
+export type ForwarderResponseStatus = 
+  | "pending" 
+  | "rejected" 
+  | "quoted";
+
 // Helper function to safely cast string to InquiryStatus
 export function toInquiryStatus(status: string): InquiryStatus {
   const validStatuses: InquiryStatus[] = ["draft", "open", "awarded", "closed", "cancelled", "expired", "rejected"];
@@ -35,17 +40,23 @@ export function toQuotationStatus(status: string | null | undefined): QuotationS
 export interface StatusContext {
   inquiryStatus: InquiryStatus;
   quotationStatus?: QuotationStatus | null;
+  responseStatus?: ForwarderResponseStatus | null;
 }
 
 /**
  * Determines if an inquiry is in a state where quotations can be created
  */
 export function canCreateQuotation(context: StatusContext): boolean {
-  const { inquiryStatus, quotationStatus } = context;
+  const { inquiryStatus, quotationStatus, responseStatus } = context;
   
   // Can't create quotation if inquiry is rejected, closed, cancelled, or expired
   if (inquiryStatus === "rejected" || inquiryStatus === "closed" || 
       inquiryStatus === "cancelled" || inquiryStatus === "expired") {
+    return false;
+  }
+  
+  // Can't create quotation if forwarder already rejected the inquiry
+  if (responseStatus === "rejected") {
     return false;
   }
   
@@ -62,11 +73,16 @@ export function canCreateQuotation(context: StatusContext): boolean {
  * Determines if an inquiry can be rejected by forwarder
  */
 export function canRejectInquiry(context: StatusContext): boolean {
-  const { inquiryStatus, quotationStatus } = context;
+  const { inquiryStatus, quotationStatus, responseStatus } = context;
   
   // Can't reject if inquiry is already rejected, closed, cancelled, or expired
   if (inquiryStatus === "rejected" || inquiryStatus === "closed" || 
       inquiryStatus === "cancelled" || inquiryStatus === "expired") {
+    return false;
+  }
+  
+  // Can't reject if already rejected or quoted
+  if (responseStatus === "rejected" || responseStatus === "quoted") {
     return false;
   }
   
@@ -82,7 +98,9 @@ export function canRejectInquiry(context: StatusContext): boolean {
  * Determines if an inquiry is in a rejected state (either inquiry or quotation rejected)
  */
 export function isRejected(context: StatusContext): boolean {
-  return context.inquiryStatus === "rejected" || context.quotationStatus === "rejected";
+  return context.inquiryStatus === "rejected" || 
+         context.quotationStatus === "rejected" || 
+         context.responseStatus === "rejected";
 }
 
 /**
@@ -97,13 +115,31 @@ export function isClosed(context: StatusContext): boolean {
 
 /**
  * Gets the display status for UI components
- * Priority: inquiry rejected > quotation rejected > inquiry status
+ * Priority: forwarder rejected > awarded cases > quotation rejected > inquiry status
  */
 export function getDisplayStatus(context: StatusContext): InquiryStatus {
+  // Forwarder rejected the inquiry
+  if (context.responseStatus === "rejected") {
+    return "rejected";
+  }
+  
+  // Inquiry was awarded - check quotation status
+  if (context.inquiryStatus === "awarded") {
+    if (context.quotationStatus === "accepted") {
+      return "awarded"; // This forwarder won
+    } else if (context.quotationStatus === "rejected") {
+      return "rejected"; // This forwarder lost
+    } else {
+      return "awarded"; // Didn't participate but inquiry was awarded
+    }
+  }
+  
+  // Master inquiry rejected
   if (context.inquiryStatus === "rejected") {
     return "rejected";
   }
   
+  // Quotation rejected (but inquiry not awarded)
   if (context.quotationStatus === "rejected") {
     return "rejected";
   }

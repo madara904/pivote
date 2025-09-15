@@ -121,6 +121,8 @@ This document outlines the comprehensive business logic implementation for the f
 - ✅ **Inquiry Rejection**: Forwarders can reject inquiries (decline to quote)
 - ✅ **View Tracking**: System tracks when forwarders view inquiries
 - ✅ **Access Control**: Forwarders can only see inquiries sent to them
+- ✅ **Response Status Tracking**: Individual forwarder responses tracked separately
+- ✅ **No Master Inquiry Updates**: Forwarder actions don't affect master inquiry status
 
 ## Database Schema Changes
 
@@ -128,7 +130,7 @@ This document outlines the comprehensive business logic implementation for the f
 ```sql
 -- Inquiry Status
 "draft"        -- Shipper creating inquiry
-"offen"        -- Sent to forwarders, open for quotations
+"open"         -- Sent to forwarders, open for quotations
 "awarded"      -- Shipper accepted a quotation
 "closed"       -- All quotations rejected or inquiry manually closed
 "cancelled"    -- Inquiry cancelled by shipper
@@ -141,6 +143,11 @@ This document outlines the comprehensive business logic implementation for the f
 "rejected"     -- Shipper rejected quotation
 "withdrawn"    -- Forwarder withdrew quotation
 "expired"      -- Quotation expired by validUntil date
+
+-- Forwarder Response Status (NEW)
+"pending"      -- Forwarder hasn't responded yet
+"rejected"     -- Forwarder declined to quote
+"quoted"       -- Forwarder submitted a quotation
 ```
 
 ### New Fields Added
@@ -148,14 +155,14 @@ This document outlines the comprehensive business logic implementation for the f
 - `inquiry.closedAt` - When inquiry was closed/awarded
 - `quotation.submittedAt` - When quotation was submitted (not default)
 - `quotation.withdrawnAt` - When forwarder withdrew quotation
+- `inquiry_forwarder.responseStatus` - Individual forwarder response status (NEW)
 
 ## New tRPC Procedures
 
 ### Shipper Procedures
 - `createInquiryDraft` - Create inquiry as draft
 - `sendInquiryToForwarders` - Send draft inquiry to forwarders
-- `closeInquiry` - Close inquiry manually
-- `cancelInquiry` - Cancel inquiry
+- `cancelInquiry` - Cancel inquiry (only if no quotations exist)
 
 ### Forwarder Procedures
 - `submitQuotation` - Submit draft quotation
@@ -197,6 +204,9 @@ This document outlines the comprehensive business logic implementation for the f
 - ✅ Expired items are automatically updated
 - ✅ Closed/awarded inquiries cannot be reopened
 - ✅ Cancelled inquiries cannot be reopened
+- ✅ **NEW**: Shippers can only cancel inquiries if no quotations exist
+- ✅ **NEW**: Forwarder responses tracked individually, don't affect master inquiry
+- ✅ **NEW**: No manual inquiry closing - only automatic based on business rules
 
 ## Migration Required
 

@@ -65,6 +65,15 @@ export const shipperRouter = createTRPCRouter({
                   email: true
                 }
               }
+            },
+            columns: {
+              id: true,
+              forwarderOrganizationId: true,
+              sentAt: true,
+              viewedAt: true,
+              rejectedAt: true,
+              responseStatus: true,
+              createdAt: true
             }
           },
           createdBy: {
@@ -88,8 +97,26 @@ export const shipperRouter = createTRPCRouter({
         orderBy: [desc(inquiry.createdAt)],
         limit: 50
       });
+
+      // Calculate forwarder response summary for each inquiry
+      const inquiriesWithResponseSummary = inquiries.map(inquiry => {
+        const totalForwarders = inquiry.sentToForwarders.length;
+        const pendingResponses = inquiry.sentToForwarders.filter(f => f.responseStatus === "pending").length;
+        const rejectedResponses = inquiry.sentToForwarders.filter(f => f.responseStatus === "rejected").length;
+        const quotedResponses = inquiry.sentToForwarders.filter(f => f.responseStatus === "quoted").length;
+        
+        return {
+          ...inquiry,
+          forwarderResponseSummary: {
+            total: totalForwarders,
+            pending: pendingResponses,
+            rejected: rejectedResponses,
+            quoted: quotedResponses
+          }
+        };
+      });
       
-      return inquiries;
+      return inquiriesWithResponseSummary;
     } catch {
       throw new Error('Failed to fetch inquiries');
     }
@@ -391,58 +418,6 @@ export const shipperRouter = createTRPCRouter({
       }
     }),
 
-  // Close inquiry (when all quotations are rejected)
-  closeInquiry: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      
-      try {
-        // Get membership first
-        const membership = await db.query.organizationMember.findFirst({
-          where: eq(organizationMember.userId, session.user.id),
-          with: { organization: true }
-        });
-        
-        if (!membership?.organization || membership.organization.type !== 'shipper') {
-          throw new Error("Organisation ist kein Versender");
-        }
-
-        // Verify inquiry exists and belongs to this shipper
-        const inquiryResult = await db
-          .select({ id: inquiry.id, status: inquiry.status })
-          .from(inquiry)
-          .where(
-            and(
-              eq(inquiry.id, input.inquiryId),
-              eq(inquiry.shipperOrganizationId, membership.organization.id)
-            )
-          )
-          .limit(1);
-
-        if (!inquiryResult.length) {
-          throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
-        }
-
-        if (inquiryResult[0].status !== 'open') {
-          throw new Error("Frachtanfrage kann nur im offenen Status geschlossen werden");
-        }
-
-        // Update inquiry status to closed
-        await db
-          .update(inquiry)
-          .set({
-            status: 'closed',
-            closedAt: new Date()
-          })
-          .where(eq(inquiry.id, input.inquiryId));
-
-        return { success: true };
-      } catch (error) {
-        throw new Error(`Failed to close inquiry: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }),
-
   // Cancel inquiry
   cancelInquiry: protectedProcedure
     .input(z.object({ inquiryId: z.string() }))
@@ -476,8 +451,15 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
         }
 
-        if (inquiryResult[0].status === 'awarded') {
-          throw new Error("Frachtanfrage kann nicht storniert werden, da bereits ein Angebot angenommen wurde");
+        // Check if any quotations exist for this inquiry
+        const hasQuotations = await db
+          .select({ id: quotation.id })
+          .from(quotation)
+          .where(eq(quotation.inquiryId, input.inquiryId))
+          .limit(1);
+
+        if (hasQuotations.length > 0) {
+          throw new Error("Frachtanfrage kann nicht storniert werden, da bereits Angebote eingegangen sind");
         }
 
         // Update inquiry status to cancelled

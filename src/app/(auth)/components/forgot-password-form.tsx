@@ -200,7 +200,7 @@ export const ForgotPasswordForm = () => {
               <div className="flex flex-col gap-6">
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold">Passwort vergessen?</h2>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.
                   </p>
                 </div>

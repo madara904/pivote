@@ -7,6 +7,8 @@ interface FreightInquiry {
   id: string
   referenceNumber: string
   status: string
+  quotationStatus?: string | null
+  responseStatus?: string | null
   sentAt?: Date
   responseDate?: Date
   quotedPrice?: number
@@ -19,6 +21,12 @@ interface FreightInquiry {
   unit?: string
   pieces?: number
   shipperName: string
+  forwarderResponses?: {
+    total: number
+    pending: number
+    rejected: number
+    quoted: number
+  }
   origin: {
     code: string
     city?: string
@@ -52,26 +60,28 @@ export function FreightInquiryTable({
 }: FreightInquiryTableProps) {
   if (inquiries.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p className="text-lg font-medium">Keine Frachtanfragen gefunden</p>
-        <p className="text-sm">Erstellen Sie Ihre erste Frachtanfrage über den &quot;Neue Anfrage&quot; Tab.</p>
+      <div className="container mx-auto px-4">
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-lg font-medium">Keine Frachtanfragen gefunden</p>
+          <p className="text-sm">Erstellen Sie Ihre erste Frachtanfrage über den &quot;Neue Anfrage&quot; Tab.</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {inquiries.map((inquiry) => (
-        <FreightInquiryCard
-          key={inquiry.id}
-          inquiry={inquiry}
-          onSendReminder={onSendReminder}
-          onCreateQuote={onCreateQuote}
-          onViewInquiry={onViewInquiry}
-          onViewQuote={onViewQuote}
-          onRejectInquiry={onRejectInquiry}
-        />
-      ))}
-    </div>
+      <div className={cn("space-y-6", className)}>
+        {inquiries.map((inquiry) => (
+          <FreightInquiryCard
+            key={inquiry.id}
+            inquiry={inquiry}
+            onSendReminder={onSendReminder}
+            onCreateQuote={onCreateQuote}
+            onViewInquiry={onViewInquiry}
+            onViewQuote={onViewQuote}
+            onRejectInquiry={onRejectInquiry}
+          />
+        ))}
+      </div>
   )
 }

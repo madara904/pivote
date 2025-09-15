@@ -26,12 +26,12 @@ const statusConfig = {
   },
   "quoted": {
     variant: "default" as const,
-    className: "bg-green-100 text-green-700 hover:bg-green-100",
+    className: "bg-primary-100 text-primary-700 hover:bg-primary-100",
     label: "Angebot erhalten"
   },
   "awarded": {
     variant: "default" as const,
-    className: "bg-orange-100 text-orange-700 hover:bg-orange-100",
+    className: "bg-green-200 text-green-700 hover:bg-green-200",
     label: "Beauftragt"
   },
   "closed": {

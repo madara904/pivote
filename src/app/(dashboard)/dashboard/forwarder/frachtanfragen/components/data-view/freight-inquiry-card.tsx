@@ -17,6 +17,7 @@ interface FreightInquiryCardProps {
     referenceNumber: string
     status: string
     quotationStatus?: string | null
+    responseStatus?: string | null
     sentAt?: Date
     responseDate?: Date
     quotedPrice?: number
@@ -29,6 +30,12 @@ interface FreightInquiryCardProps {
     unit?: string
     pieces?: number
     shipperName: string
+    forwarderResponses?: {
+      total: number
+      pending: number
+      rejected: number
+      quoted: number
+    }
     origin: {
       code: string
       city?: string
@@ -78,7 +85,8 @@ export function FreightInquiryCard({
 
   const context: StatusContext = {
     inquiryStatus: toInquiryStatus(inquiry.status),
-    quotationStatus: toQuotationStatus(inquiry.quotationStatus)
+    quotationStatus: toQuotationStatus(inquiry.quotationStatus),
+    responseStatus: inquiry.responseStatus as any
   };
   
   const displayStatus = getDisplayStatus(context)
@@ -91,6 +99,22 @@ export function FreightInquiryCard({
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
               <h3 className="font-bold text-base text-primary">{inquiry.referenceNumber}</h3>
               <StatusBadge status={displayStatus} />
+              {/* Forwarder Response Summary - only show for shipper view */}
+              {inquiry.forwarderResponses && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                    {inquiry.forwarderResponses.quoted} Angebote
+                  </span>
+                  <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full">
+                    {inquiry.forwarderResponses.pending} Ausstehend
+                  </span>
+                  {inquiry.forwarderResponses.rejected > 0 && (
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full">
+                      {inquiry.forwarderResponses.rejected} Abgelehnt
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
@@ -161,6 +185,7 @@ export function FreightInquiryCard({
             <InquiryActions
               status={inquiry.status}
               quotationStatus={inquiry.quotationStatus}
+              responseStatus={inquiry.responseStatus}
               inquiryId={inquiry.id}
               onSendReminder={onSendReminder}
               onCreateQuote={onCreateQuote}

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { formatGermanDate } from "@/lib/date-utils"
 import { 
   Euro, 
   Calendar, 
@@ -285,7 +286,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                         <Calendar className="h-4 w-4" />
                         Gültigkeitsdaten
                       </h4>
-                      <p>Gültig bis: {selectedQuotation.validUntil.toLocaleDateString('de-DE')}</p>
+                      <p>Gültig bis: {formatGermanDate(selectedQuotation.validUntil)}</p>
                       {selectedQuotation.transitTime && (
                         <p>Transitzeit: {selectedQuotation.transitTime} Tage</p>
                       )}

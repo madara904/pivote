@@ -50,7 +50,7 @@ const ShipperInquiryView = () => {
     ...inquiry,
     sentToForwarders: inquiry.sentToForwarders.map(forwarder => ({
       ...forwarder,
-      viewedAt: forwarder.viewedAt || undefined
+      viewedAt: forwarder.viewedAt ?? null
     }))
   }))
 

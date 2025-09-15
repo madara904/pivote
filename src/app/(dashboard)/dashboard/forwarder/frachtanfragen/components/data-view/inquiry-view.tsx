@@ -15,9 +15,8 @@ const InquiryView = () => {
   const [selectedInquiryReference, setSelectedInquiryReference] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
-  // Use useSuspenseQuery correctly - it returns [data, query] tuple in tRPC v11
   const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
-    staleTime: 1000, // 1 second 
+    staleTime: 1, // 1 second 
   });
 
   const handleSendReminder = (inquiryId: string) => {
@@ -69,6 +68,7 @@ const InquiryView = () => {
       referenceNumber: item.inquiry.referenceNumber,
       status: item.inquiry.status, 
       quotationStatus: item.quotationStatus, 
+      responseStatus: item.responseStatus,
       sentAt: item.sentAt,
       responseDate: item.viewedAt || undefined,
       quotedPrice: item.quotationPrice ? Number(item.quotationPrice) : undefined,

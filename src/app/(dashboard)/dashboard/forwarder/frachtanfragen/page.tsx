@@ -3,21 +3,9 @@ import { Separator } from "@/components/ui/separator";
 import InquiryView from "./components/data-view/inquiry-view";
 import { HydrateClient, trpc } from "@/trpc/server";
 import { Suspense } from "react";
-import { DotLoading } from "@/components/ui/dot-loading";
+import { InquiryLoadingState } from "./components/inquiry-loading-state";
 
-// Loading fallback component
-function InquiryViewFallback() {
-  return (
-    <div className="flex-1 flex items-center justify-center py-20">
-      <div className="text-center space-y-2">
-        <DotLoading size="md" />
-        <p className="text-center py-8 text-muted-foreground">
-          Lade Frachtanfragen
-        </p>
-      </div>
-    </div>
-  );
-}
+
 
 export default async function ForwarderInquiriesPage() {
   await requireForwarderAccess();
@@ -38,7 +26,7 @@ export default async function ForwarderInquiriesPage() {
         <Separator />
       </div>
       <HydrateClient>
-        <Suspense fallback={<InquiryViewFallback />}>
+        <Suspense fallback={<InquiryLoadingState text="Lade Frachtanfragen" />}>
           <InquiryView />
         </Suspense>
       </HydrateClient>

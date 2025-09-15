@@ -18,7 +18,6 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
-import { useRouter } from "next/navigation"
 
 const quotationFormSchema = z.object({
   currency: z.string().min(1, "Währung ist erforderlich"),
@@ -50,10 +49,9 @@ interface QuotationFormProps {
 
 export default function QuotationForm({ inquiryId, onSuccess, onCancel }: QuotationFormProps) {
   const utils = trpc.useUtils()
-  const router = useRouter()
 
   // Get existing quotation if it exists
-  const { data: quotationCheck, isLoading } = trpc.quotation.forwarder.checkQuotationExists.useQuery({ inquiryId })
+  const [ quotationCheck ] = trpc.quotation.forwarder.checkQuotationExists.useSuspenseQuery({ inquiryId })
   
   const existingQuotation = quotationCheck?.quotation
   const isEditMode = Boolean(quotationCheck?.exists && existingQuotation)
@@ -299,15 +297,6 @@ export default function QuotationForm({ inquiryId, onSuccess, onCancel }: Quotat
   const isSavingDraft = saveDraftMutation.isPending
   const isDeletingDraft = deleteDraftMutation.isPending
   const isSubmittingQuotation = createMutation.isPending
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 p-6">
-        <Clock className="h-5 w-5 animate-spin" />
-        Lade Angebotsdaten...
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">

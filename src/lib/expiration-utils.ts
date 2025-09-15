@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { eq, and, lt } from "drizzle-orm";
 import { inquiry, quotation } from "@/db/schema";
 import { db } from '@/db';
+import { isDateInPast } from './date-utils';
 
 // Cache to prevent frequent expiration checks
 let lastExpirationCheck = 0;
@@ -102,13 +104,12 @@ export async function checkAndUpdateExpiredItems(db: DbType) {
  * Check if an inquiry is expired
  */
 export function isInquiryExpired(validityDate: Date | null): boolean {
-  if (!validityDate) return false;
-  return new Date() > validityDate;
+  return isDateInPast(validityDate);
 }
 
 /**
  * Check if a quotation is expired
  */
 export function isQuotationExpired(validUntil: Date): boolean {
-  return new Date() > validUntil;
+  return isDateInPast(validUntil);
 }

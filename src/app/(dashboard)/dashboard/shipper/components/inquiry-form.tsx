@@ -10,38 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Package, Plus, Trash2 } from "lucide-react"
+import { AlertCircle, Package as PackageIcon, Plus, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Package, InquiryFormData, Forwarder } from "@/types/trpc-inferred"
 
-interface Forwarder {
-  id: string
-  name: string
-  email: string
-  city: string
-  country: string
-  isActive: boolean
-}
-
-interface Package {
-  packageNumber: string
-  description?: string
-  pieces: number
-  grossWeight: number
-  chargeableWeight?: number
-  length?: number
-  width?: number
-  height?: number
-  temperature?: string
-  specialHandling?: string
-  isDangerous: boolean
-  dangerousGoodsClass?: string
-  unNumber?: string
-}
-
+// Local interface - stays with the component
 interface InquiryFormProps {
-  forwarders: Forwarder[]
+  forwarders: Forwarder[];
 }
+
 
 const InquiryForm = ({ forwarders }: InquiryFormProps) => {
   const router = useRouter()
@@ -120,7 +98,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
     try {
       const formData = new FormData(e.target as HTMLFormElement)
       
-      const inquiryData = {
+      const inquiryData: InquiryFormData = {
         title: formData.get("title") as string,
         description: formData.get("description") as string || undefined,
         serviceType: formData.get("serviceType") as "air_freight" | "sea_freight" | "road_freight" | "rail_freight",
@@ -142,7 +120,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
 
       await createInquiry.mutateAsync(inquiryData)
     } catch (error) {
-      // Handle inquiry creation error
+      toast.error(`Fehler beim Erstellen der Anfrage: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -348,7 +326,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
+            <PackageIcon className="h-5 w-5" />
             Pakete
           </CardTitle>
           <CardDescription>Details zu den einzelnen Paketen</CardDescription>

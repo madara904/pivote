@@ -16,6 +16,7 @@ export const auth = betterAuth({
       })
   }
 },
+appName: "Pivote",
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
@@ -32,6 +33,9 @@ export const auth = betterAuth({
     }
   },
   emailAndPassword: {
+    autoSignIn: true,
+    autoSignInAfterVerification: true,
+    autoSignInAfterResetPassword: true,
     enabled: true,
     sendResetPassword: async ({user, token}) => {
       const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset?token=${token}`;
@@ -60,7 +64,7 @@ export const auth = betterAuth({
       },
     },
   hooks: {
-  },
+    },
   plugins: [
     localization({
       defaultLocale: "de",

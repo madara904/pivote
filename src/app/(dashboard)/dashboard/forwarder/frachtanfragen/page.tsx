@@ -7,9 +7,8 @@ import { InquiryLoadingState } from "./components/inquiry-loading-state";
 
 export default async function ForwarderInquiriesPage() {
 
-  // Promise all für Waterfall Verkürzung, da next js Middleware keine Option ist und wir müssen die Session immernoch page level checken
-  const authPromise = requireForwarderAccess();
-  const dataPromise = trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
+  await requireForwarderAccess();
+  trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
 
   await Promise.all([authPromise, dataPromise]);
 

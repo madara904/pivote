@@ -11,12 +11,14 @@ import {
   StatusContext,
   toInquiryStatus,
   toQuotationStatus,
+  ForwarderResponseStatus,
 } from "@/lib/status-utils";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 interface InquiryActionsProps {
   status: string;
   quotationStatus?: string | null;
+  responseStatus?: string | null;
   onSendReminder?: (inquiryId: string) => void;
   onCreateQuote?: (inquiryId: string) => void;
   onViewInquiry?: (inquiryId: string) => void;
@@ -29,6 +31,7 @@ interface InquiryActionsProps {
 export function InquiryActions({
   status,
   quotationStatus,
+  responseStatus,
   onSendReminder,
   onCreateQuote,
   onViewInquiry,
@@ -40,6 +43,7 @@ export function InquiryActions({
   const context: StatusContext = {
     inquiryStatus: toInquiryStatus(status),
     quotationStatus: toQuotationStatus(quotationStatus),
+    responseStatus: responseStatus as ForwarderResponseStatus | undefined,
   };
 
   const canCreate = canCreateQuotation(context);
@@ -130,7 +134,7 @@ export function InquiryActions({
             Angebot anzeigen
           </Button>
         )}
-        {displayStatus === "rejected" && (
+        {(displayStatus === "rejected" || responseStatus === "rejected") && (
           <Button
             variant="outline"
             onClick={() => onViewInquiry?.(inquiryId)}
@@ -141,6 +145,16 @@ export function InquiryActions({
           </Button>
         )}
         {status === "open" && !rejected && (
+          <Button
+            variant="outline"
+            onClick={() => onViewInquiry?.(inquiryId)}
+            className="justify-start w-full"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Anfrage anzeigen
+          </Button>
+        )}
+        {status === "expired" && (
           <Button
             variant="outline"
             onClick={() => onViewInquiry?.(inquiryId)}

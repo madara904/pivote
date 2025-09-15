@@ -4,6 +4,7 @@ import { inquiryForwarder, organizationMember, inquiry, organization, user, inqu
 import { z } from "zod";
 import { alias } from "drizzle-orm/pg-core";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
+import { createStatusDateInfo } from "@/lib/date-utils";
 
 export const forwarderRouter = createTRPCRouter({
 
@@ -77,6 +78,8 @@ export const forwarderRouter = createTRPCRouter({
             forwarderOrganizationId: inquiryForwarder.forwarderOrganizationId,
             sentAt: inquiryForwarder.sentAt,
             viewedAt: inquiryForwarder.viewedAt,
+            rejectedAt: inquiryForwarder.rejectedAt,
+            responseStatus: inquiryForwarder.responseStatus,
             createdAt: inquiryForwarder.createdAt,
             
             // inquiry fields
@@ -181,6 +184,8 @@ export const forwarderRouter = createTRPCRouter({
           forwarderOrganizationId: row.forwarderOrganizationId,
           sentAt: row.sentAt,
           viewedAt: row.viewedAt,
+          rejectedAt: row.rejectedAt,
+          responseStatus: row.responseStatus,
           createdAt: row.createdAt,
           inquiry: {
             id: row.inquiryId,
@@ -213,17 +218,7 @@ export const forwarderRouter = createTRPCRouter({
             temperatureControlled: Boolean(row.temperatureControlled),
             specialHandling: Boolean(row.specialHandling)
           },
-          statusDateInfo: {
-            formattedSentDate: row.sentAt ? row.sentAt.toLocaleDateString('de-DE') : '',
-            formattedViewedDate: row.viewedAt ? row.viewedAt.toLocaleDateString('de-DE') : null,
-            statusDetail: row.status === "open" && row.viewedAt 
-              ? `Viewed ${row.viewedAt.toLocaleDateString('de-DE')}`
-              : row.status === "open" && row.sentAt
-              ? `Sent ${row.sentAt.toLocaleDateString('de-DE')}`
-              : row.status === "draft"
-              ? "Not sent yet"
-              : ""
-          },
+          statusDateInfo: createStatusDateInfo(row.sentAt, row.viewedAt, row.status),
           quotationStatus: row.quotationStatus,
           quotationPrice: row.quotationPrice,
           quotationCurrency: row.quotationCurrency
@@ -270,6 +265,8 @@ export const forwarderRouter = createTRPCRouter({
           forwarderOrganizationId: inquiryForwarder.forwarderOrganizationId,
           sentAt: inquiryForwarder.sentAt,
           viewedAt: inquiryForwarder.viewedAt,
+          rejectedAt: inquiryForwarder.rejectedAt,
+          responseStatus: inquiryForwarder.responseStatus,
           createdAt: inquiryForwarder.createdAt,
           
           // inquiry fields
@@ -328,6 +325,8 @@ export const forwarderRouter = createTRPCRouter({
           inquiryForwarder.forwarderOrganizationId,
           inquiryForwarder.sentAt,
           inquiryForwarder.viewedAt,
+          inquiryForwarder.rejectedAt,
+          inquiryForwarder.responseStatus,
           inquiryForwarder.createdAt,
           inquiry.id,
           inquiry.referenceNumber,
@@ -389,6 +388,8 @@ export const forwarderRouter = createTRPCRouter({
         forwarderOrganizationId: row.forwarderOrganizationId,
         sentAt: row.sentAt,
         viewedAt: row.viewedAt,
+        rejectedAt: row.rejectedAt,
+        responseStatus: row.responseStatus,
         createdAt: row.createdAt,
         inquiry: {
           id: row.inquiryId,
@@ -438,17 +439,7 @@ export const forwarderRouter = createTRPCRouter({
           temperatureControlled: Boolean(row.temperatureControlled),
           specialHandling: Boolean(row.specialHandling)
         },
-        statusDateInfo: {
-          formattedSentDate: row.sentAt ? row.sentAt.toLocaleDateString('de-DE') : '',
-          formattedViewedDate: row.viewedAt ? row.viewedAt.toLocaleDateString('de-DE') : null,
-          statusDetail: row.status === "open" && row.viewedAt 
-            ? `Viewed ${row.viewedAt.toLocaleDateString('de-DE')}`
-            : row.status === "open" && row.sentAt
-            ? `Sent ${row.sentAt.toLocaleDateString('de-DE')}`
-            : row.status === "draft"
-            ? "Not sent yet"
-            : ""
-        }
+        statusDateInfo: createStatusDateInfo(row.sentAt, row.viewedAt, row.status)
       };
     }),
 
@@ -491,14 +482,11 @@ export const forwarderRouter = createTRPCRouter({
         // Mark the inquiry as rejected for this forwarder
         await db
           .update(inquiryForwarder)
-          .set({ rejectedAt: new Date() })
+          .set({ 
+            rejectedAt: new Date(),
+            responseStatus: "rejected"
+          })
           .where(eq(inquiryForwarder.id, inquiryForwarderRecord.id));
-
-        // Update the inquiry status to rejected
-        await db
-          .update(inquiry)
-          .set({ status: "rejected" })
-          .where(eq(inquiry.id, input.inquiryId));
         
         return { success: true };
       } catch (error) {

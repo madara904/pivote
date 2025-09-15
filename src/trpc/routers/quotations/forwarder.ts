@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, and } from "drizzle-orm";
-import { quotation, organizationMember, organization, inquiry } from "@/db/schema";
+import { quotation, organizationMember, organization, inquiry, inquiryForwarder } from "@/db/schema";
 import { z } from "zod";
 
 const baseQuotationSchema = z.object({
@@ -335,6 +335,17 @@ export const forwarderRouter = createTRPCRouter({
           .returning({ id: quotation.id });
 
         const quotationId = quotationResult[0].id;
+
+        // Update inquiry_forwarder response status to "quoted"
+        await db
+          .update(inquiryForwarder)
+          .set({ responseStatus: "quoted" })
+          .where(
+            and(
+              eq(inquiryForwarder.inquiryId, input.inquiryId),
+              eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId)
+            )
+          );
 
         return { 
           success: true, 

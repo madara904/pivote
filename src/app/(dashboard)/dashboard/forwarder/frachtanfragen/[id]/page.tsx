@@ -1,5 +1,8 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
 import InquiryDetailView from "./components/inquiry-detail-view";
+import { HydrateClient, trpc } from "@/trpc/server";
+import { Suspense } from "react";
+import { InquiryLoadingState } from "../components/inquiry-loading-state";
 
 interface InquiryDetailPageProps {
   params: Promise<{
@@ -13,10 +16,15 @@ export default async function InquiryDetailPage({ params }: InquiryDetailPagePro
   // Await params before using its properties
   const { id } = await params;
 
-  // Remove prefetch to eliminate server-side latency
-  // Let the client handle the query with proper loading states
+  trpc.inquiry.forwarder.getInquiryDetail.prefetch({ inquiryId: id });
+
 
   return (
-    <InquiryDetailView inquiryId={id} />
+    <HydrateClient>
+      <Suspense fallback={<InquiryLoadingState text="Lade Frachtanfrage" />}>
+    <InquiryDetailView inquiryId={id} />    
+    </Suspense>
+    </HydrateClient>
+
   );
 }

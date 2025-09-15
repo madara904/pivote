@@ -2,63 +2,11 @@
 
 import { trpc } from "@/trpc/client";
 import { FreightInquiryTable } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/freight-inquiry-table";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
 import InquiryHeader from "./inquiry-header";
 import { useRouter } from "next/navigation";
-import { DotLoading } from "@/components/ui/dot-loading";
 import { QuotationModal } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/quotation-modal";
 import { useState } from "react";
 import { toast } from "sonner";
-
-// Type for inquiry data - matches the actual return type from the API
-type InquiryData = {
-  id: string;
-  inquiryId: string;
-  forwarderOrganizationId: string;
-  sentAt: Date;
-  viewedAt: Date | null;
-  createdAt: Date;
-  inquiry: {
-    id: string;
-    referenceNumber: string;
-    title: string;
-    serviceType: string;
-    originCity: string;
-    originCountry: string;
-    destinationCity: string;
-    destinationCountry: string;
-    cargoType: string;
-    cargoDescription: string | null;
-    status: string;
-    validityDate: Date | null;
-    totalPieces: number;
-    totalGrossWeight: string;
-    totalChargeableWeight: string;
-    totalVolume: string;
-    shipperOrganization: {
-      name: string;
-      email: string;
-    };
-    createdBy: {
-      name: string;
-    };
-  };
-  packageSummary: {
-    count: number;
-    hasDangerousGoods: boolean;
-    temperatureControlled: boolean;
-    specialHandling: boolean;
-  };
-  statusDateInfo: {
-    formattedSentDate: string;
-    formattedViewedDate: string | null;
-    statusDetail: string;
-  };
-  quotationStatus?: string | null;
-  quotationPrice?: string | null;
-  quotationCurrency?: string | null;
-};
 
 const InquiryView = () => {
   const router = useRouter();
@@ -67,10 +15,9 @@ const InquiryView = () => {
   const [selectedInquiryReference, setSelectedInquiryReference] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
-  const { data, isError, error, isPending } =
-    trpc.inquiry.forwarder.getMyInquiriesFast.useQuery(undefined, {
-      staleTime: 10 * 1000, // 10 seconds
-    });
+  const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
+    staleTime: 1, // 1 second 
+  });
 
   const handleSendReminder = (inquiryId: string) => {
     // TODO: Implement reminder functionality
@@ -114,15 +61,14 @@ const InquiryView = () => {
     setSelectedInquiryReference(null);
   };
 
-
-  // Transform the data to match the new component interface
-  const transformedData = data?.map((item: InquiryData) => {
-    
+  // Transform the data to match the FreightInquiryTable interface
+  const transformedData = inquiryData?.map((item) => {
     return {
       id: item.inquiryId, 
       referenceNumber: item.inquiry.referenceNumber,
       status: item.inquiry.status, 
       quotationStatus: item.quotationStatus, 
+      responseStatus: item.responseStatus,
       sentAt: item.sentAt,
       responseDate: item.viewedAt || undefined,
       quotedPrice: item.quotationPrice ? Number(item.quotationPrice) : undefined,
@@ -132,7 +78,7 @@ const InquiryView = () => {
       cargoType: item.inquiry.cargoType,
       cargoDescription: item.inquiry.cargoDescription,
       weight: item.inquiry.totalGrossWeight,
-      unit: "kg",
+      unit: "kg" as const,
       pieces: item.inquiry.totalPieces,
       shipperName: item.inquiry.shipperOrganization.name,
       origin: {
@@ -146,37 +92,11 @@ const InquiryView = () => {
     };
   }) || [];
 
-
-  if (isPending) {
-    return (
-      <div className="flex-1 flex items-center justify-center py-20">
-        <div className="text-center space-y-2">
-          <DotLoading size="md" />
-          <p className="text-center py-8 text-muted-foreground">
-            Lade Frachtanfragen
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
+  // Handle empty state - no loading state needed with Suspense
+  if (!inquiryData || inquiryData.length === 0) {
     return (
       <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Fehler beim Laden der Frachtanfragen:{" "}
-            {error?.message || "Unbekannter Fehler"}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
+        <InquiryHeader />
         <div className="text-center py-8 text-muted-foreground">
           <img 
             src="/empty.svg" 

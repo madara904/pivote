@@ -1,12 +1,17 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
 import { Separator } from "@/components/ui/separator";
 import InquiryView from "./components/data-view/inquiry-view";
+import { HydrateClient, trpc } from "@/trpc/server";
+import { Suspense } from "react";
+import { InquiryLoadingState } from "./components/inquiry-loading-state";
+
+
 
 export default async function ForwarderInquiriesPage() {
-await requireForwarderAccess();
+  await requireForwarderAccess();
 
-  // Remove prefetch to eliminate server-side latency
-  // Let the client handle the query with proper loading states
+  // Prefetch the inquiries data for Suspense
+   trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
 
   return (
     <>
@@ -20,7 +25,11 @@ await requireForwarderAccess();
         </div>
         <Separator />
       </div>
-      <InquiryView />
+      <HydrateClient>
+        <Suspense fallback={<InquiryLoadingState text="Lade Frachtanfragen" />}>
+          <InquiryView />
+        </Suspense>
+      </HydrateClient>
     </>
   );
 }

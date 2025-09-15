@@ -31,30 +31,26 @@ import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import QuotationModal from "./quotation-modal";
 import { QuotationModal as ReadOnlyQuotationModal } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/quotation-modal";
-import { DotLoading } from "@/components/ui/dot-loading";
 import { useState } from "react";
+import { formatGermanDate } from "@/lib/date-utils";
+import { PackageData } from "@/types/trpc-inferred";
 
 interface InquiryDetailViewProps {
   inquiryId: string;
 }
+
+// PackageData type is now imported from tRPC inferred types
 
 const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
   const router = useRouter();
   const utils = trpc.useUtils();
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState(false);
 
-  const { data, isError, error, isPending } =
-    trpc.inquiry.forwarder.getInquiryDetail.useQuery({ inquiryId });
-  const { data: quotationCheck } =
-    trpc.quotation.forwarder.checkQuotationExists.useQuery({ inquiryId });
-
-  if (isPending) {
-    return (
-      <div className="flex-1 flex items-center justify-center py-20">
-        <DotLoading size="md" />
-      </div>
-    );
-  }
+  // Fix: Use the correct destructuring for useSuspenseQuery (tuple format)
+  const [data, { isError, error}] =
+    trpc.inquiry.forwarder.getInquiryDetail.useSuspenseQuery({ inquiryId });
+  const [quotationCheckData] =
+    trpc.quotation.forwarder.checkQuotationExists.useSuspenseQuery({ inquiryId });
 
   if (isError) {
     return (
@@ -83,8 +79,9 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
   const inquiry = data.inquiry;
   const packages = data.packages;
   const packageSummary = data.packageSummary;
-  const quotation = quotationCheck?.quotation;
+  const quotation = quotationCheckData?.quotation;
   const isQuotationRejected = quotation?.status === "rejected";
+  const isInquiryRejected = data.responseStatus === "rejected";
 
   const handleQuotationCreated = () => {
     // Invalidate and refetch inquiry data
@@ -174,18 +171,36 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
             {getStatusIcon(inquiry.status)}
             <Badge
               variant={
-                isQuotationRejected
+                isInquiryRejected || isQuotationRejected
                   ? "destructive"
                   : inquiry.status === "open"
                     ? "default"
                     : "secondary"
               }
             >
-              {isQuotationRejected ? "Abgelehnt" : formatStatus(inquiry.status)}
+              {isInquiryRejected ? "Abgelehnt" : isQuotationRejected ? "Angebot abgelehnt" : formatStatus(inquiry.status)}
             </Badge>
+            {/* Response Status Badge */}
+            {quotation && (
+              <Badge
+                variant={
+                  quotation.status === "submitted" ? "default" :
+                  quotation.status === "accepted" ? "default" :
+                  quotation.status === "rejected" ? "destructive" :
+                  "secondary"
+                }
+              >
+                {quotation.status === "submitted" ? "Angebot eingereicht" :
+                 quotation.status === "accepted" ? "Angebot angenommen" :
+                 quotation.status === "rejected" ? "Angebot abgelehnt" :
+                 quotation.status === "withdrawn" ? "Angebot zurückgezogen" :
+                 quotation.status === "expired" ? "Angebot abgelaufen" :
+                 "Unbekannt"}
+              </Badge>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
-            { quotation?.status !== "submitted" && (
+            { quotation?.status !== "submitted" && inquiry.status !== "expired" && !isInquiryRejected && (
               <QuotationModal
                 inquiryId={inquiryId}
                 onQuotationCreated={handleQuotationCreated}
@@ -350,7 +365,7 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
                 <div className="pt-4 border-t">
                   <h4 className="font-medium mb-4">Einzelne Pakete</h4>
                   <div className="space-y-3">
-                    {packages.map((pkg, index) => (
+                    {packages.map((pkg: PackageData, index: number) => (
                       <div
                         key={pkg.id}
                         className="border rounded-lg p-4 bg-white"
@@ -588,9 +603,7 @@ const InquiryDetailView = ({ inquiryId }: InquiryDetailViewProps) => {
                   <div>
                     <p className="text-sm font-medium">Gültigkeitsdatum</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(inquiry.validityDate).toLocaleDateString(
-                        "de-DE"
-                      )}
+                      {formatGermanDate(inquiry.validityDate)}
                     </p>
                   </div>
                 </div>

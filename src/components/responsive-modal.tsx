@@ -37,7 +37,7 @@ export const ResponsiveModal = ({
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open={open} onOpenChange={onOpenChange} direction="top">
         <DrawerContent className="max-h-[90vh] flex flex-col">
           <DrawerHeader className="flex-shrink-0">
             <DrawerTitle>{title}</DrawerTitle>
@@ -52,7 +52,7 @@ export const ResponsiveModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("w-[75vw] max-h-[90vh] flex flex-col p-0 sm:max-w-none sm:!max-w-none", contentClassName)}>
+      <DialogContent className={cn("w-[75vw] max-h-[90vh] flex flex-col p-0 sm:!max-w-none", contentClassName)}>
         <DialogHeader className={cn("flex-shrink-0 px-6 pt-6 pb-2", headerClassName)}>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

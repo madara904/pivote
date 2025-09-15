@@ -43,6 +43,12 @@ export const quotationStatusEnum = pgEnum("quotation_status", [
   "withdrawn",    // Forwarder withdrew quotation
   "expired",      // Quotation expired by validUntil date
 ]);
+
+export const forwarderResponseStatusEnum = pgEnum("forwarder_response_status", [
+  "pending",    // Forwarder hasn't responded yet
+  "rejected",   // Forwarder declined to quote
+  "quoted",     // Forwarder submitted a quotation
+]);
 export const serviceTypeEnum = pgEnum("service_type", [
   "air_freight",
   "sea_freight",
@@ -311,6 +317,9 @@ export const inquiryForwarder = pgTable("inquiry_forwarder", {
     .notNull(),
   viewedAt: timestamp("viewed_at"),
   rejectedAt: timestamp("rejected_at"),
+   responseStatus: forwarderResponseStatusEnum("response_status")
+    .default("pending")
+    .notNull(),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

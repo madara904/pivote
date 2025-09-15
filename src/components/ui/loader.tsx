@@ -31,7 +31,7 @@ export const LogoLoader: React.FC<LogoLoaderProps> = ({
       viewBox="16 14 26 26"
       width={sizeValue}
       height={sizeValue}
-      className={cn("h-25 w-30", className)}
+      className={cn("h-25 w-30 mx-auto", className)}
     >
       {paths.map((d, i) => (
         <motion.path

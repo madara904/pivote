@@ -1,77 +1,20 @@
 "use client"
 
-import { FreightInquiryTable } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/freight-inquiry-table"
-import { Package } from "lucide-react"
 import { useState } from "react"
 import QuotationView from "./quotation-view"
-
-interface Package {
-  id: string
-  packageNumber: string
-  description: string | null
-  pieces: number
-  grossWeight: string
-  chargeableWeight: string | null
-  length: string | null
-  width: string | null
-  height: string | null
-  temperature: string | null
-  specialHandling: string | null
-  isDangerous: boolean | null
-  dangerousGoodsClass: string | null
-  unNumber: string | null
-}
-
-interface Forwarder {
-  id: string
-  forwarderOrganization: {
-    id: string
-    name: string
-    email: string
-  }
-  sentAt: Date
-  viewedAt?: Date
-}
-
-interface Inquiry {
-  id: string
-  referenceNumber: string
-  title: string
-  description: string | null
-  serviceType: string
-  originAirport: string
-  originCity: string
-  originCountry: string
-  destinationAirport: string
-  destinationCity: string
-  destinationCountry: string
-  cargoType: string
-  cargoDescription: string | null
-  readyDate: Date
-  deliveryDate: Date | null
-  validityDate: Date | null
-  status: string
-  packages: Package[]
-  sentToForwarders: Forwarder[]
-  quotations: Quotation[]
-  createdBy: {
-    id: string
-    name: string
-    email: string
-  }
-  createdAt: Date
-  updatedAt: Date
-}
+import { ShipperInquiryTable } from "./shipper-inquiry-table"
+import { 
+  FixedShipperInquiry, 
+  ShipperPackage
+} from "@/types/trpc-inferred"
+import { 
+  getShipperDisplayStatus,
+  ShipperStatusContext,
+  ShipperInquiryStatus 
+} from "@/lib/shipper-status-utils"
 
 interface InquiryListProps {
-  inquiries: Inquiry[]
-}
-
-interface Quotation {
-  id: string
-  totalPrice: string
-  currency: string
-  status: string
+  inquiries: FixedShipperInquiry[]
 }
 
 const InquiryList = ({ inquiries }: InquiryListProps) => {
@@ -83,42 +26,63 @@ const InquiryList = ({ inquiries }: InquiryListProps) => {
     setShowQuotations(true)
   }
 
-  const calculateTotalWeight = (packages: Package[]) => {
+  const calculateTotalWeight = (packages: ShipperPackage[]) => {
     return packages.reduce((total, pkg) => total + parseFloat(pkg.grossWeight), 0).toFixed(2)
   }
 
-  const calculateTotalPieces = (packages: Package[]) => {
+  const calculateTotalPieces = (packages: ShipperPackage[]) => {
     return packages.reduce((total, pkg) => total + pkg.pieces, 0)
   }
 
   // Transform inquiries data to match the new component interface
-  const transformedInquiries = inquiries.map((inquiry) => ({
-    id: inquiry.id,
-    referenceNumber: inquiry.referenceNumber,
-    status: inquiry.status === "open" ? "quoted" : inquiry.status, // Map open to quoted for shipper view
-    sentAt: inquiry.sentToForwarders[0]?.sentAt || inquiry.createdAt,
-    responseDate: inquiry.sentToForwarders.find(f => f.viewedAt)?.viewedAt,
-    quotedPrice: inquiry.quotations.length > 0 ? Number(inquiry.quotations[0].totalPrice) : undefined,
-    currency: inquiry.quotations.length > 0 ? inquiry.quotations[0].currency : "EUR",
-    serviceType: inquiry.serviceType,
-    serviceDetails: undefined,
-    cargoType: inquiry.cargoType,
-    cargoDescription: inquiry.cargoDescription,
-    weight: calculateTotalWeight(inquiry.packages),
-    unit: "kg",
-    pieces: calculateTotalPieces(inquiry.packages),
-    shipperName: inquiry.createdBy.name,
-    origin: {
-      code: inquiry.originAirport,
-      city: inquiry.originCity,
-      country: inquiry.originCountry
-    },
-    destination: {
-      code: inquiry.destinationAirport,
-      city: inquiry.destinationCity,
-      country: inquiry.destinationCountry
-    }
-  }))
+  const transformedInquiries = inquiries.map((inquiry) => {
+    // Create shipper status context with proper type casting
+    const statusContext: ShipperStatusContext = {
+      inquiryStatus: inquiry.status as ShipperInquiryStatus,
+      quotationCount: inquiry.quotations.length,
+      hasAcceptedQuotation: inquiry.quotations.some(q => q.status === "accepted"),
+      hasRejectedQuotations: inquiry.quotations.some(q => q.status === "rejected"),
+      forwarderResponseSummary: inquiry.forwarderResponseSummary
+    };
+    
+    // Get proper shipper display status
+    const displayStatus = getShipperDisplayStatus(statusContext);
+    
+    return {
+      id: inquiry.id,
+      referenceNumber: inquiry.referenceNumber,
+      status: displayStatus,
+      sentAt: inquiry.sentToForwarders[0]?.sentAt || inquiry.createdAt,
+      responseDate: inquiry.sentToForwarders.find(f => f.viewedAt)?.viewedAt ?? undefined,
+      quotedPrice: inquiry.quotations.length > 0 ? Number(inquiry.quotations[0].totalPrice) : undefined,
+      currency: inquiry.quotations.length > 0 ? inquiry.quotations[0].currency : "EUR",
+      serviceType: inquiry.serviceType,
+      serviceDetails: undefined,
+      cargoType: inquiry.cargoType,
+      cargoDescription: inquiry.cargoDescription,
+      weight: calculateTotalWeight(inquiry.packages),
+      unit: "kg",
+      pieces: calculateTotalPieces(inquiry.packages),
+      shipperName: inquiry.createdBy.name,
+      // Use the response summary calculated in the backend
+      forwarderResponseSummary: inquiry.forwarderResponseSummary,
+      // Pass actual quotation data for proper cancellation logic
+      quotations: inquiry.quotations,
+      quotationCount: inquiry.quotations.length,
+      hasAcceptedQuotation: inquiry.quotations.some(q => q.status === "accepted"),
+      hasRejectedQuotations: inquiry.quotations.some(q => q.status === "rejected"),
+      origin: {
+        code: inquiry.originAirport,
+        city: inquiry.originCity,
+        country: inquiry.originCountry
+      },
+      destination: {
+        code: inquiry.destinationAirport,
+        city: inquiry.destinationCity,
+        country: inquiry.destinationCountry
+      }
+    };
+  })
 
   if (showQuotations && selectedInquiryId) {
     return (
@@ -138,9 +102,10 @@ const InquiryList = ({ inquiries }: InquiryListProps) => {
   }
 
   return (
-    <FreightInquiryTable
+    <ShipperInquiryTable
       inquiries={transformedInquiries}
-      onViewQuote={handleViewQuote}
+      onViewInquiry={handleViewQuote}
+      onViewQuotations={handleViewQuote}
     />
   )
 }

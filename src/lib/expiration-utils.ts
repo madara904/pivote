@@ -15,7 +15,6 @@ type DbType = typeof db;
  * This should be called when fetching data to ensure expired items are marked
  * Now optimized to only run every 5 minutes instead of on every request
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function checkAndUpdateExpiredItems(db: DbType) {
   const now = Date.now();
   

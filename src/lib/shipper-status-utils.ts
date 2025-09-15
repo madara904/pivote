@@ -100,7 +100,7 @@ export function canShipperCancelInquiry(context: ShipperStatusContext): boolean 
  * Determines if shipper can close an inquiry
  * BUSINESS RULE: Shippers cannot manually close inquiries - only automatic closing
  */
-export function canShipperCloseInquiry(context: ShipperStatusContext): boolean {
+export function canShipperCloseInquiry(_context: ShipperStatusContext): boolean {
   // Business rule: No manual closing allowed
   return false;
 }

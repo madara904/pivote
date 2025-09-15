@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { trpc } from "@/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
 
 const orgSchema = z.object({
   name: z.string().min(2, "Name ist erforderlich"),
@@ -20,7 +19,7 @@ type OrgForm = z.infer<typeof orgSchema>;
 
 export default function OrganizationCrudTest() {
 
-  const queryClient = useQueryClient()
+  const utils = trpc.useUtils()
   // State
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -78,7 +77,7 @@ export default function OrganizationCrudTest() {
         onSuccess: () => {
           setMessage("Organisation bearbeitet!");
           setEditMode(false);
-          queryClient.invalidateQueries
+          utils.organization.getMyOrganizations.invalidate();
         },
         onError: (err) => setMessage(err.message),
       }
@@ -93,7 +92,7 @@ export default function OrganizationCrudTest() {
         onSuccess: () => {
           setMessage("Organisation gelöscht!");
           if (selectedOrgId === id) setSelectedOrgId(null);
-          queryClient.invalidateQueries
+          utils.organization.getMyOrganizations.invalidate();
         },
         onError: (err) => setMessage(err.message),
       }

@@ -53,7 +53,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
     inquiryId
   })
 
-  const { data: selectedQuotation, isLoading: isLoadingSelected } = trpc.quotation.shipper.getQuotation.useQuery(
+  const { data: selectedQuotation } = trpc.quotation.shipper.getQuotation.useQuery(
     { quotationId: selectedQuotationId! },
     { enabled: !!selectedQuotationId }
   )

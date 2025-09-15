@@ -492,7 +492,7 @@ export const inquiryForwarderRelations = relations(inquiryForwarder, ({ one }) =
   }),
 }));
 
-export const quotationRelations = relations(quotation, ({ one, many }) => ({
+export const quotationRelations = relations(quotation, ({ one }) => ({
   inquiry: one(inquiry, {
     fields: [quotation.inquiryId],
     references: [inquiry.id],

@@ -13,27 +13,27 @@ export const invitationRouter = createTRPCRouter({
         inviteMessage: z.string().optional(),
       })
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx: _ctx, input: _input }) => {
       // ... your logic here, using ctx and input with correct types
     }),
   getInvitation: publicProcedure
     .input(z.object({ token: z.string() }))
-    .query(async ({ ctx, input }) => {
+    .query(async ({ ctx: _ctx, input: _input }) => {
       // ... your logic here
     }),
   acceptInvitation: protectedProcedure
     .input(z.object({ token: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx: _ctx, input: _input }) => {
       // ... your logic here
     }),
   rejectInvitation: protectedProcedure
     .input(z.object({ token: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx: _ctx, input: _input }) => {
       // ... your logic here
     }),
   cleanupExpiredInvitations: protectedProcedure
     .input(z.object({ cronSecret: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx: _ctx, input: _input }) => {
       // ... your logic here
     }),
 }); 

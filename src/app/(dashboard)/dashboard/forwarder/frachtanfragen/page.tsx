@@ -5,13 +5,13 @@ import { HydrateClient, trpc } from "@/trpc/server";
 import { Suspense } from "react";
 import { InquiryLoadingState } from "./components/inquiry-loading-state";
 
-
-
 export default async function ForwarderInquiriesPage() {
-  await requireForwarderAccess();
 
-  // Prefetch the inquiries data for Suspense
-   trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
+  // Promise all für Waterfall Verkürzung, da next js Middleware keine Option ist und wir müssen die Session immernoch page level checken
+  const authPromise = requireForwarderAccess();
+  const dataPromise = trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
+
+  await Promise.all([authPromise, dataPromise]);
 
   return (
     <>

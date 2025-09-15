@@ -10,7 +10,6 @@ export default async function ForwarderInquiriesPage() {
   await requireForwarderAccess();
   trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
 
-  await Promise.all([authPromise, dataPromise]);
 
   return (
     <>

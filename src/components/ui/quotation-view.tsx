@@ -3,11 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Button } from "@/components/ui/button"
 import { trpc } from "@/trpc/client"
 import { DotLoading } from "@/components/ui/dot-loading"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, Euro, Clock, Plane, FileText, Calendar, XCircle } from "lucide-react"
+import { AlertTriangle, Euro, Clock, Plane, FileText, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -37,9 +36,6 @@ export function QuotationView({ inquiryId, className, onQuotationWithdrawn }: Qu
     }
   })
 
-  const handleWithdraw = (quotationId: string) => {
-    withdrawQuotation.mutate({ quotationId })
-  }
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("de-DE", {

@@ -14,7 +14,6 @@ import {
   DollarSign,
   TrendingUp,
   Plus,
-  BarChart3,
   Eye,
   Building2,
   FileSpreadsheet,

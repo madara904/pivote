@@ -10,7 +10,6 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
   SidebarSeparator,
-  SidebarFooter,
   SidebarContent,
   useSidebar,
 } from "@/components/ui/sidebar";

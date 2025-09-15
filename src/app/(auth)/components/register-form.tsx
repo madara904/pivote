@@ -27,7 +27,6 @@ import Link from "next/link";
 import { signUp, signIn, sendVerificationEmail } from "@/lib/auth-client";
 import Logo from "@/components/logo";
 import { useRouter } from "next/navigation";
-import { dataTagSymbol } from "@tanstack/react-query";
 
 const formSchema = z
   .object({

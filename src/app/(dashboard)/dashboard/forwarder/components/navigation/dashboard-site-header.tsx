@@ -30,7 +30,6 @@ interface BreadcrumbItem {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { data, isPending } = useSession();
   const [commandOpen, setCommandOpen] = useState(false);
 
   useEffect(() => {

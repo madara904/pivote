@@ -8,7 +8,7 @@ import { RouteDisplay } from "@/components/ui/route-display"
 import { InquiryActions } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/inquiry-actions"
 import { Clock, Euro } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getDisplayStatus, StatusContext, toInquiryStatus, toQuotationStatus } from "@/lib/status-utils"
+import { getDisplayStatus, StatusContext, toInquiryStatus, toQuotationStatus, ForwarderResponseStatus } from "@/lib/status-utils"
 import { Badge } from "../../../../../../../components/ui/badge"
 
 interface FreightInquiryCardProps {
@@ -86,7 +86,7 @@ export function FreightInquiryCard({
   const context: StatusContext = {
     inquiryStatus: toInquiryStatus(inquiry.status),
     quotationStatus: toQuotationStatus(inquiry.quotationStatus),
-    responseStatus: inquiry.responseStatus as any
+    responseStatus: inquiry.responseStatus as ForwarderResponseStatus | null
   };
   
   const displayStatus = getDisplayStatus(context)

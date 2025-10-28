@@ -16,7 +16,7 @@ const InquiryView = () => {
   const utils = trpc.useUtils();
 
   const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
-    staleTime: 1, // 1 second 
+    staleTime: 5 * 60 * 1000
   });
 
   const handleSendReminder = (inquiryId: string) => {

@@ -8,7 +8,7 @@ import { InquiryLoadingState } from "./components/inquiry-loading-state";
 export default async function ForwarderInquiriesPage() {
 
   await requireForwarderAccess();
-   void trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
+   trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
 
 
   return (

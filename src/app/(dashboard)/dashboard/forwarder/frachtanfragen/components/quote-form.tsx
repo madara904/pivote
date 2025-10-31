@@ -18,6 +18,7 @@ interface QuoteFormProps {
 
 export function QuoteForm({ inquiryId }: QuoteFormProps) {
   const router = useRouter()
+  const utils = trpc.useUtils()
   const [formData, setFormData] = useState({
     totalPrice: 0,
     currency: "EUR",
@@ -46,6 +47,8 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
 
   const createQuotation = trpc.quotation.forwarder.createQuotation.useMutation({
     onSuccess: () => {
+      // Invalidate inquiry list to ensure it updates immediately
+      utils.inquiry.forwarder.getMyInquiriesFast.invalidate()
       toast.success("Angebot erfolgreich eingereicht")
       router.push("/dashboard/forwarder/frachtanfragen?tab=quoted")
     },

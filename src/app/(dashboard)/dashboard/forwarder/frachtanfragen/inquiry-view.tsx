@@ -59,8 +59,8 @@ const InquiryView = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
-    staleTime: 1000 * 60 * 5, // 30 seconds
-    refetchInterval: 1000 * 60 * 5, // 30 seconds
+    staleTime: 1000 * 30, // 30 seconds (reduced from 5 minutes)
+    refetchInterval: 1000 * 60 * 2, // 2 minutes (reduced from 5 minutes)
     refetchIntervalInBackground: true,
     refetchOnMount: true,
   });

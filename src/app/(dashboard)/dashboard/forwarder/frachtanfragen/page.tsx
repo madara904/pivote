@@ -15,7 +15,6 @@ export default async function ForwarderInquiriesPage() {
 
   return (
     <>
-      <HydrateClient>
       <div className="p-4">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -26,7 +25,7 @@ export default async function ForwarderInquiriesPage() {
         </div>
         <Separator />
       </div>
-
+      <HydrateClient>
         <Suspense fallback={<InquiryLoadingState text="Lade Frachtanfragen" />}>
           <InquiryView />
         </Suspense>

@@ -82,7 +82,7 @@ const DashboardSidebar = ({
               {menuItems.main.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title}>
-                    <Link href={item.url} onClick={() => setOpenMobile(false)}>
+                    <Link prefetch href={item.url} onClick={() => setOpenMobile(false)}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -100,7 +100,7 @@ const DashboardSidebar = ({
               {menuItems.settings.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={pathname === item.url}>
-                  <Link href={item.url} onClick={() => setOpenMobile(false)}>
+                  <Link prefetch href={item.url} onClick={() => setOpenMobile(false)}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>

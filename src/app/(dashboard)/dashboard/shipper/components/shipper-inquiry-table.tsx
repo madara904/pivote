@@ -3,9 +3,8 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ShipperStatusBadge } from "@/components/ui/shipper-status-badge"
 import { ServiceIcon } from "@/components/ui/service-icon"
-import { FreightDetails } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/data-view/freight-details"
 import { RouteDisplay } from "@/components/ui/route-display"
-import { Clock, Euro, Eye, X, CheckCircle } from "lucide-react"
+import { Clock, Euro, Eye, X, CheckCircle, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { 
@@ -160,7 +159,7 @@ export function ShipperInquiryTable({
                   {inquiry.quotedPrice && (
                     <div className="flex items-center gap-1 text-lg font-bold text-primary">
                       <Euro className="h-4 w-4" />
-                      {inquiry.quotedPrice.toFixed(2)} {inquiry.currency}
+                      {inquiry.quotedPrice} {inquiry.currency}
                     </div>
                   )}
                 </div>
@@ -170,12 +169,17 @@ export function ShipperInquiryTable({
               <div className="flex flex-col lg:flex-row gap-4">
                 {/* Left side - Content */}
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FreightDetails
-                    weight={inquiry.weight}
-                    unit={inquiry.unit}
-                    pieces={inquiry.pieces}
-                    shipperName={inquiry.shipperName}
-                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Fracht</span>
+                    </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p>Gewicht: {inquiry.weight} {inquiry.unit}</p>
+                      {inquiry.pieces && <p>Stückzahl: {inquiry.pieces}</p>}
+                      <p>Versender: {inquiry.shipperName}</p>
+                    </div>
+                  </div>
 
                   <div className="space-y-2">
                     <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Service</h4>

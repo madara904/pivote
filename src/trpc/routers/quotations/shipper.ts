@@ -2,30 +2,17 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { quotation, organizationMember, organization, inquiry } from "@/db/schema";
 import { z } from "zod";
+import { inquiryIdSchema, quotationIdSchema } from "@/trpc/common/schemas";
+import { requireOrgId } from "@/trpc/common/membership";
 
 export const shipperRouter = createTRPCRouter({
   // Get all quotations for a specific inquiry
   getQuotationsForInquiry: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-          organizationType: organization.type,
-        })
-        .from(organizationMember)
-        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
       
       // Verify the inquiry belongs to this shipper
       const inquiryResult = await db
@@ -34,7 +21,7 @@ export const shipperRouter = createTRPCRouter({
         .where(
           and(
             eq(inquiry.id, input.inquiryId),
-            eq(inquiry.shipperOrganizationId, membership.organizationId)
+            eq(inquiry.shipperOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -94,26 +81,11 @@ export const shipperRouter = createTRPCRouter({
 
   // Get a specific quotation with details
   getQuotation: protectedProcedure
-    .input(z.object({ quotationId: z.string() }))
+    .input(quotationIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-          organizationType: organization.type,
-        })
-        .from(organizationMember)
-        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Get quotation with forwarder details
       const quotationResult = await db
@@ -162,7 +134,7 @@ export const shipperRouter = createTRPCRouter({
         .where(
           and(
             eq(inquiry.id, quotationData.inquiryId),
-            eq(inquiry.shipperOrganizationId, membership.organizationId)
+            eq(inquiry.shipperOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -183,24 +155,11 @@ export const shipperRouter = createTRPCRouter({
 
   // Accept a quotation
   acceptQuotation: protectedProcedure
-    .input(z.object({ quotationId: z.string() }))
+    .input(quotationIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Verify the quotation exists and belongs to this shipper
       const quotationResult = await db
@@ -208,13 +167,14 @@ export const shipperRouter = createTRPCRouter({
           id: quotation.id,
           inquiryId: quotation.inquiryId,
           status: quotation.status,
+          inquiryStatus: inquiry.status,
         })
         .from(quotation)
         .innerJoin(inquiry, eq(quotation.inquiryId, inquiry.id))
         .where(
           and(
             eq(quotation.id, input.quotationId),
-            eq(inquiry.shipperOrganizationId, membership.organizationId)
+            eq(inquiry.shipperOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -225,6 +185,10 @@ export const shipperRouter = createTRPCRouter({
 
       if (quotationResult[0].status !== 'submitted') {
         throw new Error("Nur eingereichte Angebote können angenommen werden");
+      }
+
+      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled') {
+        throw new Error("Frachtanfrage ist bereits geschlossen oder vergeben");
       }
 
       // Update the accepted quotation
@@ -264,43 +228,40 @@ export const shipperRouter = createTRPCRouter({
 
   // Reject a quotation
   rejectQuotation: protectedProcedure
-    .input(z.object({ quotationId: z.string() }))
+    .input(quotationIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Verify the quotation exists and belongs to this shipper
       const quotationResult = await db
         .select({
           id: quotation.id,
           inquiryId: quotation.inquiryId,
+          inquiryStatus: inquiry.status,
+          quotationStatus: quotation.status,
         })
         .from(quotation)
         .innerJoin(inquiry, eq(quotation.inquiryId, inquiry.id))
         .where(
           and(
             eq(quotation.id, input.quotationId),
-            eq(inquiry.shipperOrganizationId, membership.organizationId)
+            eq(inquiry.shipperOrganizationId, organizationId)
           )
         )
         .limit(1);
 
       if (!quotationResult.length) {
         throw new Error("Angebot nicht gefunden oder nicht zugänglich");
+      }
+
+      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled') {
+        throw new Error("Frachtanfrage ist bereits geschlossen oder vergeben");
+      }
+
+      if (quotationResult[0].quotationStatus === 'accepted' || quotationResult[0].quotationStatus === 'withdrawn') {
+        throw new Error("Angebot kann nicht abgelehnt werden, da es bereits angenommen oder zurückgezogen wurde");
       }
 
       // Update quotation status to rejected
@@ -342,20 +303,7 @@ export const shipperRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Get all quotations for inquiries created by this shipper
       const quotations = await db
@@ -392,7 +340,7 @@ export const shipperRouter = createTRPCRouter({
         .from(quotation)
         .innerJoin(organization, eq(quotation.forwarderOrganizationId, organization.id))
         .innerJoin(inquiry, eq(quotation.inquiryId, inquiry.id))
-        .where(eq(inquiry.shipperOrganizationId, membership.organizationId))
+        .where(eq(inquiry.shipperOrganizationId, organizationId))
         .orderBy(desc(quotation.createdAt));
 
       return quotations.map(quotation => ({

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { eq, and, lt } from "drizzle-orm";
 import { inquiry, quotation } from "@/db/schema";
 import { db } from '@/db';
@@ -97,18 +96,4 @@ export async function checkAndUpdateExpiredItems(db: DbType) {
       skipped: false
     };
   }
-}
-
-/**
- * Check if an inquiry is expired
- */
-export function isInquiryExpired(validityDate: Date | null): boolean {
-  return isDateInPast(validityDate);
-}
-
-/**
- * Check if a quotation is expired
- */
-export function isQuotationExpired(validUntil: Date): boolean {
-  return isDateInPast(validUntil);
 }

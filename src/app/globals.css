@@ -103,6 +103,11 @@
   --sidebar-accent-foreground: oklch(0.6132 0.2294 291.7437);
   --sidebar-border: oklch(0.3289 0.0092 268.3843);
   --sidebar-ring: oklch(0.6132 0.2294 291.7437);
+  --pink: oklch(0.25 0.05 340);
+  --pink-foreground: oklch(0.85 0.1 340);
+  --pink-accent: oklch(0.5 0.18 340);
+  --pink-muted: oklch(0.3 0.03 340);
+  --pink-muted-foreground: oklch(0.7 0.1 340);
   --font-sans: Plus Jakarta Sans, sans-serif;
   --font-serif: Lora, serif;
   --font-mono: IBM Plex Mono, monospace;
@@ -150,6 +155,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-pink: var(--pink);
+  --color-pink-foreground: var(--pink-foreground);
+  --color-pink-accent: var(--pink-accent);
+  --color-pink-muted: var(--pink-muted);
+  --color-pink-muted-foreground: var(--pink-muted-foreground);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -184,6 +194,9 @@
       background: var(--accent);
       color: var(--accent-foreground);
     }
+  }
+  html {
+    scrollbar-gutter: stable;
   }
   body {
     letter-spacing: var(--tracking-normal);

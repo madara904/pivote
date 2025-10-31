@@ -168,7 +168,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                       <div className="text-right">
                         <div className="flex items-center gap-2 text-2xl font-bold">
                           <Euro className="h-6 w-6" />
-                          {quotation.totalPrice.toFixed(2)} {quotation.currency}
+                          {quotation.totalPrice} {quotation.currency}
                         </div>
                         <Badge className={statusColors[quotation.status as keyof typeof statusColors]}>
                           {quotation.status === 'draft' && 'Entwurf'}
@@ -254,7 +254,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                     <div className="text-right">
                       <div className="flex items-center gap-2 text-3xl font-bold">
                         <Euro className="h-8 w-8" />
-                        {selectedQuotation.totalPrice.toFixed(2)} {selectedQuotation.currency}
+                        {selectedQuotation.totalPrice} {selectedQuotation.currency}
                       </div>
                       <Badge className={statusColors[selectedQuotation.status as keyof typeof statusColors]}>
                         {selectedQuotation.status === 'draft' && 'Entwurf'}
@@ -338,7 +338,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                           <h5 className="font-medium">Pre-carriage (Abholung)</h5>
                         </div>
                         <div className="text-lg font-semibold">
-                          {selectedQuotation.preCarriage.toFixed(2)} {selectedQuotation.currency}
+                          {selectedQuotation.preCarriage} {selectedQuotation.currency}
                         </div>
                       </div>
                     )}
@@ -349,7 +349,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                           <h5 className="font-medium">Main carriage (Haupttransport)</h5>
                         </div>
                         <div className="text-lg font-semibold">
-                          {selectedQuotation.mainCarriage.toFixed(2)} {selectedQuotation.currency}
+                          {selectedQuotation.mainCarriage} {selectedQuotation.currency}
                         </div>
                       </div>
                     )}
@@ -360,7 +360,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                           <h5 className="font-medium">On-carriage (Zustellung)</h5>
                         </div>
                         <div className="text-lg font-semibold">
-                          {selectedQuotation.onCarriage.toFixed(2)} {selectedQuotation.currency}
+                          {selectedQuotation.onCarriage} {selectedQuotation.currency}
                         </div>
                       </div>
                     )}
@@ -371,7 +371,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                           <h5 className="font-medium">Additional charges (Zusatzkosten)</h5>
                         </div>
                         <div className="text-lg font-semibold">
-                          {selectedQuotation.additionalCharges.toFixed(2)} {selectedQuotation.currency}
+                          {selectedQuotation.additionalCharges} {selectedQuotation.currency}
                         </div>
                       </div>
                     )}
@@ -382,7 +382,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                       <span>Gesamtsumme:</span>
                       <div className="flex items-center gap-2">
                         <Euro className="h-5 w-5" />
-                        {selectedQuotation.totalPrice.toFixed(2)} {selectedQuotation.currency}
+                        {selectedQuotation.totalPrice} {selectedQuotation.currency}
                       </div>
                     </div>
                   </div>

@@ -2,19 +2,21 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, and } from "drizzle-orm";
 import { quotation, organizationMember, organization, inquiry, inquiryForwarder } from "@/db/schema";
 import { z } from "zod";
+import { inquiryIdSchema, quotationIdSchema } from "@/trpc/common/schemas";
+import { requireOrgId } from "@/trpc/common/membership";
 
 const baseQuotationSchema = z.object({
-  totalPrice: z.number().min(0, "Gesamtpreis muss positiv sein"),
+  totalPrice: z.number().min(0, "Gesamtpreis muss positiv sein").max(1000000, "Gesamtpreis darf nicht mehr als 1.000.000 € betragen"),
   currency: z.string().default("EUR"),
   airlineFlight: z.string().optional(),
   transitTime: z.number().min(1, "Transitzeit muss mindestens 1 Tag betragen").optional(),
   validUntil: z.date(),
   notes: z.string().optional(),
   terms: z.string().optional(),
-  preCarriage: z.number().min(0, "Pre-carriage muss positiv sein").default(0),
-  mainCarriage: z.number().min(0, "Main carriage muss positiv sein").default(0),
-  onCarriage: z.number().min(0, "On-carriage muss positiv sein").default(0),
-  additionalCharges: z.number().min(0, "Zusatzkosten müssen positiv sein").default(0),
+  preCarriage: z.number().min(0, "Pre-carriage muss positiv sein").max(1000000, "Pre-carriage darf nicht mehr als 1.000.000 € betragen").default(0),
+  mainCarriage: z.number().min(0, "Main carriage muss positiv sein").max(1000000, "Main carriage darf nicht mehr als 1.000.000 € betragen").default(0),
+  onCarriage: z.number().min(0, "On-carriage muss positiv sein").max(1000000, "On-carriage darf nicht mehr als 1.000.000 € betragen").default(0),
+  additionalCharges: z.number().min(0, "Zusatzkosten müssen positiv sein").max(1000000, "Zusatzkosten dürfen nicht mehr als 1.000.000 € betragen").default(0),
 });
 
 const createQuotationSchema = baseQuotationSchema.extend({
@@ -38,24 +40,11 @@ const updateQuotationSchema = baseQuotationSchema.extend({
 export const forwarderRouter = createTRPCRouter({
   // Check if inquiry has already been quoted by this forwarder
   checkQuotationExists: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // First check if inquiry exists and is not closed
       const inquiryResult = await db
@@ -89,13 +78,14 @@ export const forwarderRouter = createTRPCRouter({
           onCarriage: quotation.onCarriage,
           additionalCharges: quotation.additionalCharges,
           status: quotation.status,
+          createdAt: quotation.createdAt,
           submittedAt: quotation.submittedAt
         })
         .from(quotation)
         .where(
           and(
             eq(quotation.inquiryId, input.inquiryId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -112,22 +102,7 @@ export const forwarderRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-          organizationType: organization.type,
-        })
-        .from(organizationMember)
-        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
       
       // Verify the inquiry exists and user has access
       const inquiryResult = await db
@@ -151,7 +126,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.inquiryId, input.inquiryId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -197,7 +172,7 @@ export const forwarderRouter = createTRPCRouter({
           .values({
             quotationNumber,
             inquiryId: input.inquiryId,
-            forwarderOrganizationId: membership.organizationId,
+            forwarderOrganizationId: organizationId,
             totalPrice: input.totalPrice.toString(),
             currency: input.currency,
             airlineFlight: input.airlineFlight,
@@ -230,22 +205,7 @@ export const forwarderRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-          organizationType: organization.type,
-        })
-        .from(organizationMember)
-        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
       
       // Verify the inquiry exists and user has access
       const inquiryResult = await db
@@ -269,7 +229,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.inquiryId, input.inquiryId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -316,7 +276,7 @@ export const forwarderRouter = createTRPCRouter({
           .values({
             quotationNumber,
             inquiryId: input.inquiryId,
-            forwarderOrganizationId: membership.organizationId,
+            forwarderOrganizationId: organizationId,
             totalPrice: input.totalPrice.toString(),
             currency: input.currency,
             airlineFlight: input.airlineFlight,
@@ -343,7 +303,7 @@ export const forwarderRouter = createTRPCRouter({
           .where(
             and(
               eq(inquiryForwarder.inquiryId, input.inquiryId),
-              eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId)
+              eq(inquiryForwarder.forwarderOrganizationId, organizationId)
             )
           );
 
@@ -361,20 +321,7 @@ export const forwarderRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Verify the quotation exists and belongs to this forwarder
       const existingQuotation = await db
@@ -383,7 +330,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.id, input.quotationId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -418,24 +365,11 @@ export const forwarderRouter = createTRPCRouter({
     }),
 
   getQuotation: protectedProcedure
-    .input(z.object({ quotationId: z.string() }))
+    .input(quotationIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Get quotation
       const quotationResult = await db
@@ -444,7 +378,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.id, input.quotationId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -469,26 +403,13 @@ export const forwarderRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Get quotations
       const quotations = await db
         .select()
         .from(quotation)
-        .where(eq(quotation.forwarderOrganizationId, membership.organizationId))
+        .where(eq(quotation.forwarderOrganizationId, organizationId))
         .orderBy(quotation.createdAt);
 
       return quotations.map(quotation => ({
@@ -499,24 +420,11 @@ export const forwarderRouter = createTRPCRouter({
 
   // Submit quotation (change from draft to submitted)
   submitQuotation: protectedProcedure
-    .input(z.object({ quotationId: z.string() }))
+    .input(quotationIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Verify the quotation exists and belongs to this forwarder
       const existingQuotation = await db
@@ -525,7 +433,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.id, input.quotationId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -552,24 +460,11 @@ export const forwarderRouter = createTRPCRouter({
 
   // Withdraw quotation
   withdrawQuotation: protectedProcedure
-    .input(z.object({ quotationId: z.string() }))
+    .input(quotationIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Verify the quotation exists and belongs to this forwarder
       const existingQuotation = await db
@@ -578,7 +473,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.id, input.quotationId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .limit(1);
@@ -609,24 +504,11 @@ export const forwarderRouter = createTRPCRouter({
 
   // Get quotations for a specific inquiry (read-only view)
   getInquiryQuotations: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Get all quotations for this inquiry from this forwarder
       const quotations = await db
@@ -655,7 +537,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.inquiryId, input.inquiryId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId)
+            eq(quotation.forwarderOrganizationId, organizationId)
           )
         )
         .orderBy(quotation.createdAt);
@@ -672,24 +554,11 @@ export const forwarderRouter = createTRPCRouter({
 
   // Delete draft quotation
   deleteDraftQuotation: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-        })
-        .from(organizationMember)
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const organizationId = await requireOrgId(ctx);
 
       // Find the draft quotation for this inquiry
       const existingQuotation = await db
@@ -698,7 +567,7 @@ export const forwarderRouter = createTRPCRouter({
         .where(
           and(
             eq(quotation.inquiryId, input.inquiryId),
-            eq(quotation.forwarderOrganizationId, membership.organizationId),
+            eq(quotation.forwarderOrganizationId, organizationId),
             eq(quotation.status, 'draft')
           )
         )

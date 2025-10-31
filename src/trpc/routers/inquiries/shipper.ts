@@ -3,6 +3,8 @@ import { eq, desc, and, ne } from "drizzle-orm";
 import { organization, organizationMember, inquiry, inquiryForwarder, inquiryPackage, quotation } from "@/db/schema";
 import { z } from "zod";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
+import { inquiryIdSchema } from "@/trpc/common/schemas";
+import { requireOrgId } from "@/trpc/common/membership";
 
 export const shipperRouter = createTRPCRouter({
   // Get all forwarders for selection
@@ -38,8 +40,9 @@ export const shipperRouter = createTRPCRouter({
       await checkAndUpdateExpiredItems(db);
       
       // Get membership first
+      const orgId = await requireOrgId(ctx);
       const membership = await db.query.organizationMember.findFirst({
-        where: eq(organizationMember.userId, session.user.id),
+        where: eq(organizationMember.organizationId, orgId),
         with: { organization: true }
       });
       
@@ -162,10 +165,11 @@ export const shipperRouter = createTRPCRouter({
       
       try {
         // Get membership first
-        const membership = await db.query.organizationMember.findFirst({
-          where: eq(organizationMember.userId, session.user.id),
-          with: { organization: true }
-        });
+      const orgId = await requireOrgId(ctx);
+      const membership = await db.query.organizationMember.findFirst({
+        where: eq(organizationMember.organizationId, orgId),
+        with: { organization: true }
+      });
         
         if (!membership?.organization || membership.organization.type !== 'shipper') {
           throw new Error("Organisation ist kein Versender");
@@ -365,8 +369,9 @@ export const shipperRouter = createTRPCRouter({
       
       try {
         // Get membership first
+        const orgId = await requireOrgId(ctx);
         const membership = await db.query.organizationMember.findFirst({
-          where: eq(organizationMember.userId, session.user.id),
+          where: eq(organizationMember.organizationId, orgId),
           with: { organization: true }
         });
         
@@ -420,14 +425,15 @@ export const shipperRouter = createTRPCRouter({
 
   // Cancel inquiry
   cancelInquiry: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
       try {
         // Get membership first
+        const orgId = await requireOrgId(ctx);
         const membership = await db.query.organizationMember.findFirst({
-          where: eq(organizationMember.userId, session.user.id),
+          where: eq(organizationMember.organizationId, orgId),
           with: { organization: true }
         });
         

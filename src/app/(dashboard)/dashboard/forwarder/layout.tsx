@@ -1,6 +1,7 @@
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import DashboardSidebar from "./components/navigation/dashboard-sidebar";
 import { SiteHeader } from "./components/navigation/dashboard-site-header";
+import { EmailVerifyBannerWrapper } from "../components/email-verify-banner-wrapper";
 
 interface Props {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface Props {
 const Layout = ({ children }: Props) => {
   return (
     <div className="[--header-height:calc(--spacing(14))]">
+      <EmailVerifyBannerWrapper />
       <SidebarProvider 
         className="flex flex-col"
         style={{

@@ -12,7 +12,7 @@ interface InquirySearchProps {
   className?: string
 }
 
-export function InquirySearch({ onSearch, onFilter, searchValue, className }: InquirySearchProps) {
+export function InquirySearch({ onSearch, searchValue, className }: InquirySearchProps) {
   const [search, setSearch] = React.useState(searchValue || "")
 
   const handleSearch = (value: string) => {

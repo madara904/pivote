@@ -17,21 +17,6 @@ import {
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { 
-  Package, 
-  Settings, 
-  BarChart3,
-  ClipboardList,
-  House,
-  Search,
-  Lock,
-  User,
-  Building2,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  LucideIcon
-} from "lucide-react";
 import { SEARCH_FUNCTIONALITY_LIST } from "@/lib/constants/search-functionality-list";
 
 interface Props {

@@ -8,15 +8,13 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Search } from "lucide-react";
+import { Search, Slash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSession } from "@/lib/auth-client";
 import { DashboardUserButton } from "./dashboard-user-button";
 import { DashboardCommand } from "./dashboard-command";
 
-import { Slash } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useState, useEffect } from "react";
+import { Fragment, useState } from "react";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/logo";
 
@@ -77,7 +75,7 @@ export function SiteHeader() {
   const breadcrumbs = generateBreadcrumbs();
 
   return (
-    <header className="bg-background sticky top-0 z-50 flex w-full flex-col border-b">
+    <header className="bg-background sticky z-50 flex w-full flex-col border-b" style={{ top: 'var(--banner-height, 0px)' }}>
       <div className="flex h-(--header-height) w-full items-center px-4">
         <SidebarTrigger className="mr-2 md:hidden" />
         <Breadcrumb className="hidden md:block">

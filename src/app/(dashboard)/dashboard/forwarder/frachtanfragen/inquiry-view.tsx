@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { InquirySearch } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/inquiry-search";
 import { Button } from "@/components/ui/button";
-import { Package, ArrowRight, ClipboardCheck, ClipboardX } from "lucide-react";
+import { ArrowRight, ClipboardX } from "lucide-react";
 import type { FreightInquiry } from "./components/inquiry-data-table";
 import { InboxIcon } from "@/components/icons/inbox-icon";
 import { useDebounce } from "use-debounce";

@@ -8,11 +8,12 @@ import { sendEmail } from "./send-email";
 
 export const auth = betterAuth({
   emailVerification: {
+    enabled: true,
     sendVerificationEmail: async ({ user, url }) => {
       await sendEmail({
           to: user.email,
-          subject: 'Verify your email address',
-          text: `Click the link to verify your email: ${url}`
+          subject: 'Bestätigen Sie Ihre E-Mail-Adresse',
+          text: `Klicken Sie auf den Link, um Ihre E-Mail-Adresse zu bestätigen: ${url}`
       })
   }
 },
@@ -33,7 +34,7 @@ appName: "Pivote",
     }
   },
   emailAndPassword: {
-    autoSignIn: true,
+    autoSignIn: true, 
     autoSignInAfterVerification: true,
     autoSignInAfterResetPassword: true,
     enabled: true,
@@ -41,8 +42,8 @@ appName: "Pivote",
       const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset?token=${token}`;
       await sendEmail({
         to: user.email,
-        subject: "Reset your password",
-        text: `Click the link to reset your password: ${resetUrl}`,
+        subject: "Passwort zurücksetzen",
+        text: `Klicken Sie auf den Link, um Ihr Passwort zurückzusetzen: ${resetUrl}`,
       });
     }
   },

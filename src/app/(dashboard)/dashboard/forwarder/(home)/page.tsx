@@ -9,7 +9,7 @@ import FreightInquiryCard from "../components/dashboard-card";
 
 export default async function ForwarderDashboard() {
  await requireForwarderAccess();
-
+  
   return (
     <>
       <DashboardOverviewHead />

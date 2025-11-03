@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -14,7 +15,8 @@ type AccessCondition = {
 };
 
 // Main function to get access context from session only
-async function getAccessContext(): Promise<AccessContext | null> {
+// Cached to deduplicate session calls within the same request/render
+const getAccessContext = cache(async (): Promise<AccessContext | null> => {
   const session = await auth.api.getSession({
     headers: await headers()
   });
@@ -29,7 +31,7 @@ async function getAccessContext(): Promise<AccessContext | null> {
       ? null 
       : session.user.orgType as "shipper" | "forwarder"
   };
-}
+});
 
 export async function requireAccess(conditions: AccessCondition[]) {
   const ctx = await getAccessContext();

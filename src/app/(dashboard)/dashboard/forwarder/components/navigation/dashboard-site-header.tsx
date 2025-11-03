@@ -31,19 +31,7 @@ interface BreadcrumbItem {
 export function SiteHeader() {
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setCommandOpen((open) => !open);
-      }
-    };
-
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, []);
-
+  
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const pathSegments = pathname
       .split("/")
@@ -122,7 +110,15 @@ export function SiteHeader() {
         </Breadcrumb>
         
 
-        <div className="hidden md:flex items-center ml-auto">
+        <div className="hidden md:flex items-center gap-2 ml-auto">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8"
+            onClick={() => setCommandOpen(true)}
+          >
+            <Search className="h-4 w-4 opacity-70" />
+          </Button>
           <DashboardUserButton />
         </div>
         

@@ -11,6 +11,9 @@ import { InquirySearch } from "@/app/(dashboard)/dashboard/forwarder/frachtanfra
 import { Button } from "@/components/ui/button";
 import { Package, ArrowRight, ClipboardCheck, ClipboardX } from "lucide-react";
 import type { FreightInquiry } from "./components/inquiry-data-table";
+import { InboxIcon } from "@/components/icons/inbox-icon";
+import { useDebounce } from "use-debounce";
+import { PageLayout, PageHeader, PageContainer } from "@/components/ui/page-layout";
 
 // Filter function
 const filterInquiries = (inquiries: FreightInquiry[], query: string) => {
@@ -57,6 +60,7 @@ const InquiryView = () => {
   const tabParam = searchParams.get("tab");
   const defaultTab = tabParam === "quoted" || tabParam === "expired" ? tabParam : "open";
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
 
   const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
     staleTime: 1000 * 30, // 30 seconds (reduced from 5 minutes)
@@ -121,56 +125,63 @@ const InquiryView = () => {
       }
     });
 
-    // Apply search filter
-    const filteredOpen = filterInquiries(open, searchQuery);
-    const filteredQuoted = filterInquiries(quoted, searchQuery);
-    const filteredExpired = filterInquiries(expired, searchQuery);
+    // Apply search filter with debounced query
+    const filteredOpen = filterInquiries(open, debouncedSearchQuery);
+    const filteredQuoted = filterInquiries(quoted, debouncedSearchQuery);
+    const filteredExpired = filterInquiries(expired, debouncedSearchQuery);
 
     return { 
       open: filteredOpen, 
       quoted: filteredQuoted, 
       expired: filteredExpired 
     };
-  }, [transformedData, searchQuery]);
+  }, [transformedData, debouncedSearchQuery]);
 
   if (!inquiryData || inquiryData.length === 0) {
     return (
-      <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
-        <InquiryHeader/>
-        <Empty className="border border-dashed rounded-lg py-16">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ClipboardX className="h-12 w-12 text-muted-foreground" />
-            </EmptyMedia>
-            <EmptyTitle>Keine Frachtanfragen gefunden</EmptyTitle>
-            <EmptyDescription>
-              Es wurden noch keine Frachtanfragen erstellt.
-            </EmptyDescription>
-            <div className="mt-6">
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="group hover:bg-primary hover:text-primary-foreground transition-colors duration-200"
-              >
-                Mit Versendern verbinden
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-              </Button>
-            </div>
-          </EmptyHeader>
-        </Empty>
-      </div>
+      <PageLayout>
+        <PageHeader>
+          <InquiryHeader/>
+        </PageHeader>
+        <PageContainer>
+          <Empty className="border border-dashed rounded-lg py-16">
+            <EmptyHeader>
+              <EmptyMedia>
+                <InboxIcon className="h-16 w-16 text-muted-foreground" />
+              </EmptyMedia>
+              <EmptyTitle>Keine Frachtanfragen gefunden</EmptyTitle>
+              <EmptyDescription>
+                Es wurden noch keine Frachtanfragen erstellt.
+              </EmptyDescription>
+              <div className="mt-6">
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  className="group hover:bg-primary hover:text-primary-foreground transition-colors duration-200"
+                >
+                  Mit Versendern verbinden
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                </Button>
+              </div>
+            </EmptyHeader>
+          </Empty>
+        </PageContainer>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4" style={{ scrollbarGutter: 'stable' }}>
-      <InquiryHeader/>
-      <InquirySearch 
-        className="mb-4" 
-        onSearch={setSearchQuery}
-        searchValue={searchQuery}
-      />
-      <Tabs defaultValue={defaultTab} className="w-full" activationMode="manual">
+    <PageLayout>
+      <PageHeader>
+        <InquiryHeader/>
+      </PageHeader>
+      <PageContainer>
+        <InquirySearch 
+          className="mb-4" 
+          onSearch={setSearchQuery}
+          searchValue={searchQuery}
+        />
+        <Tabs defaultValue={defaultTab} className="w-full" activationMode="manual">
         <TabsList className="h-auto bg-transparent p-0 gap-0 w-full grid grid-cols-3 border-b border-border/40 rounded-none overflow-x-auto">
           <TabsTrigger 
             value="open"
@@ -250,7 +261,8 @@ const InquiryView = () => {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+      </PageContainer>
+    </PageLayout>
   );
 };
 

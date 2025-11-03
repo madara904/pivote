@@ -21,23 +21,6 @@ export function SearchForm({ ...props }: React.ComponentProps<"form">) {
 
   return (
     <form {...props}>
-      <DashboardCommand open={commandOpen} setOpen={setCommandOpen} />
-      <div className="relative overflow-visible">
-        <Label htmlFor="search" className="sr-only">
-          Search
-        </Label>
-        <SidebarInput
-          id="search"
-          placeholder="Schnellsuche..."
-          className="h-7 pl-7 pr-12"
-          onClick={() => setCommandOpen(true)}
-          readOnly
-        />
-        <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 opacity-50 select-none" />
-        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
-          ⌘K
-        </kbd>
-      </div>
     </form>
   );
 }

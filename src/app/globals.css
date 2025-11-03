@@ -200,6 +200,12 @@
   }
   body {
     letter-spacing: var(--tracking-normal);
+    scrollbar-gutter: stable;
+  }
+  /* Prevent layout shift when Radix components lock scroll */
+  body[data-scroll-locked] {
+    margin-right: 0px !important;
+    margin-left: 0px !important;
   }
 }
 @layer base {

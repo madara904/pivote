@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
+import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout";
 
 export default function InquiryDetailsView({ inquiryId }: { inquiryId: string }) {
   const [detail] = trpc.inquiry.forwarder.getInquiryDetail.useSuspenseQuery({
@@ -28,33 +29,29 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
   const inquiry = detail.inquiry;
 
   return (
-    <>
-      <div className="border-b border-border bg-card">
-        <div className="px-4 md:px-8 py-4">
-          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-            <Link href="/dashboard/forwarder/frachtanfragen">
-              <Button variant="ghost" size="icon" className="shrink-0">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                <h1 className="text-xl sm:text-2xl font-semibold text-foreground break-words">{inquiry.referenceNumber}</h1>
-                <Badge variant="secondary" className="shrink-0 self-start sm:self-auto">
-                  {inquiry.status}
-                </Badge>
-              </div>
-              <p className="text-sm sm:text-base text-muted-foreground break-words">{inquiry.title}</p>
+    <PageLayout>
+      <PageHeaderWithBorder>
+        <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+          <Link href="/dashboard/forwarder/frachtanfragen">
+            <Button variant="ghost" size="icon" className="shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <h1 className="text-xl sm:text-2xl font-semibold text-foreground break-words">{inquiry.referenceNumber}</h1>
+              <Badge variant="secondary" className="shrink-0 self-start sm:self-auto">
+                {inquiry.status}
+              </Badge>
             </div>
+            <p className="text-sm sm:text-base text-muted-foreground break-words">{inquiry.title}</p>
           </div>
         </div>
-      </div>
+      </PageHeaderWithBorder>
 
-      <div className="px-4 md:px-8 pb-4">
+      <PageContainer>
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Content - Left Column */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Service & Route Information */}
             <Card className="p-4 sm:p-6">
               <div className="space-y-6">
                 <div>
@@ -106,7 +103,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               </div>
             </Card>
 
-            {/* Cargo Information */}
+
             <Card className="p-4 sm:p-6">
               <div className="space-y-6">
                 <div>
@@ -149,7 +146,6 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                   </div>
                 </div>
 
-                {/* Special Requirements Badges */}
                 {(detail.packageSummary.hasDangerousGoods ||
                   detail.packageSummary.temperatureControlled ||
                   detail.packageSummary.specialHandling) && (
@@ -183,7 +179,6 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               </div>
             </Card>
 
-            {/* Package Details */}
             <Card className="p-4 sm:p-6">
               <div className="space-y-6">
                 <div>
@@ -280,9 +275,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
             </Card>
           </div>
 
-          {/* Sidebar - Right Column */}
           <div className="space-y-6">
-            {/* Status & Dates */}
             <Card className="p-4 sm:p-6">
               <div className="space-y-6">
                 <div>
@@ -353,7 +346,6 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               </div>
             </Card>
 
-            {/* Shipper Information */}
             <Card className="p-4 sm:p-6">
               <div className="space-y-6">
                 <div>
@@ -397,7 +389,6 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               </div>
             </Card>
 
-            {/* Actions */}
             <Card className="p-4 sm:p-6">
               <div className="space-y-4">
                 <Button className="w-full" size="lg">
@@ -416,8 +407,8 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
             </Card>
           </div>
         </div>
-      </div>
-    </>
+      </PageContainer>
+    </PageLayout>
   );
 }
 

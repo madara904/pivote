@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SearchForm } from "./dashboard-search-form";
 
 const menuItems = {
   main: [
@@ -69,12 +68,7 @@ const DashboardSidebar = ({
       collapsible="icon" 
     >
       <SidebarContent>
-      <SidebarHeader>
-        {/* Search form for desktop */}
-        <div className="hidden md:block px-3 py-2">
-          <SearchForm />
-        </div>
-        
+      <SidebarHeader>  
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>

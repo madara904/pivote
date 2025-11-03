@@ -11,8 +11,8 @@ const DashboardOverviewHead = () => {
   const isHighTier = false;
 
   return (
-    <div className="pt-8">
-      <div className="flex flex-col gap-8 container mx-auto">
+    <div className="pt-4">
+      <div className="flex flex-col gap-4 container mx-auto">
         <UpgradeDialog onOpenChange={setIsDialogOpen} open={isDialogOpen} />
         <div className="flex items-center gap-6">
           <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -39,11 +39,6 @@ const DashboardOverviewHead = () => {
               </div>
             )}
           </div>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <div className="w-2 h-2 bg-green-500 animate-pulse rounded-full"></div>
-          <span>Letzte Aktualisierung:</span>
-          <span className="font-semibold text-foreground">vor 5 Min</span>
         </div>
       </div>
       <Separator className="my-8"/>

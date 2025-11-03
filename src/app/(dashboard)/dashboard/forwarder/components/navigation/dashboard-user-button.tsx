@@ -53,7 +53,7 @@ export const DashboardUserButton = () => {
     <DropdownMenu>
       <DropdownMenuTrigger className="border rounded-full p-1 hover:bg-secondary cursor-pointer">
         {data.user.image ? (
-          <Avatar className="h-12 w-12">
+          <Avatar className="h-8 w-8">
             <AvatarImage src={data.user.image} />
           </Avatar>
         ) : (

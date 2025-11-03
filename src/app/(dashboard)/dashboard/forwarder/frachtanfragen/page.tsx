@@ -6,13 +6,11 @@ import { Suspense } from "react";
 import { InquiryLoadingState } from "./inquiry-loading-state";
 import { ErrorBoundary } from "@/components/error-boundary";
 
-
-
 export default async function ForwarderInquiriesPage() {
-  await requireForwarderAccess();
 
-  // Prefetch the inquiries data for Suspense
+  await requireForwarderAccess();
    trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
+
 
   return (
     <>

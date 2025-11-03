@@ -5,32 +5,18 @@ import { z } from "zod";
 import { alias } from "drizzle-orm/pg-core";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 import { createStatusDateInfo } from "@/lib/date-utils";
+import { inquiryIdSchema } from "@/trpc/common/schemas";
+import { requireOrgAndType } from "@/trpc/common/membership";
 
 export const forwarderRouter = createTRPCRouter({
 
 
   markInquiryAsViewed: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-
-      // Use join for better performance instead of separate queries
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-          organizationType: organization.type,
-        })
-        .from(organizationMember)
-        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
-
-      const membership = membershipResult[0];
+      const membership = await requireOrgAndType(ctx);
       
 
       const inquiryForwarderRecord = await db.query.inquiryForwarder.findFirst({
@@ -86,6 +72,7 @@ export const forwarderRouter = createTRPCRouter({
             referenceNumber: inquiry.referenceNumber,
             title: inquiry.title,
             serviceType: inquiry.serviceType,
+            serviceDirection: inquiry.serviceDirection,
             originCity: inquiry.originCity,
             originCountry: inquiry.originCountry,
             destinationCity: inquiry.destinationCity,
@@ -154,6 +141,7 @@ export const forwarderRouter = createTRPCRouter({
             inquiry.referenceNumber,
             inquiry.title,
             inquiry.serviceType,
+            inquiry.serviceDirection,
             inquiry.originCity,
             inquiry.originCountry,
             inquiry.destinationCity,
@@ -192,6 +180,7 @@ export const forwarderRouter = createTRPCRouter({
             referenceNumber: row.referenceNumber,
             title: row.title,
             serviceType: row.serviceType,
+            serviceDirection: row.serviceDirection,
             originCity: row.originCity,
             originCountry: row.originCountry,
             destinationCity: row.destinationCity,
@@ -235,24 +224,11 @@ export const forwarderRouter = createTRPCRouter({
     }),
 
   getInquiryDetail: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      // Get user's organization membership
-      const membershipResult = await db
-        .select({
-          organizationId: organizationMember.organizationId,
-          organizationType: organization.type,
-        })
-        .from(organizationMember)
-        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
-        .where(eq(organizationMember.userId, session.user.id))
-        .limit(1);
-      
-      if (!membershipResult.length) {
-        throw new Error("Benutzer ist nicht Teil einer Organisation");
-      }
+      await requireOrgAndType(ctx);
 
       // Create proper table alias
       const shipperOrg = alias(organization, 'shipper_org');
@@ -273,6 +249,7 @@ export const forwarderRouter = createTRPCRouter({
           referenceNumber: inquiry.referenceNumber,
           title: inquiry.title,
           serviceType: inquiry.serviceType,
+          serviceDirection: inquiry.serviceDirection,
           originCity: inquiry.originCity,
           originCountry: inquiry.originCountry,
           destinationCity: inquiry.destinationCity,
@@ -396,6 +373,7 @@ export const forwarderRouter = createTRPCRouter({
           referenceNumber: row.referenceNumber,
           title: row.title,
           serviceType: row.serviceType,
+          serviceDirection: row.serviceDirection,
           originCity: row.originCity,
           originCountry: row.originCountry,
           destinationCity: row.destinationCity,
@@ -445,27 +423,12 @@ export const forwarderRouter = createTRPCRouter({
 
   // Reject inquiry (forwarder declines to quote)
   rejectInquiry: protectedProcedure
-    .input(z.object({ inquiryId: z.string() }))
+    .input(inquiryIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
       try {
-        // Get user's organization membership
-        const membershipResult = await db
-          .select({
-            organizationId: organizationMember.organizationId,
-            organizationType: organization.type,
-          })
-          .from(organizationMember)
-          .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
-          .where(eq(organizationMember.userId, session.user.id))
-          .limit(1);
-        
-        if (!membershipResult.length) {
-          throw new Error("Benutzer ist nicht Teil einer Organisation");
-        }
-
-        const membership = membershipResult[0];
+        const membership = await requireOrgAndType(ctx);
         
         // Verify the inquiry exists and was sent to this forwarder
         const inquiryForwarderRecord = await db.query.inquiryForwarder.findFirst({

@@ -31,19 +31,7 @@ interface BreadcrumbItem {
 export function SiteHeader() {
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setCommandOpen((open) => !open);
-      }
-    };
-
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, []);
-
+  
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const pathSegments = pathname
       .split("/")
@@ -96,8 +84,8 @@ export function SiteHeader() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/dashboard/forwarder">
-                <Logo className="h-6 w-auto text-primary" />
+                <Link href="/dashboard/forwarder" className="inline-flex items-center">
+                  <Logo className="h-[1.375rem] w-auto text-primary flex-shrink-0" style={{ marginTop: '-0.125rem' }} />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -122,7 +110,15 @@ export function SiteHeader() {
         </Breadcrumb>
         
 
-        <div className="hidden md:flex items-center ml-auto">
+        <div className="hidden md:flex items-center gap-2 ml-auto">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8"
+            onClick={() => setCommandOpen(true)}
+          >
+            <Search className="h-4 w-4 opacity-70" />
+          </Button>
           <DashboardUserButton />
         </div>
         
@@ -144,8 +140,8 @@ export function SiteHeader() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/dashboard/forwarder">
-                <Logo className="h-6 ml-1 w-auto text-primary" />
+                <Link href="/dashboard/forwarder" className="inline-flex items-center">
+                  <Logo className="h-[1.375rem] ml-1 w-auto text-primary flex-shrink-0" style={{ marginTop: '-0.125rem' }} />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>

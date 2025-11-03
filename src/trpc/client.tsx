@@ -42,6 +42,15 @@ export function TRPCProvider(
         httpBatchLink({
          transformer: superjson,
           url: getUrl(),
+          headers() {
+            // Get cookies from the browser dynamically
+            if (typeof window !== 'undefined') {
+              return {
+                cookie: document.cookie,
+              };
+            }
+            return {};
+          },
         }),
       ],
     }),

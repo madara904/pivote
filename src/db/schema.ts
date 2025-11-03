@@ -55,6 +55,11 @@ export const serviceTypeEnum = pgEnum("service_type", [
   "road_freight",
   "rail_freight",
 ]);
+
+export const serviceDirectionEnum = pgEnum("service_direction", [
+  "import",
+  "export",
+]);
 export const cargoTypeEnum = pgEnum("cargo_type", [
   "general",
   "dangerous",
@@ -244,6 +249,7 @@ export const inquiry = pgTable("inquiry", {
   title: text("title").notNull(),
   description: text("description"),
   serviceType: serviceTypeEnum("service_type").notNull().default("air_freight"),
+  serviceDirection: serviceDirectionEnum("service_direction").notNull().default("import"),
   originAirport: text("origin_airport").notNull(),
   originCity: text("origin_city").notNull(),
   originCountry: text("origin_country").notNull(),

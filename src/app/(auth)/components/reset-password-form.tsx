@@ -105,8 +105,8 @@ export const ResetPasswordForm = () => {
     return (
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-center flex-col">
-          <div className="flex items-center justify-center rounded-full bg-primary w-14 h-14">
-            <Logo className="h-8 mt-2 text-primary-foreground" />
+          <div className="flex items-center justify-center">
+            <Logo className="h-18 mt-2 text-primary-foreground" />
           </div>
           <h1 className="text-3xl pt-2">Pivote</h1>
         </div>

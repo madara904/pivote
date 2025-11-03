@@ -5,6 +5,7 @@ import DashboardPerformance from "../../components/dashboard-performance";
 import DashboardAsymmetricalGrid from "../../components/dashboard-asymmetrical-grid";
 import DashboardStatusCards from "../../components/dashboard-status-cards";
 import DashboardGrowBusiness from "../../components/dashboard-grow-business";
+import FreightInquiryCard from "../components/dashboard-card";
 
 export default async function ForwarderDashboard() {
  await requireForwarderAccess();
@@ -13,10 +14,10 @@ export default async function ForwarderDashboard() {
     <>
       <DashboardOverviewHead />
       <main className="container mx-auto">
+        <FreightInquiryCard />
         <DashboardAsymmetricalGrid />
         <DashboardStatusCards />
 
-        {/* Bottom Section - Quotation Status */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <DashboardBottom />
           <DashboardPerformance />

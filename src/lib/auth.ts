@@ -123,7 +123,7 @@ appName: "Pivote",
           ACCOUNT_NOT_FOUND: "Account not found",
           ORGANIZATION_ALREADY_EXISTS: "This organization already exists"
         }
-      }
+      } as Record<string, Record<string, string>>
     })
   ]
 });

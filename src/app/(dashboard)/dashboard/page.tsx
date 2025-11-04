@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 const Dashboard = async () => {
   const { orgType } = await requireAnyOrganizationAccess();
-  
+
   redirect(`/dashboard/${orgType}`);
 };
 

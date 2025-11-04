@@ -2,12 +2,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <main>
-      <div className="space-y-6">
-        {/* Dashboard Overview Head Skeleton */}
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96" />
+    <>
+      <div className="pt-4">
+        <div className="flex flex-col gap-4 container mx-auto">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+        </div>
+      </div>
+      <main className="container mx-auto">
+        <div className="space-y-6">
+        {/* Freight Inquiry Card Skeleton */}
+        <div className="w-full max-w-2xl mb-6">
+          <Skeleton className="h-48 w-full rounded-3xl" />
         </div>
 
         {/* Dashboard Metrics Skeleton */}
@@ -56,6 +64,7 @@ export default function Loading() {
           </div>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

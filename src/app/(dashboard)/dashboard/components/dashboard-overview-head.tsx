@@ -3,26 +3,46 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import UpgradeDialog from "@/components/upgrade-dialog";
+import { trpc } from "@/trpc/client";
 import { Star } from "lucide-react";
 import { useState } from "react";
 
 const DashboardOverviewHead = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const isHighTier = false;
+  const [orgs] = trpc.organization.getMyOrganizations.useSuspenseQuery();
+  const organization = orgs?.[0];
+
+  if (!organization?.name) {
+    return null;
+  }
+
+  // Get first letter of organization name for avatar
+  const initial = organization.name.charAt(0).toUpperCase();
 
   return (
     <div className="pt-4">
       <div className="flex flex-col gap-4 container mx-auto">
         <UpgradeDialog onOpenChange={setIsDialogOpen} open={isDialogOpen} />
         <div className="flex items-center gap-6">
-          <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-            <span className="text-primary font-semibold text-xl">F</span>
-          </div>
+          {organization.logo ? (
+            <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+              <img
+                src={organization.logo}
+                alt={`${organization.name} Logo`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+              <span className="text-primary font-semibold text-xl">{initial}</span>
+            </div>
+          )}
           <div className="flex items-center gap-6">
             <div>
-              <h3 className="font-bold text-xl">FreightCorp GmbH</h3>
+              <h3 className="font-bold text-xl">{organization.name}</h3>
               <p className="text-sm text-muted-foreground font-medium">
-                Spedition & Logistik
+                {organization.type === "forwarder" ? "Spedition & Logistik" : "Versender"}
               </p>
             </div>
             {isHighTier ? (

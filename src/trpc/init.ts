@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { TRPCError } from '@trpc/server';
 import { headers } from 'next/headers';
 import superjson from 'superjson';
+import { requireOrgId } from '@/trpc/common/membership';
 
 export type TRPCContext = {
   db: typeof db;
@@ -31,3 +32,28 @@ export const createCallerFactory = t.createCallerFactory;
 export const baseProcedure = t.procedure;
 export const protectedProcedure = t.procedure;
 export const publicProcedure = t.procedure;
+
+
+export const forwarderQuotationLimitMiddleware = t.middleware(async ({ ctx, next }) => {
+  const organizationId = await requireOrgId(ctx);
+  
+  const { checkQuotationLimit } = await import('@/trpc/middleware/tier-limits');
+  const limitCheck = await checkQuotationLimit(ctx, organizationId);
+
+  if (!limitCheck.allowed) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: limitCheck.reason,
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      tierLimit: {
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+      },
+    },
+  });
+});

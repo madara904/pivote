@@ -71,7 +71,7 @@ export const ForgotPasswordForm = () => {
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-center flex-col">
           <div className="flex items-center justify-center">
-            <Logo className="h-18 mt-2" />
+            <Logo className="h-16" />
           </div>
         </div>
         <Card className="overflow-hidden p-0">
@@ -188,9 +188,8 @@ export const ForgotPasswordForm = () => {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-center flex-col">
         <div className="flex items-center justify-center">
-          <Logo className="h-18 mt-2 text-primary-foreground" />
+          <Logo className="h-16" />
         </div>
-        <h1 className="text-3xl pt-2">Pivote</h1>
       </div>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">

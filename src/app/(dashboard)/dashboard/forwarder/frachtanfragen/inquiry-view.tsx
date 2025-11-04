@@ -73,6 +73,7 @@ const InquiryView = () => {
       referenceNumber: item.inquiry.referenceNumber,
       status: item.inquiry.status, 
       quotationStatus: item.quotationStatus, 
+      quotationId: item.quotationId,
       responseStatus: item.responseStatus,
       sentAt: item.sentAt,
       responseDate: item.viewedAt || undefined,

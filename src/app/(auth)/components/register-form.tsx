@@ -98,11 +98,11 @@ export const RegisterForm = () => {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-center flex-col">
         <div className="flex items-center justify-center">
-          <Logo className="h-18 mt-2" />
+          <Logo className="h-16" />
         </div>
       </div>
         <Card className="overflow-hidden p-0">
-          <CardContent className="grid p-0 md:grid-cols-2">
+          <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">
             {/* Logo only for mobile (above form) */}
             <Form {...form}>
               <form

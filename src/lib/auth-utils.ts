@@ -14,6 +14,7 @@ type AccessCondition = {
   redirectTo: string | ((ctx: AccessContext) => string);
 };
 
+
 // Main function to get access context from session only
 // Cached to deduplicate session calls within the same request/render
 const getAccessContext = cache(async (): Promise<AccessContext | null> => {

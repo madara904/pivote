@@ -34,15 +34,39 @@ export function calculateVolume(dimensions: PackageDimensions): number {
 }
 
 /**
+ * Round to nearest 0.5 (half kilogram)
+ * @param value - Value to round
+ * @returns Value rounded to nearest 0.5
+ */
+function roundToHalf(value: number): number {
+  return Math.round(value * 2) / 2;
+}
+
+/**
  * Calculate chargeable weight for air freight
- * Air freight uses 1:6000 ratio (1 m³ = 6000 kg)
+ * Air freight uses 166.667 kg per m³ (CBM * 166.667)
+ * Chargeable weight is rounded to nearest 0.5 kg
+ * @param grossWeight - Total gross weight in kg
+ * @param volumePerPiece - Volume in m³ (CBM) per piece
+ * @param pieces - Number of pieces
+ * @returns Chargeable weight in kg (rounded to nearest 0.5)
  */
 export function calculateAirFreightChargeableWeight(
   grossWeight: number,
-  volume: number
+  volumePerPiece: number,
+  pieces: number = 1
 ): number {
-  const volumeWeight = volume * 6000; // 1 m³ = 6000 kg
-  return Math.max(grossWeight, volumeWeight);
+  // Calculate total CBM (volume per piece * number of pieces)
+  const totalCBM = volumePerPiece * pieces;
+  
+  // Calculate volume weight: CBM * 166.667
+  const volumeWeight = totalCBM * 166.667;
+  
+  // Get the maximum of actual weight or volume weight
+  const chargeableWeight = Math.max(grossWeight, volumeWeight);
+  
+  // Round the final result to nearest 0.5 kg
+  return roundToHalf(chargeableWeight);
 }
 
 /**
@@ -51,25 +75,33 @@ export function calculateAirFreightChargeableWeight(
  */
 export function calculateSeaFreightChargeableWeight(
   grossWeight: number,
-  volume: number
+  volumePerPiece: number,
+  pieces: number = 1
 ): number {
-  const volumeWeight = volume * 1000; // 1 m³ = 1000 kg
+  const totalCBM = volumePerPiece * pieces;
+  const volumeWeight = totalCBM * 1000; // 1 m³ = 1000 kg
   return Math.max(grossWeight, volumeWeight);
 }
 
 /**
  * Calculate chargeable weight based on service type
+ * @param serviceType - Type of freight service
+ * @param grossWeight - Total gross weight in kg
+ * @param volumePerPiece - Volume in m³ (CBM) per piece
+ * @param pieces - Number of pieces (default: 1)
+ * @returns Chargeable weight in kg
  */
 export function calculateChargeableWeight(
   serviceType: ServiceType,
   grossWeight: number,
-  volume: number
+  volumePerPiece: number,
+  pieces: number = 1
 ): number {
   switch (serviceType) {
     case "air_freight":
-      return calculateAirFreightChargeableWeight(grossWeight, volume);
+      return calculateAirFreightChargeableWeight(grossWeight, volumePerPiece, pieces);
     case "sea_freight":
-      return calculateSeaFreightChargeableWeight(grossWeight, volume);
+      return calculateSeaFreightChargeableWeight(grossWeight, volumePerPiece);
     case "road_freight":
     case "rail_freight":
       // For road and rail freight, chargeable weight is typically the gross weight

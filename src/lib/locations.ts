@@ -14,15 +14,15 @@ export type Airport = {
 };
 
 export const countries: Country[] = [
-  { code: "DE", name: "Germany" },
+  { code: "DE", name: "Deutschland" },
   { code: "CN", name: "China" },
-  { code: "US", name: "United States" },
-  { code: "NL", name: "Netherlands" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "AE", name: "United Arab Emirates" },
-  { code: "IN", name: "India" },
+  { code: "US", name: "Vereinigte Staaten" },
+  { code: "NL", name: "Niederlande" },
+  { code: "GB", name: "Vereinigtes Königreich" },
+  { code: "AE", name: "Vereinigte Arabische Emirate" },
+  { code: "IN", name: "Indien" },
   { code: "JP", name: "Japan" },
-  { code: "KR", name: "South Korea" },
+  { code: "KR", name: "Südkorea" },
   { code: "TR", name: "Türkiye" },
 ];
 
@@ -63,6 +63,21 @@ export const airports: Airport[] = [
 export function getAirportsByCountry(countryCode?: string): Airport[] {
   if (!countryCode) return [];
   return airports.filter((a) => a.countryCode === countryCode);
+}
+
+export function getAirportByCode(airportCode?: string): Airport | undefined {
+  if (!airportCode) return undefined;
+  return airports.find((a) => a.code === airportCode);
+}
+
+export function getCountryByCode(countryCode?: string): Country | undefined {
+  if (!countryCode) return undefined;
+  return countries.find((c) => c.code === countryCode);
+}
+
+export function getCountryNameByCode(countryCode?: string): string {
+  const country = getCountryByCode(countryCode);
+  return country?.name || "";
 }
 
 export const incoterms = [

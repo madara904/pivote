@@ -45,6 +45,11 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               </Badge>
             </div>
             <p className="text-sm sm:text-base text-muted-foreground break-words">{inquiry.title}</p>
+            {inquiry.shipperReference && (
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Referenz des Versenders: <span className="font-medium text-foreground">{inquiry.shipperReference}</span>
+              </p>
+            )}
           </div>
         </div>
       </PageHeaderWithBorder>
@@ -137,7 +142,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                     <p className="mt-1 text-base sm:text-lg font-semibold text-foreground break-words">{inquiry.totalGrossWeight} kg</p>
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Berechenbares Gewicht</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Frachtpflichtiges Gewicht</p>
                     <p className="mt-1 text-base sm:text-lg font-semibold text-foreground break-words">{inquiry.totalChargeableWeight} kg</p>
                   </div>
                   <div>
@@ -223,7 +228,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                           </div>
                           {pkg.chargeableWeight && (
                             <div>
-                              <p className="text-xs sm:text-sm text-muted-foreground">Berechenbares Gewicht</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Frachtpflichtiges Gewicht</p>
                               <p className="mt-0.5 text-sm sm:text-base font-medium text-foreground break-words">{pkg.chargeableWeight} kg</p>
                             </div>
                           )}

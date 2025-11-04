@@ -106,9 +106,8 @@ export const ResetPasswordForm = () => {
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-center flex-col">
           <div className="flex items-center justify-center">
-            <Logo className="h-18 mt-2 text-primary-foreground" />
+            <Logo className="h-16" />
           </div>
-          <h1 className="text-3xl pt-2">Pivote</h1>
         </div>
         <Card className="overflow-hidden p-0">
           <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">
@@ -208,10 +207,9 @@ export const ResetPasswordForm = () => {
     return (
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-center flex-col">
-          <div className="flex items-center justify-center rounded-full bg-primary w-14 h-14">
-            <Logo className="h-8 mt-2 text-primary-foreground" />
+          <div className="flex items-center justify-center">
+            <Logo className="h-16" />
           </div>
-          <h1 className="text-3xl pt-2">Pivote</h1>
         </div>
         <Card className="overflow-hidden p-0">
           <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">
@@ -247,10 +245,9 @@ export const ResetPasswordForm = () => {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-center flex-col">
-        <div className="flex items-center justify-center rounded-full bg-primary w-14 h-14">
-          <Logo className="h-8 mt-2 text-primary-foreground" />
+        <div className="flex items-center justify-center">
+          <Logo className="h-16" />
         </div>
-        <h1 className="text-3xl pt-2">Pivote</h1>
       </div>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">

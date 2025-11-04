@@ -9,8 +9,9 @@ interface Props {
 
 const Layout = ({ children }: Props) => {
   return (
-    <div className="[--header-height:calc(--spacing(14))]">
+    <>
       <EmailVerifyBannerWrapper />
+    <div className="[--header-height:calc(--spacing(14))]" style={{ paddingTop: 'var(--banner-height, 0px)' }}>
       <SidebarProvider 
         className="flex flex-col"
         style={{
@@ -27,6 +28,7 @@ const Layout = ({ children }: Props) => {
         </div>
       </SidebarProvider>
     </div>
+    </>
   );
 };
 

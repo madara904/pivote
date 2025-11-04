@@ -13,7 +13,7 @@ interface EmailVerifyBannerProps {
 
 export function EmailVerifyBanner({ onClose, onVerify, isSending  }: EmailVerifyBannerProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-primary text-primary-foreground shadow-lg">
+    <div className="fixed top-0 left-0 right-0 z-[100] bg-rose-500 text-primary-foreground shadow-lg">
       <div className="mx-auto max-w-7xl px-4 py-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Bitte verifizieren Sie Ihre Email.</p>
@@ -22,13 +22,15 @@ export function EmailVerifyBanner({ onClose, onVerify, isSending  }: EmailVerify
               {isSending ? <Spinner className="size-4" /> : "Verifizieren"}
               {isSending && "Senden..."}
             </Button>
-            <button
+            <Button
               onClick={onClose}
-              className="inline-flex items-center justify-center rounded p-1 hover:bg-primary-foreground/20 transition-colors"
+              className="inline-flex items-center justify-center rounded p-1 transition-colors"
               aria-label="Close banner"
+              variant="ghost"
+              size="icon"
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>

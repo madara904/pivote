@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Shipper-specific status utilities
  * Shippers have different business rules and status meanings than forwarders

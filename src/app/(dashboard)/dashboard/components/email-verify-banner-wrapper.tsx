@@ -42,11 +42,32 @@ export function EmailVerifyBannerWrapper() {
 
   const showBanner = session?.user && !session.user.emailVerified && !isDismissed
 
+  // Update CSS variable for banner height when banner visibility changes or window resizes
   useEffect(() => {
-    if (showBanner && bannerRef.current) {
-      const height = bannerRef.current.offsetHeight
-      document.documentElement.style.setProperty('--banner-height', `${height}px`)
-    } else {
+    const updateBannerHeight = () => {
+      if (!showBanner || !bannerRef.current) {
+        document.documentElement.style.setProperty('--banner-height', '0px')
+        return
+      }
+
+      // Wait for next frame to ensure banner is rendered
+      requestAnimationFrame(() => {
+        const bannerElement = bannerRef.current?.querySelector('div') as HTMLElement
+        if (bannerElement) {
+          const height = bannerElement.offsetHeight
+          document.documentElement.style.setProperty('--banner-height', `${height}px`)
+        }
+      })
+    }
+
+    updateBannerHeight()
+
+    // Also update on window resize
+    window.addEventListener('resize', updateBannerHeight)
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', updateBannerHeight)
       document.documentElement.style.setProperty('--banner-height', '0px')
     }
   }, [showBanner])

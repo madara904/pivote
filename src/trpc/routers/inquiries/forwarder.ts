@@ -1,7 +1,6 @@
 import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
 import { eq, and, sql, desc, count, ne } from "drizzle-orm";
 import { inquiryForwarder, organizationMember, inquiry, organization, user, inquiryPackage, quotation } from "@/db/schema";
-import { z } from "zod";
 import { alias } from "drizzle-orm/pg-core";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 import { createStatusDateInfo } from "@/lib/date-utils";
@@ -14,6 +13,7 @@ export const forwarderRouter = createTRPCRouter({
   markInquiryAsViewed: protectedProcedure
     .input(inquiryIdSchema)
     .mutation(async ({ ctx, input }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { db, session } = ctx;
       
       const membership = await requireOrgAndType(ctx);
@@ -90,6 +90,7 @@ export const forwarderRouter = createTRPCRouter({
             createdByName: user.name,
             
             // quotation status and price
+            quotationId: quotation.id,
             quotationStatus: quotation.status,
             quotationPrice: quotation.totalPrice,
             quotationCurrency: quotation.currency,
@@ -100,9 +101,9 @@ export const forwarderRouter = createTRPCRouter({
             totalChargeableWeight: sql<number>`COALESCE(SUM(${inquiryPackage.chargeableWeight}), 0)`,
             totalVolume: sql<number>`COALESCE(SUM(${inquiryPackage.volume}), 0)`,
             packageCount: count(inquiryPackage.id),
-            hasDangerousGoods: sql<boolean>`BOOL_OR(${inquiryPackage.isDangerous})`,
-            temperatureControlled: sql<boolean>`BOOL_OR(${inquiryPackage.temperature} IS NOT NULL)`,
-            specialHandling: sql<boolean>`BOOL_OR(${inquiryPackage.specialHandling} IS NOT NULL)`
+            hasDangerousGoods: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.isDangerous}), false)`,
+            temperatureControlled: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.temperature} IS NOT NULL AND ${inquiryPackage.temperature} != ''), false)`,
+            specialHandling: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.specialHandling} IS NOT NULL AND ${inquiryPackage.specialHandling} != ''), false)`
           })
           .from(organizationMember)
           .innerJoin(organization, 
@@ -154,6 +155,7 @@ export const forwarderRouter = createTRPCRouter({
             shipperOrg.name,
             shipperOrg.email,
             user.name,
+            quotation.id,
             quotation.status,
             quotation.totalPrice,
             quotation.currency
@@ -208,6 +210,7 @@ export const forwarderRouter = createTRPCRouter({
             specialHandling: Boolean(row.specialHandling)
           },
           statusDateInfo: createStatusDateInfo(row.sentAt, row.viewedAt, row.status),
+          quotationId: row.quotationId,
           quotationStatus: row.quotationStatus,
           quotationPrice: row.quotationPrice,
           quotationCurrency: row.quotationCurrency
@@ -247,6 +250,7 @@ export const forwarderRouter = createTRPCRouter({
           
           // inquiry fields
           referenceNumber: inquiry.referenceNumber,
+          shipperReference: inquiry.shipperReference,
           title: inquiry.title,
           serviceType: inquiry.serviceType,
           serviceDirection: inquiry.serviceDirection,
@@ -272,9 +276,9 @@ export const forwarderRouter = createTRPCRouter({
           totalChargeableWeight: sql<number>`COALESCE(SUM(${inquiryPackage.chargeableWeight}), 0)`,
           totalVolume: sql<number>`COALESCE(SUM(${inquiryPackage.volume}), 0)`,
           packageCount: count(inquiryPackage.id),
-          hasDangerousGoods: sql<boolean>`BOOL_OR(${inquiryPackage.isDangerous})`,
-          temperatureControlled: sql<boolean>`BOOL_OR(${inquiryPackage.temperature} IS NOT NULL)`,
-          specialHandling: sql<boolean>`BOOL_OR(${inquiryPackage.specialHandling} IS NOT NULL)`
+          hasDangerousGoods: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.isDangerous}), false)`,
+          temperatureControlled: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.temperature} IS NOT NULL AND ${inquiryPackage.temperature} != ''), false)`,
+          specialHandling: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.specialHandling} IS NOT NULL AND ${inquiryPackage.specialHandling} != ''), false)`
         })
         .from(organizationMember)
         .innerJoin(organization, 
@@ -307,8 +311,10 @@ export const forwarderRouter = createTRPCRouter({
           inquiryForwarder.createdAt,
           inquiry.id,
           inquiry.referenceNumber,
+          inquiry.shipperReference,
           inquiry.title,
           inquiry.serviceType,
+          inquiry.serviceDirection,
           inquiry.originCity,
           inquiry.originCountry,
           inquiry.destinationCity,
@@ -371,6 +377,7 @@ export const forwarderRouter = createTRPCRouter({
         inquiry: {
           id: row.inquiryId,
           referenceNumber: row.referenceNumber,
+          shipperReference: row.shipperReference,
           title: row.title,
           serviceType: row.serviceType,
           serviceDirection: row.serviceDirection,
@@ -425,6 +432,7 @@ export const forwarderRouter = createTRPCRouter({
   rejectInquiry: protectedProcedure
     .input(inquiryIdSchema)
     .mutation(async ({ ctx, input }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { db, session } = ctx;
       
       try {

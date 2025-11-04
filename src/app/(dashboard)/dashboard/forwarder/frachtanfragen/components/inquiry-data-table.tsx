@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useState } from "react"
 import {
   useReactTable,
   type ColumnDef,
@@ -11,19 +12,22 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Package, Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X } from "lucide-react"
+import { Package, Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2 } from "lucide-react"
 import { RouteDisplay } from "@/components/ui/route-display"
 import { ServiceIcon } from "@/components/ui/service-icon"
 import Link from "next/link"
 import { trpc } from "@/trpc/client"
 import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { QuotationViewDialog } from "./quotation-view-dialog"
+import { EditQuotationDialog } from "./edit-quotation-dialog"
 
 export type FreightInquiry = {
   id: string
   referenceNumber: string
   status: string
   quotationStatus?: string | null
+  quotationId?: string | null
   responseStatus?: string | null
   sentAt?: Date
   responseDate?: Date
@@ -52,7 +56,7 @@ function RejectInquiryButton({ inquiryId }: { inquiryId: string }) {
   const utils = trpc.useUtils();
   const rejectInquiry = trpc.inquiry.forwarder.rejectInquiry.useMutation({
     onSuccess: () => {
-      toast.success("Anfrage erfolgreich abgelehnt");
+      toast.info("Anfrage erfolgreich abgelehnt");
       utils.inquiry.forwarder.getMyInquiriesFast.invalidate();
     },
     onError: (error) => {
@@ -89,11 +93,51 @@ function RejectInquiryButton({ inquiryId }: { inquiryId: string }) {
   );
 }
 
+function DeleteQuotationButton({ quotationId }: { quotationId: string }) {
+  const utils = trpc.useUtils();
+  const deleteQuotation = trpc.quotation.forwarder.deleteQuotation.useMutation({
+    onSuccess: () => {
+      toast.success("Angebot erfolgreich gelöscht");
+      utils.inquiry.forwarder.getMyInquiriesFast.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Fehler beim Löschen: ${error.message}`);
+    }
+  });
+
+  return (
+    <ConfirmationDialog
+      title="Angebot löschen"
+      description="Möchten Sie dieses Angebot wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      confirmText="Angebot löschen"
+      cancelText="Abbrechen"
+      variant="destructive"
+      onConfirm={() => deleteQuotation.mutate({ quotationId })}
+      loading={deleteQuotation.isPending}
+      loadingText="Wird gelöscht..."
+      disabled={deleteQuotation.isPending}
+    >
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+        disabled={deleteQuotation.isPending}
+      >
+        <Trash2 className="h-4 w-4 mr-2 shrink-0" />
+        <span className="truncate">Angebot löschen</span>
+      </Button>
+    </ConfirmationDialog>
+  );
+}
+
 export function InquiryDataTable<TData extends FreightInquiry>({
   data,
   columns,
   className,
 }: InquiryDataTableProps<TData>) {
+  const [selectedQuotationInquiryId, setSelectedQuotationInquiryId] = useState<string | null>(null);
+  const [selectedEditQuotationId, setSelectedEditQuotationId] = useState<{ quotationId: string; inquiryId: string } | null>(null);
+
   const table = useReactTable<TData>({
     data,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,6 +268,35 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                             <RejectInquiryButton inquiryId={r.id} />
                           </>
                         )}
+                        {r.responseStatus === "quoted" && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              variant="default"
+                              onClick={() => setSelectedQuotationInquiryId(r.id)}
+                            >
+                              <FileText className="h-4 w-4 mr-2 shrink-0" />
+                              <span className="truncate">Angebot anzeigen</span>
+                            </Button>
+                            {(r.quotationStatus === "submitted" || r.quotationStatus === "withdrawn") && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="w-full"
+                                  variant="outline"
+                                  onClick={() => r.quotationId && setSelectedEditQuotationId({ quotationId: r.quotationId, inquiryId: r.id })}
+                                >
+                                  <Edit className="h-4 w-4 mr-2 shrink-0" />
+                                  <span className="truncate">Angebot korrigieren</span>
+                                </Button>
+                                {r.quotationId && (
+                                  <DeleteQuotationButton quotationId={r.quotationId} />
+                                )}
+                              </>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -233,6 +306,21 @@ export function InquiryDataTable<TData extends FreightInquiry>({
           })
         )}
       </div>
+      {selectedQuotationInquiryId && (
+        <QuotationViewDialog
+          inquiryId={selectedQuotationInquiryId}
+          open={!!selectedQuotationInquiryId}
+          onOpenChange={(open) => !open && setSelectedQuotationInquiryId(null)}
+        />
+      )}
+      {selectedEditQuotationId && (
+        <EditQuotationDialog
+          quotationId={selectedEditQuotationId.quotationId}
+          inquiryId={selectedEditQuotationId.inquiryId}
+          open={!!selectedEditQuotationId}
+          onOpenChange={(open) => !open && setSelectedEditQuotationId(null)}
+        />
+      )}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-2 py-3">
         <div className="text-xs text-muted-foreground order-2 sm:order-1">
           Seite {table.getState().pagination.pageIndex + 1} von {table.getPageCount() || 1}

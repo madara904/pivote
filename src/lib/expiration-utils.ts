@@ -1,7 +1,6 @@
 import { eq, and, lt } from "drizzle-orm";
 import { inquiry, quotation } from "@/db/schema";
 import { db } from '@/db';
-import { isDateInPast } from './date-utils';
 
 // Cache to prevent frequent expiration checks
 let lastExpirationCheck = 0;
@@ -89,6 +88,7 @@ export async function checkAndUpdateExpiredItems(db: DbType) {
       expiredQuotations: expiredQuotations.length,
       skipped: false
     };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return {
       expiredInquiries: 0,

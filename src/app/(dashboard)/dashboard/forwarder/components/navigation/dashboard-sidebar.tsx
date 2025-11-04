@@ -63,7 +63,11 @@ const DashboardSidebar = ({
 
   return (
     <Sidebar
-      className="top-(--header-height) h-[calc(100svh-var(--header-height))]! bg-primary/5 border-r border-accent"
+      className="bg-primary/5 border-r border-accent"
+      style={{ 
+        top: 'calc(var(--header-height) + var(--banner-height, 0px))',
+        height: 'calc(100svh - var(--header-height) - var(--banner-height, 0px))'
+      }}
       {...props}
       collapsible="icon" 
     >

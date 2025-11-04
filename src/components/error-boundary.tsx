@@ -15,6 +15,7 @@ interface ErrorBoundaryProps {
 }
 
 function ErrorFallback({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   error,
   resetErrorBoundary,
   title,

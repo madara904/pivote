@@ -78,7 +78,7 @@ export const LoginForm = () => {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-center flex-col">
         <div className="flex items-center justify-center">
-          <Logo className="h-18 mt-2" />
+          <Logo className="h-16" />
         </div>
       </div>
       <Card className="overflow-hidden p-0">
@@ -208,7 +208,7 @@ export const LoginForm = () => {
                   Noch kein Konto?{" "}
                   <Link
                     href="/sign-up"
-                    className="underline underline-offset-4"
+                    className="text-primary hover:text-primary/90 transition-colors font-medium"
                   >
                     Registrieren
                   </Link>

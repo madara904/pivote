@@ -14,6 +14,10 @@ import { AlertCircle, Package as PackageIcon, Plus, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Package, InquiryFormData, Forwarder } from "@/types/trpc-inferred"
+import { sanitizeIntegerInput, sanitizeDecimalInput } from "@/lib/form-sanitization"
+import { CountrySelect } from "@/components/location/location-fields"
+import { getAirportByCode, getCountryNameByCode, getAirportsByCountry } from "@/lib/locations"
+import { calculateChargeableWeight, calculateVolume } from "@/lib/freight-calculations"
 
 // Local interface - stays with the component
 interface InquiryFormProps {
@@ -25,9 +29,20 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedForwarders, setSelectedForwarders] = useState<string[]>([])
+  
+  // Location state for origin
+  const [originCountry, setOriginCountry] = useState<string>("")
+  const [originAirport, setOriginAirport] = useState<string>("")
+  const [originCity, setOriginCity] = useState<string>("")
+  
+  // Location state for destination
+  const [destinationCountry, setDestinationCountry] = useState<string>("")
+  const [destinationAirport, setDestinationAirport] = useState<string>("")
+  const [destinationCity, setDestinationCity] = useState<string>("")
+  
   const [packages, setPackages] = useState<Package[]>([
     {
-      packageNumber: "",
+      packageNumber: "1",
       description: "",
       pieces: 1,
       grossWeight: 0,
@@ -43,8 +58,11 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
     }
   ])
 
+  const [referenceNumber, setReferenceNumber] = useState<string>("")
+
   const createInquiry = trpc.inquiry.shipper.createInquiry.useMutation({
     onSuccess: (data) => {
+      setReferenceNumber(data.referenceNumber)
       toast.success(`Frachtanfrage ${data.referenceNumber} erfolgreich erstellt!`)
       router.refresh()
     },
@@ -62,8 +80,9 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
   }
 
   const addPackage = () => {
+    const packageNumber = String(packages.length + 1)
     setPackages(prev => [...prev, {
-      packageNumber: "",
+      packageNumber,
       description: "",
       pieces: 1,
       grossWeight: 0,
@@ -81,14 +100,139 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
 
   const removePackage = (index: number) => {
     if (packages.length > 1) {
-      setPackages(prev => prev.filter((_, i) => i !== index))
+      setPackages(prev => {
+        const updated = prev.filter((_, i) => i !== index)
+        // Re-number packages after removal
+        return updated.map((pkg, i) => ({
+          ...pkg,
+          packageNumber: String(i + 1)
+        }))
+      })
     }
   }
 
+  // Get service type from form (we'll track it in state)
+  const [serviceType, setServiceType] = useState<"air_freight" | "sea_freight" | "road_freight" | "rail_freight">("air_freight")
+  const [serviceDirection, setServiceDirection] = useState<"import" | "export">("import")
+
+  // Recalculate chargeable weights when service type changes
+  const handleServiceTypeChange = (newServiceType: typeof serviceType) => {
+    setServiceType(newServiceType)
+    // Recalculate chargeable weights for all packages
+    setPackages(prev => prev.map(pkg => {
+      if (pkg.grossWeight > 0 && pkg.length && pkg.width && pkg.height) {
+        const volumePerPiece = calculateVolume({ length: pkg.length, width: pkg.width, height: pkg.height })
+        return { ...pkg, chargeableWeight: calculateChargeableWeight(newServiceType, pkg.grossWeight, volumePerPiece, pkg.pieces || 1) }
+      } else if (pkg.grossWeight > 0) {
+        return { ...pkg, chargeableWeight: pkg.grossWeight }
+      }
+      return pkg
+    }))
+  }
+
   const updatePackage = (index: number, field: keyof Package, value: string | number | boolean) => {
-    setPackages(prev => prev.map((pkg, i) => 
-      i === index ? { ...pkg, [field]: value } : pkg
-    ))
+    setPackages(prev => prev.map((pkg, i) => {
+      if (i === index) {
+        const updated = { ...pkg, [field]: value }
+        
+        // Auto-calculate chargeable weight when dimensions, weight, or pieces change
+        if (field === "grossWeight" || field === "length" || field === "width" || field === "height" || field === "pieces") {
+          const grossWeight = field === "grossWeight" ? (value as number) : updated.grossWeight
+          const pieces = field === "pieces" ? (value as number) : updated.pieces || 1
+          const length = field === "length" ? (value as number) : updated.length || 0
+          const width = field === "width" ? (value as number) : updated.width || 0
+          const height = field === "height" ? (value as number) : updated.height || 0
+          
+          if (grossWeight > 0 && length > 0 && width > 0 && height > 0) {
+            // Calculate CBM per piece
+            const volumePerPiece = calculateVolume({ length, width, height })
+            // Calculate chargeable weight accounting for number of pieces
+            updated.chargeableWeight = calculateChargeableWeight(serviceType, grossWeight, volumePerPiece, pieces)
+          } else if (grossWeight > 0) {
+            // If no dimensions, use gross weight as chargeable weight
+            updated.chargeableWeight = grossWeight
+          } else {
+            updated.chargeableWeight = 0
+          }
+        }
+        
+        return updated
+      }
+      return pkg
+    }))
+  }
+
+  const handleNumberInputChange = (
+    index: number,
+    field: keyof Package,
+    value: string,
+    options: { isInteger?: boolean; minValue?: number; maxValue?: number } = {}
+  ) => {
+    const { isInteger = false, minValue = 0, maxValue = 1000000 } = options
+    const sanitized = isInteger
+      ? sanitizeIntegerInput(value, { minValue, maxValue })
+      : sanitizeDecimalInput(value, { minValue, maxValue })
+    
+    const numValue = sanitized === "" ? (field === "pieces" ? 1 : 0) : (isInteger ? parseInt(sanitized) : parseFloat(sanitized)) || (field === "pieces" ? 1 : 0)
+    updatePackage(index, field, numValue)
+  }
+
+  const NOT_SPECIFIED = "NOT_SPECIFIED"
+
+  // Handle origin airport selection - auto-populate city and country if airport is selected
+  const handleOriginAirportChange = (airportCode: string) => {
+    setOriginAirport(airportCode)
+    
+    if (airportCode === NOT_SPECIFIED) {
+      // User selected "Not specified" - don't auto-fill, allow manual input
+      return
+    }
+    
+    const airport = getAirportByCode(airportCode)
+    if (airport) {
+      setOriginCountry(airport.countryCode)
+      // Auto-fill city, but user can still manually edit it
+      setOriginCity(airport.city)
+    }
+  }
+
+  // Handle origin country change - reset airport if country changes
+  const handleOriginCountryChange = (countryCode: string) => {
+    setOriginCountry(countryCode)
+    // Reset airport if it doesn't belong to the new country (unless it's "not specified")
+    const airport = getAirportByCode(originAirport)
+    if (airport && airport.countryCode !== countryCode && originAirport !== NOT_SPECIFIED) {
+      setOriginAirport("")
+      setOriginCity("")
+    }
+  }
+
+  // Handle destination airport selection - auto-populate city and country if airport is selected
+  const handleDestinationAirportChange = (airportCode: string) => {
+    setDestinationAirport(airportCode)
+    
+    if (airportCode === NOT_SPECIFIED) {
+      // User selected "Not specified" - don't auto-fill, allow manual input
+      return
+    }
+    
+    const airport = getAirportByCode(airportCode)
+    if (airport) {
+      setDestinationCountry(airport.countryCode)
+      // Auto-fill city, but user can still manually edit it
+      setDestinationCity(airport.city)
+    }
+  }
+
+  // Handle destination country change - reset airport if country changes
+  const handleDestinationCountryChange = (countryCode: string) => {
+    setDestinationCountry(countryCode)
+    // Reset airport if it doesn't belong to the new country (unless it's "not specified")
+    const airport = getAirportByCode(destinationAirport)
+    if (airport && airport.countryCode !== countryCode && destinationAirport !== NOT_SPECIFIED) {
+      setDestinationAirport("")
+      setDestinationCity("")
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,18 +240,50 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
     setIsSubmitting(true)
 
     try {
+      // Validate location fields
+      if (!originCountry) {
+        toast.error("Bitte wählen Sie das Ursprungsland aus")
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!originCity.trim()) {
+        toast.error("Bitte geben Sie die Ursprungsstadt ein")
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!destinationCountry) {
+        toast.error("Bitte wählen Sie das Zielland aus")
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!destinationCity.trim()) {
+        toast.error("Bitte geben Sie die Zielstadt ein")
+        setIsSubmitting(false)
+        return
+      }
+
       const formData = new FormData(e.target as HTMLFormElement)
       
+      // Auto-generate title from origin and destination
+      const autoTitle = originCity && destinationCity 
+        ? `${originCity} → ${destinationCity}`
+        : "Neue Frachtanfrage"
+      
       const inquiryData: InquiryFormData = {
-        title: formData.get("title") as string,
+        title: autoTitle,
         description: formData.get("description") as string || undefined,
-        serviceType: formData.get("serviceType") as "air_freight" | "sea_freight" | "road_freight" | "rail_freight",
-        originAirport: formData.get("originAirport") as string,
-        originCity: formData.get("originCity") as string,
-        originCountry: formData.get("originCountry") as string,
-        destinationAirport: formData.get("destinationAirport") as string,
-        destinationCity: formData.get("destinationCity") as string,
-        destinationCountry: formData.get("destinationCountry") as string,
+        shipperReference: formData.get("shipperReference") as string || undefined,
+        serviceType: serviceType,
+        serviceDirection: serviceDirection,
+        originAirport: originAirport === NOT_SPECIFIED ? "" : originAirport,
+        originCity: originCity.trim(),
+        originCountry: getCountryNameByCode(originCountry),
+        destinationAirport: destinationAirport === NOT_SPECIFIED ? "" : destinationAirport,
+        destinationCity: destinationCity.trim(),
+        destinationCountry: getCountryNameByCode(destinationCountry),
         cargoType: formData.get("cargoType") as "general" | "dangerous" | "perishable" | "fragile" | "oversized",
         cargoDescription: formData.get("cargoDescription") as string || undefined,
         incoterms: formData.get("incoterms") as string,
@@ -135,19 +311,21 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
           <CardDescription>Allgemeine Informationen zur Frachtanfrage</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {referenceNumber && (
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm font-medium">Referenznummer:</p>
+              <p className="text-lg font-semibold">{referenceNumber}</p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Titel *</Label>
-              <Input
-                id="title"
-                name="title"
-                placeholder="z.B. Elektronik von München nach New York"
-                required
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="serviceType">Service-Typ *</Label>
-              <Select name="serviceType" required>
+              <Select 
+                name="serviceType" 
+                required
+                value={serviceType}
+                onValueChange={(value) => handleServiceTypeChange(value as typeof serviceType)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Service-Typ wählen" />
                 </SelectTrigger>
@@ -159,6 +337,35 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="serviceDirection">Richtung *</Label>
+              <Select 
+                name="serviceDirection" 
+                required
+                value={serviceDirection}
+                onValueChange={(value) => setServiceDirection(value as typeof serviceDirection)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Richtung wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="import">Import</SelectItem>
+                  <SelectItem value="export">Export</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="shipperReference">Eigene Referenznummer</Label>
+            <Input
+              id="shipperReference"
+              name="shipperReference"
+              placeholder="z.B. PO-2024-001 oder Bestellnummer"
+            />
+            <p className="text-xs text-muted-foreground">
+              Optionale Referenznummer für Ihre eigene Buchhaltung oder Systeme
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -180,63 +387,99 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
           <CardDescription>Abgangs- und Zielort der Sendung</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="originAirport">Abgangsflughafen *</Label>
-              <Input
-                id="originAirport"
-                name="originAirport"
-                placeholder="z.B. MUC"
-                required
-              />
+              <Label>Ursprung *</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="originCountry" className="text-sm text-muted-foreground">Land *</Label>
+                  <CountrySelect
+                    value={originCountry}
+                    onValueChange={handleOriginCountryChange}
+                    placeholder="Land wählen"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="originAirport" className="text-sm text-muted-foreground">Flughafen</Label>
+                  <Select
+                    value={originAirport}
+                    onValueChange={handleOriginAirportChange}
+                    disabled={isSubmitting || !originCountry}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={originCountry ? "Flughafen wählen" : "Zuerst Land wählen"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NOT_SPECIFIED}>Nicht spezifiziert</SelectItem>
+                      {getAirportsByCountry(originCountry).map((airport) => (
+                        <SelectItem key={airport.code} value={airport.code}>
+                          {airport.code} — {airport.city} ({airport.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="originCity" className="text-sm text-muted-foreground">Stadt *</Label>
+                  <Input
+                    id="originCity"
+                    name="originCity"
+                    value={originCity}
+                    onChange={(e) => setOriginCity(e.target.value)}
+                    placeholder="z.B. München"
+                    disabled={isSubmitting}
+                    required
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="originCity">Abgangsstadt *</Label>
-              <Input
-                id="originCity"
-                name="originCity"
-                placeholder="z.B. München"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="originCountry">Abgangsland *</Label>
-              <Input
-                id="originCountry"
-                name="originCountry"
-                placeholder="z.B. Deutschland"
-                required
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="destinationAirport">Zielflughafen *</Label>
-              <Input
-                id="destinationAirport"
-                name="destinationAirport"
-                placeholder="z.B. JFK"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="destinationCity">Zielstadt *</Label>
-              <Input
-                id="destinationCity"
-                name="destinationCity"
-                placeholder="z.B. New York"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="destinationCountry">Zielland *</Label>
-              <Input
-                id="destinationCountry"
-                name="destinationCountry"
-                placeholder="z.B. USA"
-                required
-              />
+              <Label>Ziel *</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="destinationCountry" className="text-sm text-muted-foreground">Land *</Label>
+                  <CountrySelect
+                    value={destinationCountry}
+                    onValueChange={handleDestinationCountryChange}
+                    placeholder="Land wählen"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="destinationAirport" className="text-sm text-muted-foreground">Flughafen</Label>
+                  <Select
+                    value={destinationAirport}
+                    onValueChange={handleDestinationAirportChange}
+                    disabled={isSubmitting || !destinationCountry}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={destinationCountry ? "Flughafen wählen" : "Zuerst Land wählen"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NOT_SPECIFIED}>Nicht spezifiziert</SelectItem>
+                      {getAirportsByCountry(destinationCountry).map((airport) => (
+                        <SelectItem key={airport.code} value={airport.code}>
+                          {airport.code} — {airport.city} ({airport.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="destinationCity" className="text-sm text-muted-foreground">Stadt *</Label>
+                  <Input
+                    id="destinationCity"
+                    name="destinationCity"
+                    value={destinationCity}
+                    onChange={(e) => setDestinationCity(e.target.value)}
+                    placeholder="z.B. New York"
+                    disabled={isSubmitting}
+                    required
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -335,7 +578,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
           {packages.map((pkg, index) => (
             <div key={index} className="border rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium">Paket {index + 1}</h4>
+                <h4 className="font-medium">Paket {pkg.packageNumber}</h4>
                 {packages.length > 1 && (
                   <Button
                     type="button"
@@ -350,12 +593,11 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Paketnummer *</Label>
+                  <Label>Paketnummer</Label>
                   <Input
                     value={pkg.packageNumber}
-                    onChange={(e) => updatePackage(index, "packageNumber", e.target.value)}
-                    placeholder="z.B. PKG-001"
-                    required
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
@@ -372,33 +614,40 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
                 <div className="space-y-2">
                   <Label>Anzahl Stücke *</Label>
                   <Input
-                    type="number"
-                    min="1"
-                    value={pkg.pieces}
-                    onChange={(e) => updatePackage(index, "pieces", parseInt(e.target.value) || 1)}
+                    type="text"
+                    inputMode="numeric"
+                    value={pkg.pieces || ""}
+                    onChange={(e) => handleNumberInputChange(index, "pieces", e.target.value, { isInteger: true, minValue: 1 })}
                     required
+                    maxLength={7}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Bruttogewicht (kg) *</Label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    value={pkg.grossWeight}
-                    onChange={(e) => updatePackage(index, "grossWeight", parseFloat(e.target.value) || 0)}
+                    type="text"
+                    inputMode="decimal"
+                    value={pkg.grossWeight || ""}
+                    onChange={(e) => handleNumberInputChange(index, "grossWeight", e.target.value, { minValue: 0.1 })}
                     required
+                    maxLength={10}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Verrechnungsgewicht (kg)</Label>
+                  <Label>Frachtpflichtiges Gewicht (kg)</Label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={pkg.chargeableWeight || ""}
-                    onChange={(e) => updatePackage(index, "chargeableWeight", parseFloat(e.target.value) || 0)}
+                    type="text"
+                    inputMode="decimal"
+                    value={pkg.chargeableWeight ? (serviceType === "air_freight" ? pkg.chargeableWeight.toFixed(1) : pkg.chargeableWeight.toFixed(2)) : ""}
+                    disabled
+                    className="bg-muted"
+                    maxLength={10}
                   />
+                  {pkg.length && pkg.width && pkg.height &&  (
+                    <p className="text-xs text-muted-foreground">
+                      CBM: {((calculateVolume({ length: pkg.length, width: pkg.width, height: pkg.height }) * (pkg.pieces || 1))).toFixed(3)} m³
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -406,31 +655,31 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
                 <div className="space-y-2">
                   <Label>Länge (cm)</Label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={pkg.length || ""}
-                    onChange={(e) => updatePackage(index, "length", parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleNumberInputChange(index, "length", e.target.value, { minValue: 0 })}
+                    maxLength={10}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Breite (cm)</Label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={pkg.width || ""}
-                    onChange={(e) => updatePackage(index, "width", parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleNumberInputChange(index, "width", e.target.value, { minValue: 0 })}
+                    maxLength={10}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Höhe (cm)</Label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={pkg.height || ""}
-                    onChange={(e) => updatePackage(index, "height", parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleNumberInputChange(index, "height", e.target.value, { minValue: 0 })}
+                    maxLength={10}
                   />
                 </div>
               </div>

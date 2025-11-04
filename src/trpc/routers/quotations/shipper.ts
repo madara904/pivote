@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { quotation, organizationMember, organization, inquiry } from "@/db/schema";

@@ -49,6 +49,18 @@ export const forwarderResponseStatusEnum = pgEnum("forwarder_response_status", [
   "rejected",   // Forwarder declined to quote
   "quoted",     // Forwarder submitted a quotation
 ]);
+
+export const subscriptionTierEnum = pgEnum("subscription_tier", [
+  "basic",
+  "medium",
+  "advanced",
+]);
+
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "canceled",
+  "past_due",
+]);
 export const serviceTypeEnum = pgEnum("service_type", [
   "air_freight",
   "sea_freight",
@@ -246,6 +258,7 @@ export const inquiry = pgTable("inquiry", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   referenceNumber: text("reference_number").notNull().unique(),
+  shipperReference: text("shipper_reference"), // Optional reference from shipper's own system
   title: text("title").notNull(),
   description: text("description"),
   serviceType: serviceTypeEnum("service_type").notNull().default("air_freight"),
@@ -369,6 +382,39 @@ export const quotation = pgTable("quotation", {
 });
 
 // Removed quotationCharge table - charges are now columns in quotation table
+
+export const subscription = pgTable("subscription", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" })
+    .unique(),
+  tier: subscriptionTierEnum("tier").notNull().default("basic"),
+  status: subscriptionStatusEnum("status").notNull().default("active"),
+  
+  // Forwarder Limits
+  maxQuotationsPerMonth: integer("max_quotations_per_month").default(5),
+  maxInquiriesPerMonth: integer("max_inquiries_per_month"), // For future use
+  maxTeamMembers: integer("max_team_members"), // For future use
+  
+  // Features (JSON for flexibility)
+  features: text("features"), // JSON string for future features
+  
+  // Polar.sh integration (for later)
+  // polarSubscriptionId: text("polar_subscription_id"),
+  // polarCustomerId: text("polar_customer_id"),
+  
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
 
 export const chargeTemplate = pgTable("charge_template", {
   id: text("id")

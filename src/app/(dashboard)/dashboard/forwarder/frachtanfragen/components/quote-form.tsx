@@ -10,6 +10,7 @@ import { Calendar } from "lucide-react"
 import { trpc } from "@/trpc/client"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { sanitizeMoneyInput, sanitizeIntegerInput } from "@/lib/form-sanitization"
 
 interface QuoteFormProps {
   inquiryId: string
@@ -27,10 +28,10 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
     validUntil: "",
     notes: "",
     terms: "",
-    preCarriage: 0,
-    mainCarriage: 0,
-    onCarriage: 0,
-    additionalCharges: 0,
+    preCarriage: "",
+    mainCarriage: "",
+    onCarriage: "",
+    additionalCharges: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -72,6 +73,12 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
     }
   }
 
+  const handleMoneyInputChange = (field: string, value: string) => {
+    const sanitized = sanitizeMoneyInput(value)
+    // Store sanitized string value for proper display (removes leading zeros)
+    handleInputChange(field, sanitized)
+  }
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
@@ -110,10 +117,10 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
         validUntil: new Date(formData.validUntil),
         notes: formData.notes || undefined,
         terms: formData.terms || undefined,
-        preCarriage: Number(formData.preCarriage || 0),
-        mainCarriage: Number(formData.mainCarriage || 0),
-        onCarriage: Number(formData.onCarriage || 0),
-        additionalCharges: Number(formData.additionalCharges || 0),
+        preCarriage: Number(formData.preCarriage || 0) || 0,
+        mainCarriage: Number(formData.mainCarriage || 0) || 0,
+        onCarriage: Number(formData.onCarriage || 0) || 0,
+        additionalCharges: Number(formData.additionalCharges || 0) || 0,
       })
     }
   }
@@ -142,14 +149,14 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
               <div className="relative">
                 <Input
                   id="preCarriage"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.preCarriage || ""}
-                  onChange={(e) => handleInputChange("preCarriage", e.target.value)}
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.preCarriage}
+                  onChange={(e) => handleMoneyInputChange("preCarriage", e.target.value)}
                   className="pr-12"
                   placeholder="0.00"
                   disabled={isLoading}
+                  maxLength={10}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   {formData.currency}
@@ -165,14 +172,14 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
               <div className="relative">
                 <Input
                   id="mainCarriage"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.mainCarriage || ""}
-                  onChange={(e) => handleInputChange("mainCarriage", e.target.value)}
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.mainCarriage}
+                  onChange={(e) => handleMoneyInputChange("mainCarriage", e.target.value)}
                   className="pr-12"
                   placeholder="0.00"
                   disabled={isLoading}
+                  maxLength={10}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   {formData.currency}
@@ -188,14 +195,14 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
               <div className="relative">
                 <Input
                   id="onCarriage"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.onCarriage || ""}
-                  onChange={(e) => handleInputChange("onCarriage", e.target.value)}
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.onCarriage}
+                  onChange={(e) => handleMoneyInputChange("onCarriage", e.target.value)}
                   className="pr-12"
                   placeholder="0.00"
                   disabled={isLoading}
+                  maxLength={10}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   {formData.currency}
@@ -211,14 +218,14 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
               <div className="relative">
                 <Input
                   id="additionalCharges"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.additionalCharges || ""}
-                  onChange={(e) => handleInputChange("additionalCharges", e.target.value)}
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.additionalCharges}
+                  onChange={(e) => handleMoneyInputChange("additionalCharges", e.target.value)}
                   className="pr-12"
                   placeholder="0.00"
                   disabled={isLoading}
+                  maxLength={10}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   {formData.currency}
@@ -278,12 +285,16 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
               </Label>
               <Input
                 id="transitTime"
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
                 value={formData.transitTime}
-                onChange={(e) => handleInputChange("transitTime", e.target.value)}
+                onChange={(e) => {
+                  const sanitized = sanitizeIntegerInput(e.target.value, { minValue: 1, maxValue: 365 })
+                  handleInputChange("transitTime", sanitized)
+                }}
                 placeholder="z.B. 3"
                 disabled={isLoading}
+                maxLength={7}
               />
               {errors.transitTime && <p className="text-sm text-red-600">{errors.transitTime}</p>}
             </div>

@@ -2,7 +2,14 @@
 import { useQueryState, parseAsStringEnum } from "nuqs";
 import {
   AccountSettingsCards,
+  ChangeEmailCard,
+  ChangePasswordCard,
+  DeleteAccountCard,
+  ProvidersCard,
   SecuritySettingsCards,
+  SessionsCard,
+  UpdateNameCard,
+  UpdateUsernameCard,
 } from "@daveyplate/better-auth-ui";
 import { User, Lock, Building2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -52,21 +59,17 @@ const SettingsView = () => {
             </Button>
           ))}
         </nav>
-        <main className="flex-1 p-2 md:p-5">
+        <main className="flex-1 p-2 md:p-5 space-y-4">
           {tab === "account" && (
-            <AccountSettingsCards
-              classNames={{
-                card: {
-                  base: "shadow-none",
-                  header: "",
-                  footer: "",
-                  cell: "shadow-none",
-                },
-              }}
-            />
+            <>
+            <><UpdateNameCard />
+            <ChangeEmailCard />
+            <DeleteAccountCard />
+            </>
+            </>
           )}
           {tab === "security" && (
-            <SecuritySettingsCards
+            <><SecuritySettingsCards
               classNames={{
                 cards: "",
                 card: {
@@ -76,8 +79,8 @@ const SettingsView = () => {
                   footer: "",
                   cell: "shadow-none",
                 },
-              }}
-            />
+              }} />
+              </>
           )}
           {tab === "org" && <OrganizationCreateForm />}
         </main>

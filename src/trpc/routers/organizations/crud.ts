@@ -5,7 +5,6 @@ import { organization, organizationMember, user } from "@/db/schema";
 import { protectedProcedure, createTRPCRouter, TRPCContext } from "@/trpc/init";
 
 
-
 const createOrgSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -36,6 +35,7 @@ const editOrgSchema = z.object({
     .string()
     .regex(/^DE[0-9]{9}$/, "Die UST-ID muss mit 'DE' beginnen und 9 Ziffern enthalten")
     .optional(),
+  logo: z.string().url().optional(),
 });
 type EditOrgInput = z.infer<typeof editOrgSchema>;
 
@@ -215,6 +215,7 @@ export const crudRouter = createTRPCRouter({
             ...(input.email && { email: input.email }),
             ...(input.type && { type: input.type }),
             ...(input.vatNumber && { vatNumber: input.vatNumber }),
+            ...(input.logo !== undefined && { logo: input.logo || null }),
             updatedAt: new Date(),
           })
           .where(eq(organization.id, input.organizationId))
@@ -287,4 +288,5 @@ export const crudRouter = createTRPCRouter({
         });
       }
     }),
+
 }); 

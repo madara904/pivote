@@ -8,6 +8,8 @@ import { sendEmail } from "./send-email";
 
 export const auth = betterAuth({
   emailVerification: {
+    sendOnSignUp: true,
+    expiresIn: 10 * 60,
     enabled: true,
     sendVerificationEmail: async ({ user, url }) => {
       await sendEmail({
@@ -34,16 +36,27 @@ appName: "Pivote",
     }
   },
   emailAndPassword: {
+    rateLimit: {
+      enabled: true,
+      max: 10,
+      window: 60 * 60 * 1000,
+    },
+    changePassword: {
+      enabled: true,
+    },
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
     autoSignIn: true, 
     autoSignInAfterVerification: true,
     autoSignInAfterResetPassword: true,
     enabled: true,
+    resetPasswordTokenExpiresIn: 10 * 60,
     sendResetPassword: async ({user, token}) => {
       const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset?token=${token}`;
       await sendEmail({
         to: user.email,
         subject: "Passwort zurücksetzen",
-        text: `Klicken Sie auf den Link, um Ihr Passwort zurückzusetzen: ${resetUrl}`,
+        text: `Klicken Sie auf den Link, um Ihr Passwort zurückzusetzen (10 Minuten gültig): ${resetUrl}`,
       });
     }
   },
@@ -123,7 +136,7 @@ appName: "Pivote",
           ACCOUNT_NOT_FOUND: "Account not found",
           ORGANIZATION_ALREADY_EXISTS: "This organization already exists"
         }
-      }
+      } as Record<string, Record<string, string>>
     })
   ]
 });

@@ -16,6 +16,7 @@ import { Package, Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Tr
 import { RouteDisplay } from "@/components/ui/route-display"
 import { ServiceIcon } from "@/components/ui/service-icon"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { trpc } from "@/trpc/client"
 import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
@@ -135,8 +136,18 @@ export function InquiryDataTable<TData extends FreightInquiry>({
   columns,
   className,
 }: InquiryDataTableProps<TData>) {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const [selectedQuotationInquiryId, setSelectedQuotationInquiryId] = useState<string | null>(null);
   const [selectedEditQuotationId, setSelectedEditQuotationId] = useState<{ quotationId: string; inquiryId: string } | null>(null);
+
+  // Helper to build href with preserved tab parameter
+  const buildHref = (path: string) => {
+    if (tabParam) {
+      return `${path}?tab=${tabParam}`;
+    }
+    return path;
+  };
 
   const table = useReactTable<TData>({
     data,
@@ -161,8 +172,14 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-base text-primary break-words">{r.referenceNumber}</h3>
-                        {/* Status Badges - Priority: expired/cancelled/closed > response status > open */}
-                        {(r.status === "expired" || r.status === "cancelled" || r.status === "closed") ? (
+                        {/* Status Badges - Priority: won > expired/cancelled/closed > response status > open */}
+                        {r.quotationStatus === "accepted" ? (
+                          <Badge variant="default" className="gap-1 shrink-0 bg-green-600 hover:bg-green-700 text-white">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span className="hidden sm:inline">Gewonnen</span>
+                            <span className="sm:hidden">Gew.</span>
+                          </Badge>
+                        ) : (r.status === "expired" || r.status === "cancelled" || r.status === "closed") ? (
                           <Badge variant="destructive" className="gap-1 shrink-0">
                             <XCircle className="h-3 w-3" />
                             <span className="hidden sm:inline">{r.status === "expired" ? "Abgelaufen" : r.status === "cancelled" ? "Abgebrochen" : "Geschlossen"}</span>
@@ -203,7 +220,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                       </div>
                     </div>
                     <div className="flex sm:flex-col items-start sm:items-end sm:text-right space-y-2 gap-3 sm:gap-2 shrink-0">
-                      {r.quotedPrice && (r.responseStatus === "quoted" || r.status === "expired") && (
+                      {r.quotedPrice && (r.responseStatus === "quoted" || r.quotationStatus === "accepted" || r.status === "expired") && (
                         <div className="flex items-center gap-1 text-base sm:text-lg font-bold text-primary">
                           <Euro className="h-4 w-4 shrink-0" />
                           <span className="whitespace-nowrap">{new Intl.NumberFormat("de-DE", {
@@ -251,7 +268,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                     <div className="space-y-2 sm:col-span-2 lg:col-span-1">
                       <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Aktionen</h4>
                       <div className="space-y-2">
-                        <Link prefetch href={`/dashboard/forwarder/frachtanfragen/${r.id}`} className="block">
+                        <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
                           <Button size="sm" className="w-full" variant="outline">
                             <Eye className="h-4 w-4 mr-2 shrink-0" />
                             <span className="truncate">Anfrage anzeigen</span>
@@ -259,7 +276,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                         </Link>
                         {r.status === "open" && r.responseStatus !== "quoted" && r.responseStatus !== "rejected" && (
                           <>
-                            <Link prefetch href={`/dashboard/forwarder/frachtanfragen/${r.id}/angebot`} className="block">
+                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}/angebot`)} className="block">
                               <Button size="sm" className="w-full">
                                 <FileText className="h-4 w-4 mr-2 shrink-0" />
                                 <span className="truncate">Angebot abgeben</span>

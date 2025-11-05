@@ -18,21 +18,29 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout";
 
 export default function InquiryDetailsView({ inquiryId }: { inquiryId: string }) {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const [detail] = trpc.inquiry.forwarder.getInquiryDetail.useSuspenseQuery({
     inquiryId,
   });
 
   const inquiry = detail.inquiry;
 
+  // Build back link with preserved tab parameter
+  const backHref = tabParam 
+    ? `/dashboard/forwarder/frachtanfragen?tab=${tabParam}`
+    : "/dashboard/forwarder/frachtanfragen";
+
   return (
     <PageLayout>
       <PageHeaderWithBorder>
         <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-          <Link href="/dashboard/forwarder/frachtanfragen">
+          <Link href={backHref}>
             <Button variant="ghost" size="icon" className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>

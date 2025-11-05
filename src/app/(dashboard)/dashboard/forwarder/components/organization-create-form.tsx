@@ -121,9 +121,9 @@ export default function OrganizationCrudTest() {
 
   // Render
   return (
+    
     <div className="w-full space-y-10">
-      {/* CREATE */}
-      <div>
+    {!selectedOrgId && <div>
         <h2 className="font-bold mb-2">Organisation erstellen</h2>
         <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-2">
           <Input placeholder="Name" {...createForm.register("name")}/>
@@ -138,7 +138,7 @@ export default function OrganizationCrudTest() {
             {createOrg.isPending ? "Erstellen..." : "Organisation erstellen"}
           </Button>
         </form>
-      </div>
+      </div>}
 
       {/* LIST */}
       <div>

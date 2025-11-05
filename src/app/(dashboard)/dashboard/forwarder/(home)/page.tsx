@@ -9,7 +9,7 @@ import FreightInquiryCard from "../components/dashboard-card";
 import { HydrateClient, trpc } from "@/trpc/server";
 import { Suspense } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
-import Loading from "./loading";
+import Loading from "./_loading";
 
 export default async function ForwarderDashboard() {
   await requireForwarderAccess();

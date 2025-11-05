@@ -159,7 +159,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Angebot korrigieren">
-      <div className="space-y-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+      <div className="space-y-6">
         {/* Cost Breakdown */}
         <Card className="p-4 sm:p-6">
           <div className="space-y-6">

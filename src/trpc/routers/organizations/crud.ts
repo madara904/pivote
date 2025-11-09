@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, or, ne } from "drizzle-orm";

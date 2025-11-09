@@ -20,12 +20,13 @@ import {
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { signIn } from "@/lib/auth-client";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
 import * as React from "react";
+import { getReturnToFromSearchParams, isValidReturnTo } from "@/lib/redirect-utils";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email ist erforderlich!" }),
@@ -34,9 +35,13 @@ const formSchema = z.object({
 
 export const LoginForm = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  
+  // Get returnTo from URL
+  const returnTo = getReturnToFromSearchParams(searchParams);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,7 +62,9 @@ export const LoginForm = () => {
       },
       {
         onSuccess: () => {
-          router.push("/dashboard");
+          // Redirect to returnTo if valid, otherwise default to dashboard
+          const redirectPath = returnTo && isValidReturnTo(returnTo) ? returnTo : "/dashboard";
+          router.push(redirectPath);
           setLoading(false);
         },
         onError: ({ error }) => {
@@ -182,9 +189,10 @@ export const LoginForm = () => {
                   type="button"
                   onClick={() => {
                     form.clearErrors();
+                    const callbackURL = returnTo && isValidReturnTo(returnTo) ? returnTo : "/dashboard";
                     signIn.social({
                       provider: "github",
-                      callbackURL: "/dashboard",
+                      callbackURL,
                     });
                   }}
                   variant="outline"

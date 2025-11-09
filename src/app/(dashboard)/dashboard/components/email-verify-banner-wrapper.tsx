@@ -4,11 +4,14 @@ import { EmailVerifyBanner } from "@/components/email-verify-banner"
 import { useSession, sendVerificationEmail } from "@/lib/auth-client"
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
+import { usePathname } from "next/navigation"
+import { isValidReturnTo } from "@/lib/redirect-utils"
 
 const DISMISSAL_STORAGE_KEY = "email-verify-banner-dismissed"
 
 export function EmailVerifyBannerWrapper() {
   const { data: session } = useSession()
+  const pathname = usePathname()
   const [isDismissed, setIsDismissed] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const bannerRef = useRef<HTMLDivElement>(null)
@@ -81,9 +84,11 @@ export function EmailVerifyBannerWrapper() {
 
     setIsSending(true)
     try {
+      // Use current pathname as callback URL, or default to dashboard
+      const callbackURL = pathname && isValidReturnTo(pathname) ? pathname : "/dashboard"
       await sendVerificationEmail({
         email: session.user.email,
-        callbackURL: "/dashboard"
+        callbackURL
       })
       toast.success("Verifizierungs-E-Mail wurde gesendet! Bitte überprüfen Sie Ihr Postfach.")
     } catch (error) {

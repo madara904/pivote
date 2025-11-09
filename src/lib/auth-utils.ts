@@ -2,6 +2,8 @@ import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { buildSignInUrl } from "@/lib/redirect-utils";
+import { getCurrentPath } from "@/lib/redirect-utils-server";
 
 // Types
 type AccessContext = {
@@ -38,7 +40,8 @@ export async function requireAccess(conditions: AccessCondition[]) {
   const ctx = await getAccessContext();
   
   if (!ctx) {
-    redirect("/sign-in");
+    const currentPath = await getCurrentPath();
+    redirect(buildSignInUrl(currentPath));
   }
 
   for (const { check, redirectTo } of conditions) {
@@ -55,7 +58,8 @@ export async function requireAccess(conditions: AccessCondition[]) {
 async function getAccessContextWithRedirect(): Promise<AccessContext> {
   const ctx = await getAccessContext();
   if (!ctx) {
-    redirect("/sign-in");
+    const currentPath = await getCurrentPath();
+    redirect(buildSignInUrl(currentPath));
   }
   return ctx;
 }

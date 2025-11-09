@@ -26,7 +26,8 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { signUp, signIn, sendVerificationEmail } from "@/lib/auth-client";
 import Logo from "@/components/logo";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getReturnToFromSearchParams, isValidReturnTo } from "@/lib/redirect-utils";
 
 const formSchema = z
   .object({
@@ -48,6 +49,10 @@ export const RegisterForm = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get returnTo from URL
+  const returnTo = getReturnToFromSearchParams(searchParams);
 
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -258,7 +263,11 @@ export const RegisterForm = () => {
                     type="button"
                     onClick={() => {
                       form.clearErrors();
-                      signIn.social({ provider: "github" });
+                      const callbackURL = returnTo && isValidReturnTo(returnTo) ? returnTo : "/onboarding";
+                      signIn.social({ 
+                        provider: "github",
+                        callbackURL,
+                      });
                     }}
                     variant="outline"
                     className={cn("w-full h-10 gap-2")}

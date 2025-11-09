@@ -24,12 +24,16 @@ import { forgetPassword } from "@/lib/auth-client";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import { buildSignInUrl, getReturnToFromSearchParams } from "@/lib/redirect-utils";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email ist erforderlich!" }),
 });
 
 export const ForgotPasswordForm = () => {
+  const searchParams = useSearchParams();
+  const returnTo = getReturnToFromSearchParams(searchParams);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
@@ -92,7 +96,7 @@ export const ForgotPasswordForm = () => {
                     Überprüfen Sie Ihr E-Mail-Postfach und klicken Sie auf den Link, um Ihr Passwort zurückzusetzen.
                   </p>
                   <div className="flex flex-col gap-2">
-                    <Link href="/sign-in">
+                    <Link href={buildSignInUrl(returnTo)}>
                       <Button variant="outline" className="w-full h-10">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Zurück zur Anmeldung
@@ -245,7 +249,7 @@ export const ForgotPasswordForm = () => {
                 </Button>
                 <div className="text-center text-sm">
                   <Link
-                    href="/sign-in"
+                    href={buildSignInUrl(returnTo)}
                     className="text-primary hover:text-primary/90 transition-colors font-medium"
                   >
                     <ArrowLeft className="w-4 h-4 inline mr-1" />

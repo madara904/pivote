@@ -126,7 +126,6 @@ export const forwarderRouter = createTRPCRouter({
             and(
               eq(organizationMember.userId, session.user.id),
               eq(organizationMember.isActive, true),
-              ne(inquiry.status, "closed"),
               // Show all inquiries - drafts should be visible so users can edit/delete them
               // The UI will handle showing appropriate actions based on quotation status
             )

@@ -81,7 +81,7 @@ export default function RootLayout({
             className={`${geistSans.variable} ${geistMono.variable} antialiased`}
           >
             {children}
-            <Toaster richColors/>
+            <Toaster closeButton={true} theme="light" richColors/>
           </body>
         </html>
         </NuqsAdapter>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Shipper-specific status utilities
  * Shippers have different business rules and status meanings than forwarders
@@ -11,14 +10,6 @@ export type ShipperInquiryStatus =
   | "awarded" 
   | "closed" 
   | "cancelled" 
-  | "expired";
-
-export type ShipperQuotationStatus = 
-  | "draft" 
-  | "submitted" 
-  | "accepted" 
-  | "rejected" 
-  | "withdrawn" 
   | "expired";
 
 export interface ShipperStatusContext {
@@ -95,15 +86,6 @@ export function canShipperCancelInquiry(context: ShipperStatusContext): boolean 
   
   // Can only cancel if draft or open with no quotations
   return (inquiryStatus === "draft" || inquiryStatus === "open") && quotationCount === 0;
-}
-
-/**
- * Determines if shipper can close an inquiry
- * BUSINESS RULE: Shippers cannot manually close inquiries - only automatic closing
- */
-export function canShipperCloseInquiry(_context: ShipperStatusContext): boolean {
-  // Business rule: No manual closing allowed
-  return false;
 }
 
 /**

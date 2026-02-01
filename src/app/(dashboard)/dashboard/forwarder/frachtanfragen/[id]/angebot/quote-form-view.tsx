@@ -7,6 +7,7 @@ import { trpc } from "@/trpc/client";
 import { QuoteForm } from "../../components/quote-form";
 
 export function QuoteFormView({ inquiryId }: { inquiryId: string }) {
+
   const [detail] = trpc.inquiry.forwarder.getInquiryDetail.useSuspenseQuery({
     inquiryId,
   });

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Package, Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2 } from "lucide-react"
+import { Package, Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2, Building2 } from "lucide-react"
 import { RouteDisplay } from "@/components/ui/route-display"
 import { ServiceIcon } from "@/components/ui/service-icon"
 import Link from "next/link"
@@ -165,6 +165,22 @@ export function InquiryDataTable<TData extends FreightInquiry>({
         {table.getRowModel().rows.length === 0 ? null : (
           table.getRowModel().rows.map(row => {
             const r = row.original
+            const isArchived =
+              r.status === "expired" ||
+              r.status === "cancelled" ||
+              r.status === "closed" ||
+              r.status === "rejected" ||
+              r.responseStatus === "rejected"
+            const isWon = r.quotationStatus === "accepted"
+            const isLost = r.quotationStatus === "rejected"
+            const canOffer =
+              r.status === "open" &&
+              r.responseStatus !== "quoted" &&
+              r.responseStatus !== "rejected"
+            const canViewQuotation =
+              r.responseStatus === "quoted" || isWon
+            const canEditQuotation =
+              r.quotationStatus === "submitted" || r.quotationStatus === "withdrawn"
             return (
               <Card key={row.id} className="overflow-hidden">
                 <CardHeader className="pb-3 px-4 sm:px-6">
@@ -244,6 +260,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                         </div>
                       </div>
                       <div>
+                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="font-medium text-sm break-words">{r.shipperName}</div>
                         <div className="text-xs text-muted-foreground">Versender</div>
                       </div>
@@ -268,13 +285,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                     <div className="space-y-2 sm:col-span-2 lg:col-span-1">
                       <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Aktionen</h4>
                       <div className="space-y-2">
-                        <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
-                          <Button size="sm" className="w-full" variant="outline">
-                            <Eye className="h-4 w-4 mr-2 shrink-0" />
-                            <span className="truncate">Anfrage anzeigen</span>
-                          </Button>
-                        </Link>
-                        {r.status === "open" && r.responseStatus !== "quoted" && r.responseStatus !== "rejected" && (
+                        {!isArchived && canOffer && (
                           <>
                             <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}/angebot`)} className="block">
                               <Button size="sm" className="w-full">
@@ -282,10 +293,17 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                                 <span className="truncate">Angebot abgeben</span>
                               </Button>
                             </Link>
+                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
+                              <Button size="sm" className="w-full" variant="outline">
+                                <Eye className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">Anfrage anzeigen</span>
+                              </Button>
+                            </Link>
                             <RejectInquiryButton inquiryId={r.id} />
                           </>
                         )}
-                        {r.responseStatus === "quoted" && (
+
+                        {!isArchived && !canOffer && canViewQuotation && (
                           <>
                             <Button
                               size="sm"
@@ -296,7 +314,13 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                               <FileText className="h-4 w-4 mr-2 shrink-0" />
                               <span className="truncate">Angebot anzeigen</span>
                             </Button>
-                            {(r.quotationStatus === "submitted" || r.quotationStatus === "withdrawn") && (
+                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
+                              <Button size="sm" className="w-full" variant="outline">
+                                <Eye className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">Anfrage anzeigen</span>
+                              </Button>
+                            </Link>
+                            {canEditQuotation && (
                               <>
                                 <Button
                                   size="sm"
@@ -311,6 +335,50 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                                   <DeleteQuotationButton quotationId={r.quotationId} />
                                 )}
                               </>
+                            )}
+                          </>
+                        )}
+
+                        {isArchived && (
+                          <>
+                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
+                              <Button size="sm" className="w-full">
+                                <Eye className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">Anfrage anzeigen</span>
+                              </Button>
+                            </Link>
+                            {canViewQuotation && (
+                              <Button
+                                size="sm"
+                                className="w-full"
+                                variant="outline"
+                                onClick={() => setSelectedQuotationInquiryId(r.id)}
+                              >
+                                <FileText className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">Angebot anzeigen</span>
+                              </Button>
+                            )}
+                          </>
+                        )}
+
+                        {isLost && !isArchived && (
+                          <>
+                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
+                              <Button size="sm" className="w-full">
+                                <Eye className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">Anfrage anzeigen</span>
+                              </Button>
+                            </Link>
+                            {canViewQuotation && (
+                              <Button
+                                size="sm"
+                                className="w-full"
+                                variant="outline"
+                                onClick={() => setSelectedQuotationInquiryId(r.id)}
+                              >
+                                <FileText className="h-4 w-4 mr-2 shrink-0" />
+                                <span className="truncate">Angebot anzeigen</span>
+                              </Button>
                             )}
                           </>
                         )}

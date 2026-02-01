@@ -1,55 +1,18 @@
-import { randomBytes } from "crypto";
-import { TRPCError } from "@trpc/server";
-import { and, eq, gt } from "drizzle-orm";
-import { organizationInvitation } from "@/db/schema";
+import type { TRPCContext } from "@/trpc/init";
 import { organizationMember } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
-
-export function generateSecureToken(): string {
-  return randomBytes(32).toString("base64url");
-}
-
-export type InvitationWithOrg = typeof organizationInvitation.$inferSelect & {
-  organization: Pick<
-    typeof import("@/db/schema").organization.$inferSelect,
-    "id" | "name" | "isActive"
-  >;
-};
-
-export async function validateInvitationToken(
-  token: string,
-  db: typeof import("@/db").db
-): Promise<InvitationWithOrg> {
-  const invitation = await db.query.organizationInvitation.findFirst({
+export async function getUserMemberships(
+  db: TRPCContext["db"],
+  userId: string
+) {
+  return db.query.organizationMember.findMany({
     where: and(
-      eq(organizationInvitation.token, token),
-      eq(organizationInvitation.status, "pending"),
-      gt(organizationInvitation.expiresAt, new Date())
+      eq(organizationMember.userId, userId),
+      eq(organizationMember.isActive, true)
     ),
     with: {
-      organization: {
-        columns: {
-          id: true,
-          name: true,
-          isActive: true,
-        },
-      },
+      organization: true,
     },
   });
-
-  if (!invitation) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "Einladung nicht gefunden oder bereits abgelaufen",
-    });
-  }
-
-  return invitation as InvitationWithOrg;
 }
-
-export async function getUserMemberships(db: typeof import('@/db').db, userId: string) {
-  return db.query.organizationMember.findMany({
-    where: eq(organizationMember.userId, userId),
-    with: { organization: true },
-  });
-} 

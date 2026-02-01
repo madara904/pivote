@@ -1,15 +1,10 @@
 "use client";
 import { useQueryState, parseAsStringEnum } from "nuqs";
 import {
-  AccountSettingsCards,
   ChangeEmailCard,
-  ChangePasswordCard,
   DeleteAccountCard,
-  ProvidersCard,
   SecuritySettingsCards,
-  SessionsCard,
   UpdateNameCard,
-  UpdateUsernameCard,
 } from "@daveyplate/better-auth-ui";
 import { User, Lock, Building2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";

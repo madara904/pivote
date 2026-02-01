@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure, forwarderQuotationLimitMiddleware } from "@/trpc/init";
 import { eq, and } from "drizzle-orm";
-import { quotation, organizationMember, organization, inquiry, inquiryForwarder } from "@/db/schema";
+import { quotation, inquiry, inquiryForwarder } from "@/db/schema";
 import { z } from "zod";
 import { inquiryIdSchema, quotationIdSchema } from "@/trpc/common/schemas";
 import { requireOrgId } from "@/trpc/common/membership";
@@ -28,15 +29,6 @@ const createQuotationSchema = baseQuotationSchema.extend({
   path: ["preCarriage"],
 });
 
-const updateQuotationSchema = baseQuotationSchema.extend({
-  quotationId: z.string(),
-}).refine((data) => {
-  return data.preCarriage > 0 || data.mainCarriage > 0 || data.onCarriage > 0 || data.additionalCharges > 0;
-}, {
-  message: "Mindestens ein Kostenpunkt muss einen Wert größer als 0 haben",
-  path: ["preCarriage"],
-});
-
 const correctQuotationSchema = baseQuotationSchema.extend({
   inquiryId: z.string(),
   quotationId: z.string(),
@@ -48,64 +40,6 @@ const correctQuotationSchema = baseQuotationSchema.extend({
 });
 
 export const forwarderRouter = createTRPCRouter({
-  // Check if inquiry has already been quoted by this forwarder
-  checkQuotationExists: protectedProcedure
-    .input(inquiryIdSchema)
-    .query(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      
-      const organizationId = await requireOrgId(ctx);
-
-      // First check if inquiry exists and is not closed
-      const inquiryResult = await db
-        .select({ id: inquiry.id, status: inquiry.status })
-        .from(inquiry)
-        .where(eq(inquiry.id, input.inquiryId))
-        .limit(1);
-      
-      if (!inquiryResult.length) {
-        throw new Error("Frachtanfrage nicht gefunden");
-      }
-
-      if (inquiryResult[0].status === 'closed') {
-        throw new Error("Diese Frachtanfrage ist bereits geschlossen");
-      }
-
-      // Check if this forwarder has already quoted this inquiry
-      const existingQuotation = await db
-        .select({ 
-          id: quotation.id,
-          quotationNumber: quotation.quotationNumber,
-          totalPrice: quotation.totalPrice,
-          currency: quotation.currency,
-          airlineFlight: quotation.airlineFlight,
-          transitTime: quotation.transitTime,
-          validUntil: quotation.validUntil,
-          notes: quotation.notes,
-          terms: quotation.terms,
-          preCarriage: quotation.preCarriage,
-          mainCarriage: quotation.mainCarriage,
-          onCarriage: quotation.onCarriage,
-          additionalCharges: quotation.additionalCharges,
-          status: quotation.status,
-          createdAt: quotation.createdAt,
-          submittedAt: quotation.submittedAt
-        })
-        .from(quotation)
-        .where(
-          and(
-            eq(quotation.inquiryId, input.inquiryId),
-            eq(quotation.forwarderOrganizationId, organizationId)
-          )
-        )
-        .limit(1);
-
-      return {
-        exists: existingQuotation.length > 0,
-        quotation: existingQuotation[0] || null
-      };
-    }),
-
   // Save quotation as draft (create new or update existing)
   saveDraftQuotation: protectedProcedure
     .input(createQuotationSchema)
@@ -346,54 +280,6 @@ export const forwarderRouter = createTRPCRouter({
       }
     }),
 
-  updateQuotation: protectedProcedure
-    .input(updateQuotationSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      
-      const organizationId = await requireOrgId(ctx);
-
-      // Verify the quotation exists and belongs to this forwarder
-      const existingQuotation = await db
-        .select({ id: quotation.id })
-        .from(quotation)
-        .where(
-          and(
-            eq(quotation.id, input.quotationId),
-            eq(quotation.forwarderOrganizationId, organizationId)
-          )
-        )
-        .limit(1);
-
-      if (!existingQuotation.length) {
-        throw new Error("Angebot nicht gefunden oder nicht zugänglich");
-      }
-
-      // Update quotation
-      await db
-        .update(quotation)
-        .set({
-          totalPrice: input.totalPrice.toString(),
-          currency: input.currency,
-          airlineFlight: input.airlineFlight,
-          transitTime: input.transitTime,
-          validUntil: input.validUntil,
-          notes: input.notes,
-          terms: input.terms,
-          preCarriage: input.preCarriage.toString(),
-          mainCarriage: input.mainCarriage.toString(),
-          onCarriage: input.onCarriage.toString(),
-          additionalCharges: input.additionalCharges.toString(),
-          updatedAt: new Date(),
-        })
-        .where(eq(quotation.id, input.quotationId));
-
-      return { 
-        success: true, 
-        quotationId: input.quotationId
-      };
-    }),
-
   getQuotation: protectedProcedure
     .input(quotationIdSchema)
     .query(async ({ ctx, input }) => {
@@ -427,109 +313,6 @@ export const forwarderRouter = createTRPCRouter({
         onCarriage: Number(quotationData.onCarriage),
         additionalCharges: Number(quotationData.additionalCharges),
       };
-    }),
-
-  listQuotations: protectedProcedure
-    .query(async ({ ctx }) => {
-      const { db, session } = ctx;
-      
-      const organizationId = await requireOrgId(ctx);
-
-      // Get quotations
-      const quotations = await db
-        .select()
-        .from(quotation)
-        .where(eq(quotation.forwarderOrganizationId, organizationId))
-        .orderBy(quotation.createdAt);
-
-      return quotations.map(quotation => ({
-        ...quotation,
-        totalPrice: Number(quotation.totalPrice),
-      }));
-    }),
-
-  // Submit quotation (change from draft to submitted)
-  submitQuotation: protectedProcedure
-    .input(quotationIdSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      
-      const organizationId = await requireOrgId(ctx);
-
-      // Verify the quotation exists and belongs to this forwarder
-      const existingQuotation = await db
-        .select({ id: quotation.id, status: quotation.status })
-        .from(quotation)
-        .where(
-          and(
-            eq(quotation.id, input.quotationId),
-            eq(quotation.forwarderOrganizationId, organizationId)
-          )
-        )
-        .limit(1);
-
-      if (!existingQuotation.length) {
-        throw new Error("Angebot nicht gefunden oder nicht zugänglich");
-      }
-
-      if (existingQuotation[0].status !== 'draft') {
-        throw new Error("Angebot kann nur im Entwurfsstatus eingereicht werden");
-      }
-
-      // Update quotation status to submitted
-      await db
-        .update(quotation)
-        .set({
-          status: 'submitted',
-          submittedAt: new Date(),
-        })
-        .where(eq(quotation.id, input.quotationId));
-
-      return { success: true };
-    }),
-
-  // Withdraw quotation
-  withdrawQuotation: protectedProcedure
-    .input(quotationIdSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      
-      const organizationId = await requireOrgId(ctx);
-
-      // Verify the quotation exists and belongs to this forwarder
-      const existingQuotation = await db
-        .select({ id: quotation.id, status: quotation.status })
-        .from(quotation)
-        .where(
-          and(
-            eq(quotation.id, input.quotationId),
-            eq(quotation.forwarderOrganizationId, organizationId)
-          )
-        )
-        .limit(1);
-
-      if (!existingQuotation.length) {
-        throw new Error("Angebot nicht gefunden oder nicht zugänglich");
-      }
-
-      if (existingQuotation[0].status === 'accepted') {
-        throw new Error("Angebot kann nicht zurückgezogen werden, da es bereits angenommen wurde");
-      }
-
-      if (existingQuotation[0].status === 'rejected') {
-        throw new Error("Angebot kann nicht zurückgezogen werden, da es bereits abgelehnt wurde");
-      }
-
-      // Update quotation status to withdrawn
-      await db
-        .update(quotation)
-        .set({
-          status: 'withdrawn',
-          withdrawnAt: new Date(),
-        })
-        .where(eq(quotation.id, input.quotationId));
-
-      return { success: true };
     }),
 
   // Get quotations for a specific inquiry (read-only view)
@@ -582,40 +365,7 @@ export const forwarderRouter = createTRPCRouter({
       }));
     }),
 
-  // Delete draft quotation
-  deleteDraftQuotation: protectedProcedure
-    .input(inquiryIdSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { db, session } = ctx;
-      
-      const organizationId = await requireOrgId(ctx);
-
-      // Find the draft quotation for this inquiry
-      const existingQuotation = await db
-        .select({ id: quotation.id, status: quotation.status })
-        .from(quotation)
-        .where(
-          and(
-            eq(quotation.inquiryId, input.inquiryId),
-            eq(quotation.forwarderOrganizationId, organizationId),
-            eq(quotation.status, 'draft')
-          )
-        )
-        .limit(1);
-
-      if (!existingQuotation.length) {
-        throw new Error("Kein Entwurf gefunden");
-      }
-
-      // Delete the draft quotation
-      await db
-        .delete(quotation)
-        .where(eq(quotation.id, existingQuotation[0].id));
-
-      return { success: true };
-    }),
-
-  // Delete submitted quotation (only if not accepted/rejected)
+  // Delete quotation (only if not accepted/rejected/expired)
   deleteQuotation: protectedProcedure
     .input(quotationIdSchema)
     .mutation(async ({ ctx, input }) => {

@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useQueryState, parseAsStringEnum } from "nuqs";
 import { trpc } from "@/trpc/client";
 import InquiryTable from "./inquiry-table";
 import InquiryHeader from "./inquiry-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { InquirySearch } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/inquiry-search";
-import { Button } from "@/components/ui/button";
 import { ArrowRight, ClipboardX } from "lucide-react";
 import type { FreightInquiry } from "./components/inquiry-data-table";
 import { InboxIcon } from "@/components/icons/inbox-icon";
@@ -56,19 +56,32 @@ const filterInquiries = (inquiries: FreightInquiry[], query: string) => {
 };
 
 const InquiryView = () => {
+  const [activeView, setActiveView] = useQueryState(
+    "view",
+    parseAsStringEnum(["active", "archived"])
+      .withDefault("active")
+      .withOptions({ clearOnDefault: false, history: "replace" })
+  );
   const [activeTab, setActiveTab] = useQueryState(
     "tab",
-    parseAsStringEnum(["open", "quoted", "won", "expired"])
+    parseAsStringEnum(["open", "quoted", "won", "lost"])
       .withDefault("open")
-      .withOptions({ clearOnDefault: false, history: "push" })
+      .withOptions({ clearOnDefault: false, history: "replace" })
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
+  const [isSwitching, startTransition] = useTransition();
 
   // Wrapper to handle tab change from Tabs component
+  const handleViewChange = (value: string) => {
+    if (value === "active" || value === "archived") {
+      startTransition(() => setActiveView(value));
+    }
+  };
+
   const handleTabChange = (value: string) => {
-    if (value === "open" || value === "quoted" || value === "won" || value === "expired") {
-      setActiveTab(value);
+    if (value === "open" || value === "quoted" || value === "won" || value === "lost") {
+      startTransition(() => setActiveTab(value));
     }
   };
 
@@ -113,21 +126,26 @@ const InquiryView = () => {
     const open: typeof transformedData = [];
     const quoted: typeof transformedData = [];
     const won: typeof transformedData = [];
+    const lost: typeof transformedData = [];
     const expired: typeof transformedData = [];
 
     transformedData.forEach((inquiry) => {
-      const isExpiredOrCancelled = 
-        inquiry.status === "expired" || 
-        inquiry.status === "cancelled" || 
+      const isArchivedStatus =
+        inquiry.status === "expired" ||
+        inquiry.status === "cancelled" ||
         inquiry.status === "closed" ||
-        inquiry.responseStatus === "rejected";
+        inquiry.status === "rejected";
       
       const isWon = inquiry.quotationStatus === "accepted";
-      const isQuoted = inquiry.responseStatus === "quoted" && !isWon;
+      const isLost = inquiry.quotationStatus === "rejected";
+      const isForwarderRejected = inquiry.responseStatus === "rejected";
+      const isQuoted = inquiry.responseStatus === "quoted" && !isWon && !isLost;
       const isOpen = inquiry.status === "open" && inquiry.responseStatus === "pending" && !isQuoted && !isWon;
 
-      if (isExpiredOrCancelled) {
+      if (isArchivedStatus || isForwarderRejected) {
         expired.push(inquiry);
+      } else if (isLost) {
+        lost.push(inquiry);
       } else if (isWon) {
         won.push(inquiry);
       } else if (isQuoted) {
@@ -144,12 +162,14 @@ const InquiryView = () => {
     const filteredOpen = filterInquiries(open, debouncedSearchQuery);
     const filteredQuoted = filterInquiries(quoted, debouncedSearchQuery);
     const filteredWon = filterInquiries(won, debouncedSearchQuery);
+    const filteredLost = filterInquiries(lost, debouncedSearchQuery);
     const filteredExpired = filterInquiries(expired, debouncedSearchQuery);
 
     return { 
       open: filteredOpen, 
       quoted: filteredQuoted, 
       won: filteredWon,
+      lost: filteredLost,
       expired: filteredExpired 
     };
   }, [transformedData, debouncedSearchQuery]);
@@ -198,110 +218,167 @@ const InquiryView = () => {
           onSearch={setSearchQuery}
           searchValue={searchQuery}
         />
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" activationMode="manual">
-        <TabsList className="h-auto bg-transparent p-0 gap-0 w-full grid grid-cols-4 border-b border-border/40 rounded-none overflow-x-auto">
-          <TabsTrigger 
-            value="open"
-            className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
-          >
-            <span className="text-xs sm:text-sm font-medium text-center truncate w-full">Offen ({categorizedInquiries.open.length})</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="quoted"
-            className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
-          >
-            <span className="text-xs sm:text-sm font-medium text-center truncate w-full">Angeboten ({categorizedInquiries.quoted.length})</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="won"
-            className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
-          >
-            <span className="text-xs sm:text-sm font-medium text-center truncate w-full">Gewonnen ({categorizedInquiries.won.length})</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="expired"
-            className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
-          >
-            <span className="text-xs sm:text-sm font-medium text-center truncate w-full">
-              <span className="hidden sm:inline">Archiviert</span>
-              <span className="sm:hidden">Archiviert</span>
-              <span> ({categorizedInquiries.expired.length})</span>
-            </span>
-          </TabsTrigger>
-        </TabsList>
+        <Tabs value={activeView} onValueChange={handleViewChange} className="w-full" activationMode="manual">
+          <TabsList className="h-auto bg-transparent p-0 gap-0 w-full grid grid-cols-2 border-b border-border/40 rounded-none overflow-x-auto">
+            <TabsTrigger
+              value="active"
+              className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
+            >
+              <span className="text-xs sm:text-sm font-medium text-center truncate w-full">Aktuell</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="archived"
+              className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
+            >
+              <span className="text-xs sm:text-sm font-medium text-center truncate w-full">
+                Historie ({categorizedInquiries.expired.length})
+              </span>
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="open" className="space-y-4 mt-4">
-          {categorizedInquiries.open.length === 0 ? (
-            <Empty className="border border-dashed rounded-lg py-16">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                </EmptyMedia>
-                <EmptyTitle>Keine offenen Anfragen</EmptyTitle>
-                <EmptyDescription>
-                  Es gibt derzeit keine offenen Anfragen.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <InquiryTable data={categorizedInquiries.open} />
-          )}
-        </TabsContent>
+          <TabsContent value="active" className="space-y-4 mt-4">
+            <div className="flex flex-wrap gap-2 border-b border-border/40 pb-3">
+              <Button
+                type="button"
+                size="sm"
+                variant={activeTab === "open" ? "default" : "outline"}
+                className="rounded-full"
+                aria-pressed={activeTab === "open"}
+                onClick={() => handleTabChange("open")}
+              >
+                Offen ({categorizedInquiries.open.length})
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={activeTab === "quoted" ? "default" : "outline"}
+                className="rounded-full"
+                aria-pressed={activeTab === "quoted"}
+                onClick={() => handleTabChange("quoted")}
+              >
+                Angeboten ({categorizedInquiries.quoted.length})
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={activeTab === "won" ? "default" : "outline"}
+                className="rounded-full"
+                aria-pressed={activeTab === "won"}
+                onClick={() => handleTabChange("won")}
+              >
+                Gewonnen ({categorizedInquiries.won.length})
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={activeTab === "lost" ? "default" : "outline"}
+                className="rounded-full"
+                aria-pressed={activeTab === "lost"}
+                onClick={() => handleTabChange("lost")}
+              >
+                Nicht gewonnen ({categorizedInquiries.lost.length})
+              </Button>
+            </div>
 
-        <TabsContent value="quoted" className="space-y-4 mt-4">
-          {categorizedInquiries.quoted.length === 0 ? (
-            <Empty className="border border-dashed rounded-lg py-16">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                </EmptyMedia>
-                <EmptyTitle>Keine Angebote abgegeben</EmptyTitle>
-                <EmptyDescription>
-                  Sie haben noch keine Angebote abgegeben.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <InquiryTable data={categorizedInquiries.quoted} />
-          )}
-        </TabsContent>
+            {activeTab === "open" && (
+              <div className="space-y-4 mt-4">
+                {categorizedInquiries.open.length === 0 ? (
+                  <Empty className="border border-dashed rounded-lg py-16">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
+                      </EmptyMedia>
+                      <EmptyTitle>Keine offenen Anfragen</EmptyTitle>
+                      <EmptyDescription>
+                        Es gibt derzeit keine offenen Anfragen.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <InquiryTable data={categorizedInquiries.open} />
+                )}
+              </div>
+            )}
 
-        <TabsContent value="won" className="space-y-4 mt-4">
-          {categorizedInquiries.won.length === 0 ? (
-            <Empty className="border border-dashed rounded-lg py-16">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                </EmptyMedia>
-                <EmptyTitle>Keine gewonnenen Angebote</EmptyTitle>
-                <EmptyDescription>
-                  Sie haben noch keine Angebote gewonnen.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <InquiryTable data={categorizedInquiries.won} />
-          )}
-        </TabsContent>
+            {activeTab === "quoted" && (
+              <div className="space-y-4 mt-4">
+                {categorizedInquiries.quoted.length === 0 ? (
+                  <Empty className="border border-dashed rounded-lg py-16">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
+                      </EmptyMedia>
+                      <EmptyTitle>Keine Angebote abgegeben</EmptyTitle>
+                      <EmptyDescription>
+                        Sie haben noch keine Angebote abgegeben.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <InquiryTable data={categorizedInquiries.quoted} />
+                )}
+              </div>
+            )}
 
-        <TabsContent value="expired" className="space-y-4 mt-4">
-          {categorizedInquiries.expired.length === 0 ? (
-            <Empty className="border border-dashed rounded-lg py-16">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                </EmptyMedia>
-                <EmptyTitle>Keine abgelaufenen Anfragen</EmptyTitle>
-                <EmptyDescription>
-                  Es gibt derzeit keine abgelaufenen oder abgebrochenen Anfragen.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <InquiryTable data={categorizedInquiries.expired} />
-          )}
-        </TabsContent>
-      </Tabs>
+            {activeTab === "won" && (
+              <div className="space-y-4 mt-4">
+                {categorizedInquiries.won.length === 0 ? (
+                  <Empty className="border border-dashed rounded-lg py-16">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
+                      </EmptyMedia>
+                      <EmptyTitle>Keine gewonnenen Angebote</EmptyTitle>
+                      <EmptyDescription>
+                        Sie haben noch keine Angebote gewonnen.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <InquiryTable data={categorizedInquiries.won} />
+                )}
+              </div>
+            )}
+
+            {activeTab === "lost" && (
+              <div className="space-y-4 mt-4">
+                {categorizedInquiries.lost.length === 0 ? (
+                  <Empty className="border border-dashed rounded-lg py-16">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
+                      </EmptyMedia>
+                      <EmptyTitle>Keine nicht gewonnenen Anfragen</EmptyTitle>
+                      <EmptyDescription>
+                        Es gibt derzeit keine abgelehnten Angebote.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <InquiryTable data={categorizedInquiries.lost} />
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="archived" className="space-y-4 mt-4">
+            {categorizedInquiries.expired.length === 0 ? (
+              <Empty className="border border-dashed rounded-lg py-16">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ClipboardX className="h-12 w-12 text-muted-foreground" />
+                  </EmptyMedia>
+                  <EmptyTitle>Keine abgelaufenen Anfragen</EmptyTitle>
+                  <EmptyDescription>
+                    Es gibt derzeit keine abgelaufenen oder abgebrochenen Anfragen.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <InquiryTable data={categorizedInquiries.expired} />
+            )}
+          </TabsContent>
+        </Tabs>
       </PageContainer>
     </PageLayout>
   );

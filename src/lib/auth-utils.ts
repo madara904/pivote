@@ -2,18 +2,14 @@ import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { buildSignInUrl } from "@/lib/redirect-utils";
+import { getCurrentPath } from "@/lib/redirect-utils-server";
 
 // Types
 type AccessContext = {
   user: NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>["user"];
   orgType: "shipper" | "forwarder" | null;
 };
-
-type AccessCondition = {
-  check: (ctx: AccessContext) => boolean;
-  redirectTo: string | ((ctx: AccessContext) => string);
-};
-
 
 // Main function to get access context from session only
 // Cached to deduplicate session calls within the same request/render
@@ -34,28 +30,11 @@ const getAccessContext = cache(async (): Promise<AccessContext | null> => {
   };
 });
 
-export async function requireAccess(conditions: AccessCondition[]) {
-  const ctx = await getAccessContext();
-  
-  if (!ctx) {
-    redirect("/sign-in");
-  }
-
-  for (const { check, redirectTo } of conditions) {
-    if (!check(ctx)) {
-      const target =
-        typeof redirectTo === "function" ? redirectTo(ctx) : redirectTo;
-      redirect(target);
-    }
-  }
-
-  return ctx;
-}
-
 async function getAccessContextWithRedirect(): Promise<AccessContext> {
   const ctx = await getAccessContext();
   if (!ctx) {
-    redirect("/sign-in");
+    const currentPath = await getCurrentPath();
+    redirect(buildSignInUrl(currentPath));
   }
   return ctx;
 }
@@ -114,14 +93,3 @@ export async function requireAnyOrganizationAccess(): Promise<
   };
 }
 
-// Helper function to get current user's organization type
-export async function getCurrentUserOrgType(): Promise<"shipper" | "forwarder" | null> {
-  const ctx = await getAccessContext();
-  return ctx?.orgType || null;
-}
-
-// Helper function to check if user has specific organization type
-export async function hasOrgType(type: "shipper" | "forwarder"): Promise<boolean> {
-  const orgType = await getCurrentUserOrgType();
-  return orgType === type;
-}

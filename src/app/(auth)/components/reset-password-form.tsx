@@ -19,12 +19,13 @@ import {
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { resetPassword } from "@/lib/auth-client";
+import { useState } from "react";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
-import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import { buildSignInUrl, getReturnToFromSearchParams } from "@/lib/redirect-utils";
 
 const formSchema = z
   .object({
@@ -38,25 +39,18 @@ const formSchema = z
     path: ["confirmPassword"],
   });
 
-export const ResetPasswordForm = () => {
+interface ResetPasswordFormProps {
+  token: string;
+}
+
+export const ResetPasswordForm = ({ token }: ResetPasswordFormProps) => {
+  const searchParams = useSearchParams();
+  const returnTo = getReturnToFromSearchParams(searchParams);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const [token, setToken] = useState<string | null>(null);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const tokenParam = searchParams.get("token");
-    if (!tokenParam) {
-      toast.error("Ungültiger Reset-Link");
-      router.push("/forgot");
-      return;
-    }
-    setToken(tokenParam);
-  }, [searchParams, router]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -66,31 +60,32 @@ export const ResetPasswordForm = () => {
     },
   });
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    if (!token) return;
-    
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setError(null);
     setLoading(true);
 
-    resetPassword(
-      {
-        token,
+    try {
+      const result = await authClient.resetPassword({
         newPassword: data.password,
-      },
-      {
-        onSuccess: () => {
-          setSuccess(true);
-          setLoading(false);
-          toast.success("Passwort erfolgreich zurückgesetzt!");
-        },
-        onError: ({ error }) => {
-          const errorMessage = error.message || "Ein Fehler ist aufgetreten";
-          toast.error(errorMessage);
-          setError(errorMessage);
-          setLoading(false);
-        },
+        token,
+      });
+
+      if (result.error) {
+        const errorMessage = result.error.message || "Ein Fehler ist aufgetreten";
+        toast.error(errorMessage);
+        setError(errorMessage);
+        setLoading(false);
+      } else {
+        setSuccess(true);
+        setLoading(false);
+        toast.success("Passwort erfolgreich zurückgesetzt!");
       }
-    );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Ein Fehler ist aufgetreten";
+      toast.error(errorMessage);
+      setError(errorMessage);
+      setLoading(false);
+    }
   };
 
   const togglePasswordVisibility = () => {
@@ -123,7 +118,7 @@ export const ResetPasswordForm = () => {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  <Link href="/sign-in">
+                  <Link href={buildSignInUrl(returnTo)}>
                     <Button className="w-full h-10">
                       Zur Anmeldung
                     </Button>
@@ -199,45 +194,6 @@ export const ResetPasswordForm = () => {
           <a href="#">Nutzungsbedingungen</a> und{" "}
           <a href="#">Datenschutzrichtlinien</a> zu.
         </div>
-      </div>
-    );
-  }
-
-  if (!token) {
-    return (
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-center flex-col">
-          <div className="flex items-center justify-center">
-            <Logo className="h-16" />
-          </div>
-        </div>
-        <Card className="overflow-hidden p-0">
-          <CardContent className="grid p-0 md:grid-cols-2 h-[620px]">
-            <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center">
-              <div className="flex flex-col gap-6 w-full max-w-sm">
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold">Ungültiger Link</h2>
-                  <p className="text-muted-foreground">
-                    Der Reset-Link ist ungültig oder abgelaufen.
-                  </p>
-                </div>
-                <Link href="/forgot">
-                  <Button className="w-full h-10">
-                    Neuen Reset-Link anfordern
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="hidden md:flex flex-col gap-y-6 items-center justify-center bg-gradient-to-r from-primary/70 to-primary/95 p-8 text-primary-foreground">
-              <div className="flex flex-col items-center text-center space-y-2">
-                <h1 className="text-3xl font-bold">Link abgelaufen ⏰</h1>
-                <p className="text-wrap text-sm">
-                  Der Reset-Link ist ungültig oder abgelaufen. Fordern Sie einen neuen an.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }
@@ -353,7 +309,7 @@ export const ResetPasswordForm = () => {
                 </Button>
                 <div className="text-center text-sm">
                   <Link
-                    href="/sign-in"
+                    href={buildSignInUrl(returnTo)}
                     className="text-primary hover:text-primary/90 transition-colors font-medium"
                   >
                     <ArrowLeft className="w-4 h-4 inline mr-1" />

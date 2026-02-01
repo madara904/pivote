@@ -1,8 +1,6 @@
-import { TRPCError } from '@trpc/server';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { quotation, subscription } from '@/db/schema';
 import type { TRPCContext } from '@/trpc/init';
-import { requireOrgId } from '@/trpc/common/membership';
 
 /**
  * Helper function to get subscription for an organization

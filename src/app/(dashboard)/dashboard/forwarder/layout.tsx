@@ -10,6 +10,7 @@ interface Props {
 const Layout = ({ children }: Props) => {
   return (
     <>
+      <div className="scroll-top-anchor" />
       <EmailVerifyBannerWrapper />
     <div className="[--header-height:calc(--spacing(14))]" style={{ paddingTop: 'var(--banner-height, 0px)' }}>
       <SidebarProvider 

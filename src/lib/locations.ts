@@ -80,20 +80,3 @@ export function getCountryNameByCode(countryCode?: string): string {
   return country?.name || "";
 }
 
-export const incoterms = [
-  "EXW",
-  "FCA",
-  "FAS",
-  "FOB",
-  "CPT",
-  "CIP",
-  "CFR",
-  "CIF",
-  "DAP",
-  "DPU",
-  "DDP",
-] as const;
-
-export type Incoterm = (typeof incoterms)[number];
-
-

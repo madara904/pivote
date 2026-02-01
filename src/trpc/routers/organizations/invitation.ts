@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, createTRPCRouter } from "@/trpc/init";
 

@@ -7,6 +7,7 @@ import Link from "next/link";
 import Logo from "@/components/logo";
 import { useSession } from "@/lib/auth-client";
 import { useSearchParams } from "next/navigation";
+import { getReturnToFromSearchParams, isValidReturnTo } from "@/lib/redirect-utils";
 
 export function EmailVerificationSuccessForm() {
   const { data: session, isPending } = useSession();
@@ -14,6 +15,7 @@ export function EmailVerificationSuccessForm() {
   
   const successParam = searchParams.get("success");
   const isVerified = session?.user?.emailVerified || successParam === "true";
+  const returnTo = getReturnToFromSearchParams(searchParams);
 
   // Show loading state while checking
   if (isPending) {
@@ -65,7 +67,7 @@ export function EmailVerificationSuccessForm() {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  <Link href="/dashboard">
+                  <Link href={returnTo && isValidReturnTo(returnTo) ? returnTo : "/dashboard"}>
                     <Button variant="outline" className="w-full h-10">
                       Zum Dashboard
                     </Button>
@@ -109,7 +111,7 @@ export function EmailVerificationSuccessForm() {
                 </p>
               </div>
               <div className="space-y-4">
-                <Link href="/dashboard">
+                <Link href={returnTo && isValidReturnTo(returnTo) ? returnTo : "/dashboard"}>
                   <Button className="w-full h-10">
                     Zum Dashboard
                   </Button>

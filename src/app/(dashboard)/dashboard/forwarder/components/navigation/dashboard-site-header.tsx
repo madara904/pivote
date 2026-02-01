@@ -83,7 +83,7 @@ export function SiteHeader() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/dashboard/forwarder" className="inline-flex items-center">
-                  <Logo className="h-[1.375rem] w-auto text-primary flex-shrink-0" style={{ marginTop: '-0.125rem' }} />
+                  <Logo className="h-7 w-auto text-primary flex-shrink-0" style={{ marginTop: '-0.125rem' }} />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -139,7 +139,7 @@ export function SiteHeader() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/dashboard/forwarder" className="inline-flex items-center">
-                  <Logo className="h-[1.375rem] ml-1 w-auto text-primary flex-shrink-0" style={{ marginTop: '-0.125rem' }} />
+                  <Logo className="h-7 ml-1 w-auto text-primary flex-shrink-0" style={{ marginTop: '-0.125rem' }} />
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>

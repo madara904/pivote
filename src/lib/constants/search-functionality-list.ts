@@ -1,4 +1,4 @@
-import { Clock, LucideIcon, XCircle, Search, CheckCircleIcon, Building2, House, Package, BarChart3, User, Lock } from "lucide-react";
+import { Clock, LucideIcon, XCircle, Search, CheckCircleIcon, Building2, House, Link2, BarChart3, User, Lock } from "lucide-react";
 
 
 interface FunctionalityAction {
@@ -70,10 +70,10 @@ export const SEARCH_FUNCTIONALITY_LIST: FunctionalityAction[] = [
         group: "general",
     },
     {
-        title: "Sendungen anzeigen",
-        url: "/dashboard/forwarder/sendungen",
-        icon: Package,
-        keywords: ["shipments", "sendungen", "packages", "pakete", "versand", "anzeigen"],
+        title: "Verbindungen anzeigen",
+        url: "/dashboard/forwarder/verbindungen",
+        icon: Link2,
+        keywords: ["connections", "verbindungen", "partners", "netzwerk", "einladungen", "anzeigen"],
         group: "general",
     },
     {

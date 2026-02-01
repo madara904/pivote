@@ -6,6 +6,7 @@ import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 import { createStatusDateInfo } from "@/lib/date-utils";
 import { inquiryIdSchema } from "@/trpc/common/schemas";
 import { requireOrgAndType } from "@/trpc/common/membership";
+import { calculateVolume } from "@/lib/freight-calculations";
 
 export const forwarderRouter = createTRPCRouter({
 
@@ -364,6 +365,46 @@ export const forwarderRouter = createTRPCRouter({
         .where(eq(inquiryPackage.inquiryId, input.inquiryId))
         .orderBy(inquiryPackage.packageNumber);
 
+      const normalizedPackages = packages.map(pkg => {
+        const length = pkg.length ? Number(pkg.length) : null;
+        const width = pkg.width ? Number(pkg.width) : null;
+        const height = pkg.height ? Number(pkg.height) : null;
+        const pieces = pkg.pieces ?? 0;
+        const volumePerPiece =
+          length && width && height
+            ? calculateVolume({ length, width, height })
+            : null;
+        const fallbackVolume = volumePerPiece && pieces
+          ? volumePerPiece * pieces
+          : null;
+        const volumeValue = pkg.volume ? Number(pkg.volume) : fallbackVolume;
+
+        return {
+          id: pkg.id,
+          packageNumber: pkg.packageNumber,
+          description: pkg.description,
+          pieces: pkg.pieces,
+          grossWeight: Number(pkg.grossWeight || 0).toFixed(2),
+          chargeableWeight: pkg.chargeableWeight ? Number(pkg.chargeableWeight).toFixed(2) : null,
+          length: length ? length.toFixed(2) : null,
+          width: width ? width.toFixed(2) : null,
+          height: height ? height.toFixed(2) : null,
+          volume: volumeValue ? volumeValue.toFixed(3) : null,
+          temperature: pkg.temperature,
+          specialHandling: pkg.specialHandling,
+          isDangerous: Boolean(pkg.isDangerous),
+          dangerousGoodsClass: pkg.dangerousGoodsClass,
+          unNumber: pkg.unNumber,
+        };
+      });
+
+      const totalVolumeFromPackages = normalizedPackages.reduce((sum, pkg) => {
+        const volume = pkg.volume ? Number(pkg.volume) : 0;
+        return sum + (Number.isFinite(volume) ? volume : 0);
+      }, 0);
+      const totalVolumeValue = Number(row.totalVolume || 0);
+      const totalVolumeFinal = totalVolumeValue > 0 ? totalVolumeValue : totalVolumeFromPackages;
+
       return {
         id: row.id,
         inquiryId: row.inquiryId,
@@ -391,7 +432,7 @@ export const forwarderRouter = createTRPCRouter({
           totalPieces: row.totalPieces,
           totalGrossWeight: Number(row.totalGrossWeight || 0).toFixed(2),
           totalChargeableWeight: Number(row.totalChargeableWeight || 0).toFixed(2),
-          totalVolume: Number(row.totalVolume || 0).toFixed(3),
+          totalVolume: totalVolumeFinal.toFixed(3),
           shipperOrganization: {
             name: row.shipperName,
             email: row.shipperEmail
@@ -400,23 +441,7 @@ export const forwarderRouter = createTRPCRouter({
             name: row.createdByName
           }
         },
-        packages: packages.map(pkg => ({
-          id: pkg.id,
-          packageNumber: pkg.packageNumber,
-          description: pkg.description,
-          pieces: pkg.pieces,
-          grossWeight: Number(pkg.grossWeight || 0).toFixed(2),
-          chargeableWeight: pkg.chargeableWeight ? Number(pkg.chargeableWeight).toFixed(2) : null,
-          length: pkg.length ? Number(pkg.length).toFixed(2) : null,
-          width: pkg.width ? Number(pkg.width).toFixed(2) : null,
-          height: pkg.height ? Number(pkg.height).toFixed(2) : null,
-          volume: pkg.volume ? Number(pkg.volume).toFixed(3) : null,
-          temperature: pkg.temperature,
-          specialHandling: pkg.specialHandling,
-          isDangerous: Boolean(pkg.isDangerous),
-          dangerousGoodsClass: pkg.dangerousGoodsClass,
-          unNumber: pkg.unNumber,
-        })),
+        packages: normalizedPackages,
         packageSummary: {
           count: row.packageCount,
           hasDangerousGoods: Boolean(row.hasDangerousGoods),

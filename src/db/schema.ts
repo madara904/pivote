@@ -26,6 +26,10 @@ export const invitationStatusEnum = pgEnum("invitation_status", [
   "rejected",
   "expired",
 ]);
+export const connectionStatusEnum = pgEnum("connection_status", [
+  "pending",
+  "connected",
+]);
 export const inquiryStatusEnum = pgEnum("inquiry_status", [
   "draft",        // Shipper creating inquiry
   "open",         // Sent to forwarders, open for quotations
@@ -253,6 +257,39 @@ export const organizationInvitation = pgTable(
   })
 );
 
+export const organizationConnection = pgTable(
+  "organization_connection",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    shipperOrganizationId: text("shipper_organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    forwarderOrganizationId: text("forwarder_organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    status: connectionStatusEnum("status").notNull().default("pending"),
+    invitedById: text("invited_by_id")
+      .notNull()
+      .references(() => user.id),
+    acceptedById: text("accepted_by_id").references(() => user.id),
+    acceptedAt: timestamp("accepted_at"),
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    shipperForwarderUnique: unique().on(
+      table.shipperOrganizationId,
+      table.forwarderOrganizationId
+    ),
+  })
+);
+
 export const inquiry = pgTable("inquiry", {
   id: text("id")
     .primaryKey()
@@ -473,6 +510,12 @@ export const accountRelations = relations(account, ({ one }) => ({
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(organizationMember),
   invitations: many(organizationInvitation),
+  connectionsAsShipper: many(organizationConnection, {
+    relationName: "shipperOrganization",
+  }),
+  connectionsAsForwarder: many(organizationConnection, {
+    relationName: "forwarderOrganization",
+  }),
   inquiriesAsShipper: many(inquiry, {
     relationName: "shipperOrganization"
   }),
@@ -508,6 +551,29 @@ export const organizationInvitationRelations = relations(organizationInvitation,
     fields: [organizationInvitation.invitedById],
     references: [user.id],
     relationName: "invitedBy"
+  }),
+}));
+
+export const organizationConnectionRelations = relations(organizationConnection, ({ one }) => ({
+  shipperOrganization: one(organization, {
+    fields: [organizationConnection.shipperOrganizationId],
+    references: [organization.id],
+    relationName: "shipperOrganization",
+  }),
+  forwarderOrganization: one(organization, {
+    fields: [organizationConnection.forwarderOrganizationId],
+    references: [organization.id],
+    relationName: "forwarderOrganization",
+  }),
+  invitedBy: one(user, {
+    fields: [organizationConnection.invitedById],
+    references: [user.id],
+    relationName: "connectionInvitedBy",
+  }),
+  acceptedBy: one(user, {
+    fields: [organizationConnection.acceptedById],
+    references: [user.id],
+    relationName: "connectionAcceptedBy",
   }),
 }));
 
@@ -582,6 +648,8 @@ export type InsertOrganizationMember = typeof organizationMember.$inferInsert;
 export type SelectOrganizationMember = typeof organizationMember.$inferSelect;
 export type InsertOrganizationInvitation = typeof organizationInvitation.$inferInsert;
 export type SelectOrganizationInvitation = typeof organizationInvitation.$inferSelect;
+export type InsertOrganizationConnection = typeof organizationConnection.$inferInsert;
+export type SelectOrganizationConnection = typeof organizationConnection.$inferSelect;
 export type InsertInquiry = typeof inquiry.$inferInsert;
 export type SelectInquiry = typeof inquiry.$inferSelect;
 export type InsertInquiryPackage = typeof inquiryPackage.$inferInsert;

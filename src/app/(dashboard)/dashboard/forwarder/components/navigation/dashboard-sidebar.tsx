@@ -14,7 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { 
-  Package, 
+  Link2,
   Settings, 
   BarChart3,
   ClipboardList,
@@ -36,9 +36,9 @@ const menuItems = {
       icon: ClipboardList,
     },
     {
-      title: "Sendungen",
-      url: "/dashboard/forwarder/sendungen",
-      icon: Package,
+      title: "Verbindungen",
+      url: "/dashboard/forwarder/verbindungen",
+      icon: Link2,
     },
     {
       title: "Statistiken",

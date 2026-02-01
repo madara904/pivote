@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure, forwarderQuotationLimitMiddleware } from "@/trpc/init";
 import { eq, and } from "drizzle-orm";
-import { quotation, inquiry, inquiryForwarder } from "@/db/schema";
+import { quotation, inquiry, inquiryForwarder, organizationConnection } from "@/db/schema";
 import { z } from "zod";
 import { inquiryIdSchema, quotationIdSchema } from "@/trpc/common/schemas";
 import { requireOrgId } from "@/trpc/common/membership";
@@ -50,7 +50,11 @@ export const forwarderRouter = createTRPCRouter({
       
       // Verify the inquiry exists and user has access
       const inquiryResult = await db
-        .select({ id: inquiry.id, status: inquiry.status })
+        .select({
+          id: inquiry.id,
+          status: inquiry.status,
+          shipperOrganizationId: inquiry.shipperOrganizationId,
+        })
         .from(inquiry)
         .where(eq(inquiry.id, input.inquiryId))
         .limit(1);
@@ -61,6 +65,36 @@ export const forwarderRouter = createTRPCRouter({
 
       if (inquiryResult[0].status === 'closed') {
         throw new Error("Diese Frachtanfrage ist bereits geschlossen");
+      }
+
+      const forwarderInquiry = await db.query.inquiryForwarder.findFirst({
+        where: and(
+          eq(inquiryForwarder.inquiryId, input.inquiryId),
+          eq(inquiryForwarder.forwarderOrganizationId, organizationId)
+        ),
+      });
+
+      if (!forwarderInquiry) {
+        throw new Error("Diese Frachtanfrage ist nicht für dich freigegeben");
+      }
+
+      if (forwarderInquiry.responseStatus === "rejected") {
+        throw new Error("Diese Frachtanfrage wurde abgelehnt");
+      }
+
+      const connection = await db.query.organizationConnection.findFirst({
+        where: and(
+          eq(
+            organizationConnection.shipperOrganizationId,
+            inquiryResult[0].shipperOrganizationId
+          ),
+          eq(organizationConnection.forwarderOrganizationId, organizationId),
+          eq(organizationConnection.status, "connected")
+        ),
+      });
+
+      if (!connection) {
+        throw new Error("Die Verbindung zum Versender besteht nicht mehr");
       }
 
       // Check if this forwarder has already quoted this inquiry
@@ -158,7 +192,11 @@ export const forwarderRouter = createTRPCRouter({
       
       // Verify the inquiry exists and user has access
       const inquiryResult = await db
-        .select({ id: inquiry.id, status: inquiry.status })
+        .select({
+          id: inquiry.id,
+          status: inquiry.status,
+          shipperOrganizationId: inquiry.shipperOrganizationId,
+        })
         .from(inquiry)
         .where(eq(inquiry.id, input.inquiryId))
         .limit(1);
@@ -169,6 +207,36 @@ export const forwarderRouter = createTRPCRouter({
 
       if (inquiryResult[0].status === 'closed') {
         throw new Error("Diese Frachtanfrage ist bereits geschlossen");
+      }
+
+      const forwarderInquiry = await db.query.inquiryForwarder.findFirst({
+        where: and(
+          eq(inquiryForwarder.inquiryId, input.inquiryId),
+          eq(inquiryForwarder.forwarderOrganizationId, organizationId)
+        ),
+      });
+
+      if (!forwarderInquiry) {
+        throw new Error("Diese Frachtanfrage ist nicht für dich freigegeben");
+      }
+
+      if (forwarderInquiry.responseStatus === "rejected") {
+        throw new Error("Diese Frachtanfrage wurde abgelehnt");
+      }
+
+      const connection = await db.query.organizationConnection.findFirst({
+        where: and(
+          eq(
+            organizationConnection.shipperOrganizationId,
+            inquiryResult[0].shipperOrganizationId
+          ),
+          eq(organizationConnection.forwarderOrganizationId, organizationId),
+          eq(organizationConnection.status, "connected")
+        ),
+      });
+
+      if (!connection) {
+        throw new Error("Die Verbindung zum Versender besteht nicht mehr");
       }
 
       // Check if this forwarder has already quoted this inquiry

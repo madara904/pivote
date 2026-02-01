@@ -1,21 +1,48 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
-import { eq, desc, and, ne } from "drizzle-orm";
-import { organization, organizationMember, inquiry, inquiryForwarder, inquiryPackage, quotation } from "@/db/schema";
+import { eq, desc, and, ne, inArray } from "drizzle-orm";
+import { organization, organizationMember, organizationConnection, inquiry, inquiryForwarder, inquiryPackage, quotation } from "@/db/schema";
 import { z } from "zod";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 import { inquiryIdSchema } from "@/trpc/common/schemas";
 import { requireOrgId } from "@/trpc/common/membership";
+import { calculateVolume } from "@/lib/freight-calculations";
 
 export const shipperRouter = createTRPCRouter({
-  // Get all forwarders for selection
-  getAllForwarders: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
+  // Get connected forwarders for selection
+  getConnectedForwarders: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
     const { db } = ctx;
     
     try {
-      // Get all forwarder organizations
+      const orgId = await requireOrgId(ctx);
+      const membership = await db.query.organizationMember.findFirst({
+        where: eq(organizationMember.organizationId, orgId),
+        with: { organization: true }
+      });
+
+      if (!membership?.organization || membership.organization.type !== 'shipper') {
+        throw new Error("Organisation ist kein Versender");
+      }
+
+      const connectedForwarders = await db
+        .select({ forwarderOrganizationId: organizationConnection.forwarderOrganizationId })
+        .from(organizationConnection)
+        .where(and(
+          eq(organizationConnection.shipperOrganizationId, membership.organization.id),
+          eq(organizationConnection.status, "connected")
+        ));
+
+      if (!connectedForwarders.length) {
+        return [];
+      }
+
+      const forwarderIds = connectedForwarders.map((conn) => conn.forwarderOrganizationId);
+
       const forwarders = await db.query.organization.findMany({
-        where: eq(organization.type, 'forwarder'),
+        where: and(
+          eq(organization.type, 'forwarder'),
+          inArray(organization.id, forwarderIds)
+        ),
         columns: {
           id: true,
           name: true,
@@ -178,6 +205,19 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Organisation ist kein Versender");
         }
 
+        const connectedForwarders = await db
+          .select({ forwarderOrganizationId: organizationConnection.forwarderOrganizationId })
+          .from(organizationConnection)
+          .where(and(
+            eq(organizationConnection.shipperOrganizationId, membership.organization.id),
+            eq(organizationConnection.status, "connected"),
+            inArray(organizationConnection.forwarderOrganizationId, input.selectedForwarderIds)
+          ));
+
+        if (connectedForwarders.length !== input.selectedForwarderIds.length) {
+          throw new Error("Bitte wähle nur verbundene Spediteure aus");
+        }
+
         // Generate reference number
         const referenceNumber = `INQ-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
@@ -213,22 +253,32 @@ export const shipperRouter = createTRPCRouter({
 
         // Create packages
         if (input.packages.length > 0) {
-          const packageData = input.packages.map(pkg => ({
-            inquiryId,
-            packageNumber: pkg.packageNumber,
-            description: pkg.description,
-            pieces: pkg.pieces,
-            grossWeight: pkg.grossWeight.toString(),
-            chargeableWeight: pkg.chargeableWeight?.toString(),
-            length: pkg.length?.toString(),
-            width: pkg.width?.toString(),
-            height: pkg.height?.toString(),
-            temperature: pkg.temperature,
-            specialHandling: pkg.specialHandling,
-            isDangerous: pkg.isDangerous,
-            dangerousGoodsClass: pkg.dangerousGoodsClass,
-            unNumber: pkg.unNumber
-          }));
+          const packageData = input.packages.map(pkg => {
+            const volumePerPiece = pkg.length && pkg.width && pkg.height
+              ? calculateVolume({ length: pkg.length, width: pkg.width, height: pkg.height })
+              : null;
+            const totalVolume = volumePerPiece && pkg.pieces
+              ? volumePerPiece * pkg.pieces
+              : null;
+
+            return {
+              inquiryId,
+              packageNumber: pkg.packageNumber,
+              description: pkg.description,
+              pieces: pkg.pieces,
+              grossWeight: pkg.grossWeight.toString(),
+              chargeableWeight: pkg.chargeableWeight?.toString(),
+              length: pkg.length?.toString(),
+              width: pkg.width?.toString(),
+              height: pkg.height?.toString(),
+              volume: totalVolume ? totalVolume.toString() : null,
+              temperature: pkg.temperature,
+              specialHandling: pkg.specialHandling,
+              isDangerous: pkg.isDangerous,
+              dangerousGoodsClass: pkg.dangerousGoodsClass,
+              unNumber: pkg.unNumber
+            };
+          });
           
           await db.insert(inquiryPackage).values(packageData);
         }
@@ -335,22 +385,32 @@ export const shipperRouter = createTRPCRouter({
 
         // Create packages
         if (input.packages.length > 0) {
-          const packageData = input.packages.map(pkg => ({
-            inquiryId,
-            packageNumber: pkg.packageNumber,
-            description: pkg.description,
-            pieces: pkg.pieces,
-            grossWeight: pkg.grossWeight.toString(),
-            chargeableWeight: pkg.chargeableWeight?.toString(),
-            length: pkg.length?.toString(),
-            width: pkg.width?.toString(),
-            height: pkg.height?.toString(),
-            temperature: pkg.temperature,
-            specialHandling: pkg.specialHandling,
-            isDangerous: pkg.isDangerous,
-            dangerousGoodsClass: pkg.dangerousGoodsClass,
-            unNumber: pkg.unNumber
-          }));
+          const packageData = input.packages.map(pkg => {
+            const volumePerPiece = pkg.length && pkg.width && pkg.height
+              ? calculateVolume({ length: pkg.length, width: pkg.width, height: pkg.height })
+              : null;
+            const totalVolume = volumePerPiece && pkg.pieces
+              ? volumePerPiece * pkg.pieces
+              : null;
+
+            return {
+              inquiryId,
+              packageNumber: pkg.packageNumber,
+              description: pkg.description,
+              pieces: pkg.pieces,
+              grossWeight: pkg.grossWeight.toString(),
+              chargeableWeight: pkg.chargeableWeight?.toString(),
+              length: pkg.length?.toString(),
+              width: pkg.width?.toString(),
+              height: pkg.height?.toString(),
+              volume: totalVolume ? totalVolume.toString() : null,
+              temperature: pkg.temperature,
+              specialHandling: pkg.specialHandling,
+              isDangerous: pkg.isDangerous,
+              dangerousGoodsClass: pkg.dangerousGoodsClass,
+              unNumber: pkg.unNumber
+            };
+          });
           
           await db.insert(inquiryPackage).values(packageData);
         }
@@ -404,6 +464,19 @@ export const shipperRouter = createTRPCRouter({
 
         if (inquiryResult[0].status !== 'draft') {
           throw new Error("Frachtanfrage kann nur im Entwurfsstatus gesendet werden");
+        }
+
+        const connectedForwarders = await db
+          .select({ forwarderOrganizationId: organizationConnection.forwarderOrganizationId })
+          .from(organizationConnection)
+          .where(and(
+            eq(organizationConnection.shipperOrganizationId, membership.organization.id),
+            eq(organizationConnection.status, "connected"),
+            inArray(organizationConnection.forwarderOrganizationId, input.selectedForwarderIds)
+          ));
+
+        if (connectedForwarders.length !== input.selectedForwarderIds.length) {
+          throw new Error("Bitte wähle nur verbundene Spediteure aus");
         }
 
         // Update inquiry status to open and set sentAt

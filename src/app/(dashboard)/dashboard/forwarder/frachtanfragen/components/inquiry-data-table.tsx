@@ -11,9 +11,8 @@ import {
 } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Package, Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2, Building2 } from "lucide-react"
-import { RouteDisplay } from "@/components/ui/route-display"
+import { Card, CardContent } from "@/components/ui/card"
+import { Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2 } from "lucide-react"
 import { ServiceIcon } from "@/components/ui/service-icon"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -22,6 +21,27 @@ import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { QuotationViewDialog } from "./quotation-view-dialog"
 import { EditQuotationDialog } from "./edit-quotation-dialog"
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "?"
+
+const getServiceLabel = (serviceType: string) => {
+  if (serviceType === "air_freight") return "Luftfracht";
+  if (serviceType === "sea_freight") return "Seefracht";
+  if (serviceType === "road_freight") return "Straßenfracht";
+  return serviceType;
+}
+
+const getDirectionLabel = (direction?: string) => {
+  if (direction === "import") return "Import";
+  if (direction === "export") return "Export";
+  return direction || "—";
+}
 
 export type FreightInquiry = {
   id: string
@@ -183,12 +203,31 @@ export function InquiryDataTable<TData extends FreightInquiry>({
               r.quotationStatus === "submitted" || r.quotationStatus === "withdrawn"
             return (
               <Card key={row.id} className="overflow-hidden">
-                <CardHeader className="pb-3 px-4 sm:px-6">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-base text-primary break-words">{r.referenceNumber}</h3>
-                        {/* Status Badges - Priority: won > expired/cancelled/closed > response status > open */}
+                <CardContent className="p-6">
+                  <div className="flex flex-col xl:flex-row gap-6">
+                    <div className="w-full xl:w-48 flex-shrink-0">
+                      <div className="h-28 w-full flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-1 text-center">
+                          <div className="text-xs text-muted-foreground uppercase tracking-wide">Route</div>
+                          <div className="text-base font-semibold text-foreground">
+                            {r.origin.code} → {r.destination.code}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {r.origin.country} → {r.destination.country}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-semibold text-foreground break-words">{r.referenceNumber}</h3>
+                        <Badge variant="outline" className="text-xs font-medium flex items-center gap-1">
+                          <ServiceIcon serviceType={r.serviceType} className="h-3.5 w-3.5" />
+                          <span>{getServiceLabel(r.serviceType)}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span>{getDirectionLabel(r.serviceDirection)}</span>
+                        </Badge>
                         {r.quotationStatus === "accepted" ? (
                           <Badge variant="default" className="gap-1 shrink-0 bg-green-600 hover:bg-green-700 text-white">
                             <CheckCircle2 className="h-3 w-3" />
@@ -219,23 +258,48 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                           </Badge>
                         ) : null}
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          <span className="break-words">Gesendet {r.sentAt ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(r.sentAt) : "Nicht verfügbar"}</span>
+
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                          {getInitials(r.shipperName)}
                         </div>
-                        {r.responseDate && (
-                          <>
-                            <span className="hidden sm:inline mx-2">•</span>
-                            <div className="flex items-center gap-1 sm:inline">
-                              <span className="sm:hidden">•</span>
-                              <span className="break-words">Antwort {new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(r.responseDate)}</span>
+                        <span className="font-medium text-foreground">{r.shipperName}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Fracht</div>
+                          <div className="font-semibold">{r.weight} {r.unit || "kg"}</div>
+                          <div className="text-xs text-muted-foreground">{r.pieces || 1} PKG</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Service</div>
+                          <div className="font-semibold">
+                            {r.serviceType === "air_freight" ? "Luftfracht" : r.serviceType === "sea_freight" ? "Seefracht" : r.serviceType}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{r.serviceDirection === "import" ? "Import" : "Export"}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Ware</div>
+                          <div className="font-semibold">{r.cargoType === "general" ? "Allgemein" : r.cargoType}</div>
+                          <div className="text-xs text-muted-foreground line-clamp-2">{r.cargoDescription || "Keine Beschreibung"}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Timeline</div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>Gesendet {r.sentAt ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(r.sentAt) : "—"}</span>
+                          </div>
+                          {r.responseDate && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Antwort {new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(r.responseDate)}
                             </div>
-                          </>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex sm:flex-col items-start sm:items-end sm:text-right space-y-2 gap-3 sm:gap-2 shrink-0">
+
+                    <div className="w-full xl:w-64 flex flex-col gap-3">
                       {r.quotedPrice && (r.responseStatus === "quoted" || r.quotationStatus === "accepted" || r.status === "expired") && (
                         <div className="flex items-center gap-1 text-base sm:text-lg font-bold text-primary">
                           <Euro className="h-4 w-4 shrink-0" />
@@ -245,45 +309,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                           }).format(r.quotedPrice)} {r.currency || "EUR"}</span>
                         </div>
                       )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 px-4 sm:px-6">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Fracht Details</h4>
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <div className="font-semibold text-base">{r.weight} {r.unit || "kg"}</div>
-                          <div className="text-xs text-muted-foreground">{r.pieces || 1} PKG</div>
-                        </div>
-                      </div>
-                      <div>
-                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div className="font-medium text-sm break-words">{r.shipperName}</div>
-                        <div className="text-xs text-muted-foreground">Versender</div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Service</h4>
-                      <div className="flex items-start gap-2">
-                        <ServiceIcon serviceType={r.serviceType} />
-                        <div className="min-w-0">
-                          <div className="font-semibold text-sm break-words">{r.serviceType === "air_freight" ? "Luftfracht" : r.serviceType === "sea_freight" ? "Seefracht" : r.serviceType}</div>
-                          <div className="text-xs text-muted-foreground">{r.serviceDirection === "import" ? "Import" : "Export"}</div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm break-words">{r.cargoType === "general" ? "Allgemein" : r.cargoType}</div>
-                        <div className="text-xs text-muted-foreground line-clamp-2">{r.cargoDescription || "Keine Beschreibung"}</div>
-                      </div>
-                    </div>
-                    <div className="sm:col-span-1 lg:col-span-1">
-                      <RouteDisplay origin={r.origin} destination={r.destination} />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                      <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Aktionen</h4>
+
                       <div className="space-y-2">
                         {!isArchived && canOffer && (
                           <>

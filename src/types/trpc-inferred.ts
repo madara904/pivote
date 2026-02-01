@@ -24,7 +24,7 @@ export type QuotationCreate = RouterOutputs["quotation"]["forwarder"]["createQuo
 
 // Organization-related types (using actual procedure names)
 export type OrganizationGetMyOrganizations = RouterOutputs["organization"]["getMyOrganizations"];
-export type ForwarderList = RouterOutputs["inquiry"]["shipper"]["getAllForwarders"];
+export type ForwarderList = RouterOutputs["inquiry"]["shipper"]["getConnectedForwarders"];
 
 // ============================================================================
 // INPUT TYPES (What your procedures expect)
@@ -101,7 +101,7 @@ export type ApiResponse<T> = {
 // ============================================================================
 
 // Shipper inquiry form data types
-export type Forwarder = RouterOutputs["inquiry"]["shipper"]["getAllForwarders"][0];
+export type Forwarder = RouterOutputs["inquiry"]["shipper"]["getConnectedForwarders"][0];
 export type Package = InquiryFormData["packages"][0];
 
 // Shipper inquiry list data types

@@ -17,9 +17,9 @@ import {
   Globe,
   MapPin,
   FileText,
-  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DotLoading } from "@/components/ui/dot-loading";
 import {
   Card,
   CardContent,
@@ -839,7 +839,7 @@ export default function OnboardingForm() {
                       className="flex items-center space-x-2 bg-primary"
                     >
                       {isSubmitting && (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <DotLoading size="sm" className="mr-2" />
                       )}
                       <span className="hidden sm:inline">
                         {isSubmitting

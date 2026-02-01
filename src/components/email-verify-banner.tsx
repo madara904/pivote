@@ -3,7 +3,7 @@
 import { X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Spinner } from "./ui/spinner"
+import { DotLoading } from "./ui/dot-loading"
 
 interface EmailVerifyBannerProps {
   onClose?: () => void
@@ -19,7 +19,7 @@ export function EmailVerifyBanner({ onClose, onVerify, isSending  }: EmailVerify
           <p className="text-sm font-medium">Bitte verifizieren Sie Ihre Email.</p>
           <div className="flex items-center gap-3">
             <Button disabled={isSending} size="sm" variant="secondary" onClick={onVerify} className="text-xs">
-              {isSending ? <Spinner className="size-4" /> : "Verifizieren"}
+              {isSending ? <DotLoading size="sm" className="mr-2" /> : "Verifizieren"}
               {isSending && "Senden..."}
             </Button>
             <Button

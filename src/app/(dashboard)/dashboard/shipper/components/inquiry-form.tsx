@@ -760,7 +760,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Keine Spediteure verfügbar. Bitte kontaktieren Sie den Administrator.
+                Keine verbundenen Spediteure verfügbar. Bitte zuerst eine Verbindung herstellen.
               </AlertDescription>
             </Alert>
           ) : (

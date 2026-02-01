@@ -49,7 +49,7 @@ export default function OrganizationLogoCard({
                   }}
                 />
               </div>
-              <div className="flex">
+              <div className="flex flex-col justify-end h-48">
                 {selectedOrgIsOwner ? (
                   <UploadButton
                     endpoint="organizationLogo"

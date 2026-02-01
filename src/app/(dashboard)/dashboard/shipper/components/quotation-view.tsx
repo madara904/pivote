@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { DotLoading } from "@/components/ui/dot-loading"
 import { formatGermanDate } from "@/lib/date-utils"
 import { 
   Euro, 
@@ -88,7 +89,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <DotLoading size="md" className="mx-auto" />
           <p className="mt-2 text-sm text-gray-600">Lade Angebote...</p>
         </div>
       </div>

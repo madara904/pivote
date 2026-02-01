@@ -4,14 +4,16 @@ import { trpc } from "@/trpc/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { DotLoading } from "@/components/ui/dot-loading"
 import { AlertTriangle, Plus, Package, Truck } from "lucide-react"
 import InquiryList from "./inquiry-list"
 import InquiryForm from "./inquiry-form"
+import ShipperConnectionsView from "./shipper-connections-view"
 
 const ShipperInquiryView = () => {
 
   // Get forwarders and inquiries
-  const { data: forwardersData, isError: forwardersError, isLoading: forwardersLoading } = trpc.inquiry.shipper.getAllForwarders.useQuery();
+  const { data: forwardersData, isError: forwardersError, isLoading: forwardersLoading } = trpc.inquiry.shipper.getConnectedForwarders.useQuery();
   const { data: inquiriesData, isError: inquiriesError, isLoading: inquiriesLoading } = trpc.inquiry.shipper.getMyInquiries.useQuery();
 
   if (forwardersError || inquiriesError) {
@@ -31,7 +33,7 @@ const ShipperInquiryView = () => {
     return (
       <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <DotLoading size="md" />
         </div>
       </div>
     )
@@ -57,7 +59,7 @@ const ShipperInquiryView = () => {
   return (
     <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
       <Tabs defaultValue="inquiries" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="inquiries" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             Meine Anfragen ({inquiries.length})
@@ -65,6 +67,10 @@ const ShipperInquiryView = () => {
           <TabsTrigger value="create" className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Neue Anfrage
+          </TabsTrigger>
+          <TabsTrigger value="connections" className="flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Verbindungen
           </TabsTrigger>
         </TabsList>
 
@@ -85,6 +91,20 @@ const ShipperInquiryView = () => {
             </CardHeader>
             <CardContent>
               <InquiryForm forwarders={forwarders} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="connections" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Spediteur-Verbindungen</CardTitle>
+              <CardDescription>
+                Einladungen verwalten und neue Spediteure finden.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ShipperConnectionsView />
             </CardContent>
           </Card>
         </TabsContent>

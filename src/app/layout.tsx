@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthUIProviders } from "@/components/providers/AuthUIProvider";
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
 const geistSans = Geist({
@@ -70,8 +69,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AuthUIProviders>
-      <TRPCProvider>
+    <TRPCProvider>
       <NuqsAdapter>
         <html lang="de">
           <head>
@@ -84,8 +82,7 @@ export default function RootLayout({
             <Toaster closeButton={true} theme="light" richColors/>
           </body>
         </html>
-        </NuqsAdapter>
-      </TRPCProvider>
-    </AuthUIProviders>
+      </NuqsAdapter>
+    </TRPCProvider>
   );
 }

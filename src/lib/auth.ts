@@ -51,12 +51,11 @@ appName: "Pivote",
     autoSignInAfterResetPassword: true,
     enabled: true,
     resetPasswordTokenExpiresIn: 10 * 60,
-    sendResetPassword: async ({user, token}) => {
-      const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset?token=${token}`;
+    sendResetPassword: async ({ user, url }) => {
       await sendEmail({
         to: user.email,
         subject: "Passwort zurücksetzen",
-        text: `Klicken Sie auf den Link, um Ihr Passwort zurückzusetzen (10 Minuten gültig): ${resetUrl}`,
+        text: `Klicken Sie auf den Link, um Ihr Passwort zurückzusetzen (10 Minuten gültig): ${url}`,
       });
     }
   },

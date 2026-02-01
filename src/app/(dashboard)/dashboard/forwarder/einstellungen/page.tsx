@@ -1,10 +1,8 @@
-import SettingsView from "./components/view/settings-view";
 import { requireForwarderAccess } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
 
 export default async function EinstellungenPage() {
   await requireForwarderAccess();
 
-  return (
-      <SettingsView />
-  );
+  redirect("/dashboard/forwarder/einstellungen/account");
 }

@@ -20,7 +20,6 @@ export type InquiryCreate = RouterOutputs["inquiry"]["shipper"]["createInquiry"]
 export type ShipperInquiryList = RouterOutputs["inquiry"]["shipper"]["getMyInquiries"];
 
 // Quotation-related types (using actual procedure names)
-export type QuotationCheckExists = RouterOutputs["quotation"]["forwarder"]["checkQuotationExists"];
 export type QuotationCreate = RouterOutputs["quotation"]["forwarder"]["createQuotation"];
 
 // Organization-related types (using actual procedure names)
@@ -39,7 +38,6 @@ export type InquiryGetOneInput = RouterInputs["inquiry"]["forwarder"]["getInquir
 
 // Quotation input types
 export type QuotationCreateInput = RouterInputs["quotation"]["forwarder"]["createQuotation"];
-export type QuotationCheckExistsInput = RouterInputs["quotation"]["forwarder"]["checkQuotationExists"];
 
 // ============================================================================
 // UTILITY TYPES FOR SPECIFIC DATA STRUCTURES

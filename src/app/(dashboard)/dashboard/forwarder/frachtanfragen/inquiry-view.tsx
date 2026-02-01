@@ -75,13 +75,17 @@ const InquiryView = () => {
   // Wrapper to handle tab change from Tabs component
   const handleViewChange = (value: string) => {
     if (value === "active" || value === "archived") {
-      startTransition(() => setActiveView(value));
+      startTransition(() => {
+        void setActiveView(value);
+      });
     }
   };
 
   const handleTabChange = (value: string) => {
     if (value === "open" || value === "quoted" || value === "won" || value === "lost") {
-      startTransition(() => setActiveTab(value));
+      startTransition(() => {
+        void setActiveTab(value);
+      });
     }
   };
 

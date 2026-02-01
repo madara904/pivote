@@ -20,7 +20,7 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useState } from "react";
-import { forgetPassword } from "@/lib/auth-client";
+import { requestPasswordReset } from "@/lib/auth-client";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
 import * as React from "react";
@@ -49,7 +49,7 @@ export const ForgotPasswordForm = () => {
     setError(null);
     setLoading(true);
 
-    forgetPassword(
+    requestPasswordReset(
       {
         email: data.email,
         redirectTo: "/reset",
@@ -60,8 +60,8 @@ export const ForgotPasswordForm = () => {
           setLoading(false);
           toast.success("Passwort-Reset E-Mail wurde gesendet!");
         },
-        onError: ({ error }) => {
-          const errorMessage = error.message;
+        onError: ({ error }: { error: Error }) => {
+          const errorMessage = error.message || "Unbekannter Fehler";
           toast.error(errorMessage);
           setError(errorMessage);
           setLoading(false);

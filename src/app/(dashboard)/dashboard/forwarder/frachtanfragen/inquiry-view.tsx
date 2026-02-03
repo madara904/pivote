@@ -70,7 +70,7 @@ const InquiryView = () => {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
-  const [isSwitching, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   // Wrapper to handle tab change from Tabs component
   const handleViewChange = (value: string) => {
@@ -90,7 +90,9 @@ const InquiryView = () => {
   };
 
   const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
-    staleTime: 1000 * 30, // 30 seconds (reduced from 5 minutes)
+    staleTime: 1000 * 15,
+    refetchInterval: 1000 * 15,
+    refetchOnWindowFocus: true,
   });
 
   // Transform the data to match the FreightInquiry interface
@@ -121,7 +123,9 @@ const InquiryView = () => {
       destination: {
         code: item.inquiry.destinationCity,
         country: item.inquiry.destinationCountry
-      }
+      },
+      documentCount: item.documentCount,
+      noteCount: item.noteCount
     };
   }) || [], [inquiryData]);
 
@@ -134,24 +138,23 @@ const InquiryView = () => {
     const expired: typeof transformedData = [];
 
     transformedData.forEach((inquiry) => {
-      const isArchivedStatus =
-        inquiry.status === "expired" ||
-        inquiry.status === "cancelled" ||
-        inquiry.status === "closed" ||
-        inquiry.status === "rejected";
-      
       const isWon = inquiry.quotationStatus === "accepted";
       const isLost = inquiry.quotationStatus === "rejected";
       const isForwarderRejected = inquiry.responseStatus === "rejected";
       const isQuoted = inquiry.responseStatus === "quoted" && !isWon && !isLost;
       const isOpen = inquiry.status === "open" && inquiry.responseStatus === "pending" && !isQuoted && !isWon;
+      const isArchivedStatus =
+        inquiry.status === "expired" ||
+        inquiry.status === "cancelled" ||
+        inquiry.status === "closed" ||
+        inquiry.status === "rejected";
 
-      if (isArchivedStatus || isForwarderRejected) {
-        expired.push(inquiry);
+      if (isWon) {
+        won.push(inquiry);
       } else if (isLost) {
         lost.push(inquiry);
-      } else if (isWon) {
-        won.push(inquiry);
+      } else if (isArchivedStatus || isForwarderRejected) {
+        expired.push(inquiry);
       } else if (isQuoted) {
         quoted.push(inquiry);
       } else if (isOpen) {

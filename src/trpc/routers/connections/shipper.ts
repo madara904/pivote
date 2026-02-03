@@ -5,6 +5,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { sendEmail } from "@/lib/send-email";
 import { env } from "@/lib/env/env";
+import { checkConnectionLimit } from "@/trpc/middleware/tier-limits";
 
 async function requireShipperMembership(ctx: TRPCContext) {
   const membership = await ctx.db.query.organizationMember.findFirst({
@@ -56,6 +57,7 @@ export const shipperConnectionsRouter = createTRPCRouter({
             city: true,
             country: true,
             postalCode: true,
+            logo: true,
           },
         },
       },
@@ -90,6 +92,7 @@ export const shipperConnectionsRouter = createTRPCRouter({
             city: true,
             country: true,
             postalCode: true,
+            logo: true,
           },
         },
       },
@@ -157,6 +160,7 @@ export const shipperConnectionsRouter = createTRPCRouter({
         city: organization.city,
         country: organization.country,
         postalCode: organization.postalCode,
+        logo: organization.logo,
       })
       .from(organization)
       .where(and(...filters))
@@ -179,6 +183,18 @@ export const shipperConnectionsRouter = createTRPCRouter({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Nur Admins können Verbindungen verwalten.",
+        });
+      }
+
+      const connectionLimit = await checkConnectionLimit(
+        ctx,
+        shipperOrganization.id,
+        "shipper"
+      );
+      if (!connectionLimit.allowed) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: connectionLimit.reason ?? "Verbindungs-Limit erreicht.",
         });
       }
 
@@ -245,11 +261,31 @@ export const shipperConnectionsRouter = createTRPCRouter({
         <p><a href="${inviteUrl}">${inviteUrl}</a></p>
       `;
 
-      await sendEmail({
-        to: forwarder.email,
-        subject: "Neue Verbindungsanfrage",
-        text: emailBody,
+      const ownerMembers = await ctx.db.query.organizationMember.findMany({
+        where: and(
+          eq(organizationMember.organizationId, forwarder.id),
+          eq(organizationMember.role, "owner"),
+          eq(organizationMember.isActive, true)
+        ),
+        with: {
+          user: true,
+        },
       });
+
+      const ownerEmails = ownerMembers
+        .map((member) => member.user?.email)
+        .filter((email): email is string => Boolean(email));
+
+      const recipients = ownerEmails.length ? ownerEmails : [forwarder.email];
+      await Promise.all(
+        recipients.map((email) =>
+          sendEmail({
+            to: email,
+            subject: "Neue Verbindungsanfrage",
+            text: emailBody,
+          })
+        )
+      );
 
       return {
         alreadyInvited: false,

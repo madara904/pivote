@@ -32,8 +32,8 @@ export interface ShipperStatusContext {
 export function getShipperDisplayStatus(context: ShipperStatusContext): ShipperInquiryStatus {
   const { inquiryStatus, quotationCount, hasAcceptedQuotation, forwarderResponseSummary } = context;
   
-  // If inquiry is awarded, show awarded
-  if (inquiryStatus === "awarded") {
+  // If a quotation is accepted, show awarded regardless of inquiry status
+  if (hasAcceptedQuotation || inquiryStatus === "awarded") {
     return "awarded";
   }
   
@@ -92,8 +92,9 @@ export function canShipperCancelInquiry(context: ShipperStatusContext): boolean 
  * Determines if inquiry is in a final state
  */
 export function isShipperInquiryFinal(context: ShipperStatusContext): boolean {
-  const { inquiryStatus } = context;
-  return inquiryStatus === "awarded" || 
+  const { inquiryStatus, hasAcceptedQuotation } = context;
+  return hasAcceptedQuotation ||
+         inquiryStatus === "awarded" || 
          inquiryStatus === "closed" || 
          inquiryStatus === "cancelled" || 
          inquiryStatus === "expired";

@@ -2,11 +2,11 @@ import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError, UTApi } from "uploadthing/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { organization, organizationMember } from "@/db/schema";
+import { inquiry, inquiryDocument, organization, organizationMember, quotation } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 const f = createUploadthing();
-const utapi = new UTApi();
+export const utapi = new UTApi();
 
 export const ourFileRouter = {
   organizationLogo: f({ 
@@ -103,6 +103,118 @@ export const ourFileRouter = {
       return { 
         organizationId: metadata.organizationId,
         logoUrl: file.ufsUrl
+      };
+    }),
+  inquiryDocument: f({
+    pdf: {
+      maxFileSize: "8MB",
+      maxFileCount: 5,
+    },
+    image: {
+      maxFileSize: "8MB",
+      maxFileCount: 5,
+    },
+  })
+    .middleware(async ({ req }) => {
+      const session = await auth.api.getSession({ headers: req.headers });
+
+      if (!session?.user) {
+        throw new UploadThingError("Nicht autorisiert");
+      }
+
+      const inquiryId = req.headers.get("x-inquiry-id");
+      const documentType = req.headers.get("x-document-type") as 'packing_list' | 'commercial_invoice' | 'certificate_of_origin' | 'awb' | 'other' | null;
+
+      if (!inquiryId) {
+        throw new UploadThingError("Inquiry ID erforderlich");
+      }
+
+      if (!documentType) {
+        throw new UploadThingError("Dokumenttyp erforderlich");
+      }
+
+      const allowedTypes = [
+        "packing_list",
+        "commercial_invoice",
+        "certificate_of_origin",
+        "awb",
+        "other",
+      ] as const;
+
+      if (!(allowedTypes as readonly string[]).includes(documentType)) {
+        throw new UploadThingError("Ungültiger Dokumenttyp");
+      }
+
+      const membership = await db
+        .select({
+          organizationId: organizationMember.organizationId,
+          organizationType: organization.type,
+        })
+        .from(organizationMember)
+        .innerJoin(organization, eq(organizationMember.organizationId, organization.id))
+        .where(eq(organizationMember.userId, session.user.id))
+        .limit(1);
+
+      if (!membership.length || membership[0].organizationType !== "shipper") {
+        throw new UploadThingError("Nur Versender können Dokumente hochladen");
+      }
+
+      const inquiryRecord = await db
+        .select({
+          id: inquiry.id,
+          shipperOrganizationId: inquiry.shipperOrganizationId,
+        })
+        .from(inquiry)
+        .where(eq(inquiry.id, inquiryId))
+        .limit(1);
+
+      if (!inquiryRecord.length) {
+        throw new UploadThingError("Frachtanfrage nicht gefunden");
+      }
+
+      if (inquiryRecord[0].shipperOrganizationId !== membership[0].organizationId) {
+        throw new UploadThingError("Keine Berechtigung für diese Anfrage");
+      }
+
+      const acceptedQuotation = await db
+        .select({ id: quotation.id })
+        .from(quotation)
+        .where(
+          and(
+            eq(quotation.inquiryId, inquiryId),
+            eq(quotation.status, "accepted")
+          )
+        )
+        .limit(1);
+
+      if (!acceptedQuotation.length) {
+        throw new UploadThingError("Dokumente sind erst nach der Nominierung verfügbar");
+      }
+
+      return {
+        userId: session.user.id,
+        organizationId: membership[0].organizationId,
+        inquiryId,
+        documentType,
+      };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      await db.insert(inquiryDocument).values({
+        inquiryId: metadata.inquiryId,
+        uploadedByOrganizationId: metadata.organizationId,
+        uploadedByUserId: metadata.userId,
+        documentType: metadata.documentType,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        fileKey: file.key,
+        fileUrl: file.ufsUrl,
+      });
+
+      return {
+        inquiryId: metadata.inquiryId,
+        documentType: metadata.documentType,
+        fileUrl: file.ufsUrl,
       };
     }),
 } satisfies FileRouter;

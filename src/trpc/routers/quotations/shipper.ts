@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, and, desc, ne } from "drizzle-orm";
-import { quotation, organizationMember, organization, inquiry } from "@/db/schema";
+import { quotation, organizationMember, organization, inquiry, inquiryNote } from "@/db/schema";
 import { z } from "zod";
 import { inquiryIdSchema, quotationIdSchema } from "@/trpc/common/schemas";
-import { requireOrgId } from "@/trpc/common/membership";
+import { requireOrgAndType } from "@/trpc/common/membership";
 
 export const shipperRouter = createTRPCRouter({
   // Get all quotations for a specific inquiry
@@ -12,8 +12,13 @@ export const shipperRouter = createTRPCRouter({
     .input(inquiryIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "shipper") {
+        throw new Error("Nur Versender können Angebote abrufen");
+      }
       
-      const organizationId = await requireOrgId(ctx);
+      const organizationId = membership.organizationId;
       
       // Verify the inquiry belongs to this shipper
       const inquiryResult = await db
@@ -57,6 +62,7 @@ export const shipperRouter = createTRPCRouter({
             email: organization.email,
             city: organization.city,
             country: organization.country,
+            logo: organization.logo,
           }
         })
         .from(quotation)
@@ -85,8 +91,13 @@ export const shipperRouter = createTRPCRouter({
     .input(quotationIdSchema)
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "shipper") {
+        throw new Error("Nur Versender können Angebote abrufen");
+      }
       
-      const organizationId = await requireOrgId(ctx);
+      const organizationId = membership.organizationId;
 
       // Get quotation with forwarder details
       const quotationResult = await db
@@ -115,6 +126,7 @@ export const shipperRouter = createTRPCRouter({
             email: organization.email,
             city: organization.city,
             country: organization.country,
+            logo: organization.logo,
           }
         })
         .from(quotation)
@@ -159,8 +171,13 @@ export const shipperRouter = createTRPCRouter({
     .input(quotationIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "shipper") {
+        throw new Error("Nur Versender können Angebote annehmen");
+      }
       
-      const organizationId = await requireOrgId(ctx);
+      const organizationId = membership.organizationId;
 
       // Verify the quotation exists and belongs to this shipper
       const quotationResult = await db
@@ -188,8 +205,8 @@ export const shipperRouter = createTRPCRouter({
         throw new Error("Nur eingereichte Angebote können angenommen werden");
       }
 
-      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled') {
-        throw new Error("Frachtanfrage ist bereits geschlossen oder vergeben");
+      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled' || quotationResult[0].inquiryStatus === 'expired') {
+        throw new Error("Frachtanfrage ist bereits geschlossen oder nicht mehr verfügbar");
       }
 
       // Update the accepted quotation
@@ -215,11 +232,11 @@ export const shipperRouter = createTRPCRouter({
           )
         );
 
-      // Update inquiry status to awarded
+      // Update inquiry status to closed (won -> inquiry closed)
       await db
         .update(inquiry)
         .set({
-          status: "awarded",
+          status: "closed",
           closedAt: new Date(),
         })
         .where(eq(inquiry.id, quotationResult[0].inquiryId));
@@ -232,8 +249,13 @@ export const shipperRouter = createTRPCRouter({
     .input(quotationIdSchema)
     .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "shipper") {
+        throw new Error("Nur Versender können Angebote ablehnen");
+      }
       
-      const organizationId = await requireOrgId(ctx);
+      const organizationId = membership.organizationId;
 
       // Verify the quotation exists and belongs to this shipper
       const quotationResult = await db
@@ -257,8 +279,8 @@ export const shipperRouter = createTRPCRouter({
         throw new Error("Angebot nicht gefunden oder nicht zugänglich");
       }
 
-      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled') {
-        throw new Error("Frachtanfrage ist bereits geschlossen oder vergeben");
+      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled' || quotationResult[0].inquiryStatus === 'expired') {
+        throw new Error("Frachtanfrage ist bereits geschlossen oder nicht mehr verfügbar");
       }
 
       if (quotationResult[0].quotationStatus === 'accepted' || quotationResult[0].quotationStatus === 'withdrawn') {
@@ -303,8 +325,13 @@ export const shipperRouter = createTRPCRouter({
   getAllQuotations: protectedProcedure
     .query(async ({ ctx }) => {
       const { db, session } = ctx;
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "shipper") {
+        throw new Error("Nur Versender können Angebote abrufen");
+      }
       
-      const organizationId = await requireOrgId(ctx);
+      const organizationId = membership.organizationId;
 
       // Get all quotations for inquiries created by this shipper
       const quotations = await db
@@ -349,4 +376,43 @@ export const shipperRouter = createTRPCRouter({
         totalPrice: Number(quotation.totalPrice),
       }));
     }),
+
+  addNote: protectedProcedure
+  .input(z.object({
+    inquiryId: z.string(),
+    content: z.string().min(1).max(2000),
+  }))
+  .mutation(async ({ ctx, input }) => {
+    const { db, session } = ctx;
+    const membership = await requireOrgAndType(ctx);
+
+    if (membership.organizationType !== "shipper") {
+      throw new Error("Nur Versender dürfen Notizen senden");
+    }
+
+    const inquiryCheck = await db
+      .select({ id: inquiry.id })
+      .from(inquiry)
+      .where(
+        and(
+          eq(inquiry.id, input.inquiryId),
+          eq(inquiry.shipperOrganizationId, membership.organizationId)
+        )
+      )
+      .limit(1);
+
+    if (!inquiryCheck.length) {
+      throw new Error("Inquiry nicht gefunden");
+    }
+
+    await db.insert(inquiryNote).values({
+      inquiryId: input.inquiryId,
+      organizationId: membership.organizationId,
+      userId: session.user.id,
+      content: input.content,
+    });
+
+    return { success: true };
+  }),
 }); 
+

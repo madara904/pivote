@@ -20,12 +20,6 @@ export const organizationTypeEnum = pgEnum("organization_type", [
   "shipper",
   "forwarder",
 ]);
-export const invitationStatusEnum = pgEnum("invitation_status", [
-  "pending",
-  "accepted",
-  "rejected",
-  "expired",
-]);
 export const connectionStatusEnum = pgEnum("connection_status", [
   "pending",
   "connected",
@@ -52,6 +46,13 @@ export const forwarderResponseStatusEnum = pgEnum("forwarder_response_status", [
   "pending",    // Forwarder hasn't responded yet
   "rejected",   // Forwarder declined to quote
   "quoted",     // Forwarder submitted a quotation
+]);
+export const inquiryDocumentTypeEnum = pgEnum("inquiry_document_type", [
+  "packing_list",
+  "commercial_invoice",
+  "certificate_of_origin",
+  "awb",
+  "other",
 ]);
 
 export const subscriptionTierEnum = pgEnum("subscription_tier", [
@@ -219,44 +220,6 @@ export const organizationMember = pgTable(
   })
 );
 
-export const organizationInvitation = pgTable(
-  "organization_invitation",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => randomUUID()),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
-    email: text("email").notNull(),
-    invitedUserId: text("invited_user_id").references(() => user.id, {
-      onDelete: "cascade",
-    }),
-    role: memberRoleEnum("role").notNull().default("member"),
-    jobTitle: text("job_title"),
-    department: text("department"),
-    permissions: text("permissions"),
-    status: invitationStatusEnum("status").notNull().default("pending"),
-    token: text("token").notNull().unique(),
-    inviteMessage: text("invite_message"),
-    invitedById: text("invited_by_id")
-      .notNull()
-      .references(() => user.id),
-    expiresAt: timestamp("expires_at").notNull(),
-    acceptedAt: timestamp("accepted_at"),
-    rejectedAt: timestamp("rejected_at"),
-    createdAt: timestamp("created_at")
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at")
-      .$defaultFn(() => new Date())
-      .notNull(),
-  },
-  (table) => ({
-    emailOrganizationUnique: unique().on(table.email, table.organizationId),
-  })
-);
-
 export const organizationConnection = pgTable(
   "organization_connection",
   {
@@ -325,6 +288,30 @@ export const inquiry = pgTable("inquiry", {
     .$defaultFn(() => new Date())
     .notNull(),
   updatedAt: timestamp("updated_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export const inquiryDocument = pgTable("inquiry_document", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  inquiryId: text("inquiry_id")
+    .notNull()
+    .references(() => inquiry.id, { onDelete: "cascade" }),
+  uploadedByOrganizationId: text("uploaded_by_organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  uploadedByUserId: text("uploaded_by_user_id")
+    .notNull()
+    .references(() => user.id),
+  documentType: inquiryDocumentTypeEnum("document_type").notNull(),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type"),
+  fileSize: integer("file_size"),
+  fileKey: text("file_key").notNull(),
+  fileUrl: text("file_url").notNull(),
+  createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),
 });
@@ -478,6 +465,28 @@ export const chargeTemplate = pgTable("charge_template", {
     .notNull(),
 });
 
+export const inquiryNote = pgTable("inquiry_note", {
+  id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+
+  inquiryId: text("inquiry_id")
+    .notNull()
+    .references(() => inquiry.id, { onDelete: "cascade" }),
+
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id),
+
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id),
+
+  content: text("content").notNull(),
+
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
 // ============================================================================
 // RELATIONS - ALL RELATIONS AFTER ALL TABLES
 // ============================================================================
@@ -488,9 +497,6 @@ export const userRelations = relations(user, ({ many }) => ({
   createdQuotations: many(quotation),
   sessions: many(session),
   accounts: many(account),
-  sentInvitations: many(organizationInvitation, {
-    relationName: "invitedBy"
-  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -509,7 +515,6 @@ export const accountRelations = relations(account, ({ one }) => ({
 
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(organizationMember),
-  invitations: many(organizationInvitation),
   connectionsAsShipper: many(organizationConnection, {
     relationName: "shipperOrganization",
   }),
@@ -534,23 +539,6 @@ export const organizationMemberRelations = relations(organizationMember, ({ one 
   user: one(user, {
     fields: [organizationMember.userId],
     references: [user.id],
-  }),
-}));
-
-export const organizationInvitationRelations = relations(organizationInvitation, ({ one }) => ({
-  organization: one(organization, {
-    fields: [organizationInvitation.organizationId],
-    references: [organization.id],
-  }),
-  invitedUser: one(user, {
-    fields: [organizationInvitation.invitedUserId],
-    references: [user.id],
-    relationName: "invitedUser"
-  }),
-  invitedBy: one(user, {
-    fields: [organizationInvitation.invitedById],
-    references: [user.id],
-    relationName: "invitedBy"
   }),
 }));
 
@@ -590,6 +578,7 @@ export const inquiryRelations = relations(inquiry, ({ one, many }) => ({
   packages: many(inquiryPackage),
   sentToForwarders: many(inquiryForwarder),
   quotations: many(quotation),
+  documents: many(inquiryDocument),
 }));
 
 export const inquiryPackageRelations = relations(inquiryPackage, ({ one }) => ({
@@ -627,6 +616,21 @@ export const quotationRelations = relations(quotation, ({ one }) => ({
   // charges are now columns in quotation table
 }));
 
+export const inquiryDocumentRelations = relations(inquiryDocument, ({ one }) => ({
+  inquiry: one(inquiry, {
+    fields: [inquiryDocument.inquiryId],
+    references: [inquiry.id],
+  }),
+  uploadedByOrganization: one(organization, {
+    fields: [inquiryDocument.uploadedByOrganizationId],
+    references: [organization.id],
+  }),
+  uploadedByUser: one(user, {
+    fields: [inquiryDocument.uploadedByUserId],
+    references: [user.id],
+  }),
+}));
+
 // Removed quotationCharge relations - charges are now columns in quotation table
 
 export const chargeTemplateRelations = relations(chargeTemplate, ({ one }) => ({
@@ -646,14 +650,14 @@ export type InsertOrganization = typeof organization.$inferInsert;
 export type SelectOrganization = typeof organization.$inferSelect;
 export type InsertOrganizationMember = typeof organizationMember.$inferInsert;
 export type SelectOrganizationMember = typeof organizationMember.$inferSelect;
-export type InsertOrganizationInvitation = typeof organizationInvitation.$inferInsert;
-export type SelectOrganizationInvitation = typeof organizationInvitation.$inferSelect;
 export type InsertOrganizationConnection = typeof organizationConnection.$inferInsert;
 export type SelectOrganizationConnection = typeof organizationConnection.$inferSelect;
 export type InsertInquiry = typeof inquiry.$inferInsert;
 export type SelectInquiry = typeof inquiry.$inferSelect;
 export type InsertInquiryPackage = typeof inquiryPackage.$inferInsert;
 export type SelectInquiryPackage = typeof inquiryPackage.$inferSelect;
+export type InsertInquiryDocument = typeof inquiryDocument.$inferInsert;
+export type SelectInquiryDocument = typeof inquiryDocument.$inferSelect;
 export type InsertInquiryForwarder = typeof inquiryForwarder.$inferInsert;
 export type SelectInquiryForwarder = typeof inquiryForwarder.$inferSelect;
 export type InsertQuotation = typeof quotation.$inferInsert;

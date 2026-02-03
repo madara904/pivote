@@ -15,7 +15,6 @@ export interface OrganizationMemberItem {
 }
 
 interface OrganizationMembersCardProps {
-  selectedOrgId: string;
   selectedOrgIsOwner: boolean;
   inviteEmail: string;
   inviteRole: "admin" | "member";
@@ -35,7 +34,6 @@ interface OrganizationMembersCardProps {
 }
 
 export default function OrganizationMembersCard({
-  selectedOrgId,
   selectedOrgIsOwner,
   inviteEmail,
   inviteRole,
@@ -103,7 +101,7 @@ export default function OrganizationMembersCard({
 
         {membersLoading ? (
           <div>Lade Mitglieder...</div>
-        ) : membersError ? (
+        ) : membersError && !( !selectedOrgIsOwner && membersError === "Nur der Besitzer kann Mitglieder verwalten.") ? (
           <div className="text-red-600">Fehler: {membersError}</div>
         ) : members && members.length > 0 ? (
           <ul className="space-y-2">
@@ -139,6 +137,7 @@ export default function OrganizationMembersCard({
         ) : (
           <div>Keine Mitglieder gefunden.</div>
         )}
+
       </CardContent>
     </Card>
   );

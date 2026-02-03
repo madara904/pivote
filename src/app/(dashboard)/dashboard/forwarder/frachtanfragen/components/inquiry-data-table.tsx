@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2 } from "lucide-react"
+import { Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2, MessageSquare, FolderOpen } from "lucide-react"
 import { ServiceIcon } from "@/components/ui/service-icon"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { QuotationViewDialog } from "./quotation-view-dialog"
 import { EditQuotationDialog } from "./edit-quotation-dialog"
+import { DocumentsNotesDialog } from "./documents-notes-dialog"
 
 const getInitials = (name: string) =>
   name
@@ -64,6 +65,8 @@ export type FreightInquiry = {
   shipperName: string
   origin: { code: string; country: string }
   destination: { code: string; country: string }
+  documentCount?: number
+  noteCount?: number
 }
 
 interface InquiryDataTableProps<TData extends FreightInquiry> {
@@ -160,6 +163,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
   const tabParam = searchParams.get("tab");
   const [selectedQuotationInquiryId, setSelectedQuotationInquiryId] = useState<string | null>(null);
   const [selectedEditQuotationId, setSelectedEditQuotationId] = useState<{ quotationId: string; inquiryId: string } | null>(null);
+  const [selectedDocumentsNotesInquiryId, setSelectedDocumentsNotesInquiryId] = useState<string | null>(null);
 
   // Helper to build href with preserved tab parameter
   const buildHref = (path: string) => {
@@ -185,13 +189,13 @@ export function InquiryDataTable<TData extends FreightInquiry>({
         {table.getRowModel().rows.length === 0 ? null : (
           table.getRowModel().rows.map(row => {
             const r = row.original
+            const isWon = r.quotationStatus === "accepted"
             const isArchived =
               r.status === "expired" ||
               r.status === "cancelled" ||
-              r.status === "closed" ||
               r.status === "rejected" ||
+              (r.status === "closed" && !isWon) ||
               r.responseStatus === "rejected"
-            const isWon = r.quotationStatus === "accepted"
             const isLost = r.quotationStatus === "rejected"
             const canOffer =
               r.status === "open" &&
@@ -202,7 +206,29 @@ export function InquiryDataTable<TData extends FreightInquiry>({
             const canEditQuotation =
               r.quotationStatus === "submitted" || r.quotationStatus === "withdrawn"
             return (
-              <Card key={row.id} className="overflow-hidden">
+              <Card key={row.id} className="overflow-hidden relative">
+                {r.quotationStatus === "accepted" && (
+                  <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                    <Badge variant="secondary" className="gap-1 shrink-0 text-green-700 bg-green-600/10">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span className="hidden sm:inline">Gewonnen</span>
+                      <span className="sm:hidden">Gew.</span>
+                    </Badge>
+                    <Button
+                      onClick={() => setSelectedDocumentsNotesInquiryId(r.id)}
+                      size="sm"
+                      variant="ghost"
+                      title={`Dokumente & Notizen${(r.documentCount && r.documentCount > 0) || (r.noteCount && r.noteCount > 0) ? ` (${(r.documentCount || 0) + (r.noteCount || 0)})` : ''}`}
+                    >
+                      <FolderOpen className={`h-4 w-4 ${((r.documentCount && r.documentCount > 0) || (r.noteCount && r.noteCount > 0)) ? 'text-primary' : 'text-muted-foreground'}`} />
+                      {((r.documentCount && r.documentCount > 0) || (r.noteCount && r.noteCount > 0)) && (
+                        <span className="text-xs font-medium text-primary">
+                          {(r.documentCount || 0) + (r.noteCount || 0)}
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                )}
                 <CardContent className="p-6">
                   <div className="flex flex-col xl:flex-row gap-6">
                     <div className="w-full xl:w-48 flex-shrink-0">
@@ -228,13 +254,7 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                           <span className="text-muted-foreground">•</span>
                           <span>{getDirectionLabel(r.serviceDirection)}</span>
                         </Badge>
-                        {r.quotationStatus === "accepted" ? (
-                          <Badge variant="default" className="gap-1 shrink-0 bg-green-600 hover:bg-green-700 text-white">
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span className="hidden sm:inline">Gewonnen</span>
-                            <span className="sm:hidden">Gew.</span>
-                          </Badge>
-                        ) : (r.status === "expired" || r.status === "cancelled" || r.status === "closed") ? (
+                        {r.quotationStatus === "accepted" ? null : (r.status === "expired" || r.status === "cancelled" || r.status === "closed") ? (
                           <Badge variant="destructive" className="gap-1 shrink-0">
                             <XCircle className="h-3 w-3" />
                             <span className="hidden sm:inline">{r.status === "expired" ? "Abgelaufen" : r.status === "cancelled" ? "Abgebrochen" : "Geschlossen"}</span>
@@ -299,9 +319,9 @@ export function InquiryDataTable<TData extends FreightInquiry>({
                       </div>
                     </div>
 
-                    <div className="w-full xl:w-64 flex flex-col gap-3">
+                    <div className="w-full xl:w-64 flex flex-col gap-4">
                       {r.quotedPrice && (r.responseStatus === "quoted" || r.quotationStatus === "accepted" || r.status === "expired") && (
-                        <div className="flex items-center gap-1 text-base sm:text-lg font-bold text-primary">
+                        <div className="flex items-center justify-end gap-1 text-base sm:text-lg font-bold text-primary">
                           <Euro className="h-4 w-4 shrink-0" />
                           <span className="whitespace-nowrap">{new Intl.NumberFormat("de-DE", {
                             minimumFractionDigits: 2,
@@ -430,6 +450,15 @@ export function InquiryDataTable<TData extends FreightInquiry>({
           inquiryId={selectedEditQuotationId.inquiryId}
           open={!!selectedEditQuotationId}
           onOpenChange={(open) => !open && setSelectedEditQuotationId(null)}
+        />
+      )}
+      {selectedDocumentsNotesInquiryId && (
+        <DocumentsNotesDialog
+          inquiryId={selectedDocumentsNotesInquiryId}
+          open={!!selectedDocumentsNotesInquiryId}
+          onOpenChange={(open) => !open && setSelectedDocumentsNotesInquiryId(null)}
+          documentCount={data.find(r => r.id === selectedDocumentsNotesInquiryId)?.documentCount}
+          noteCount={data.find(r => r.id === selectedDocumentsNotesInquiryId)?.noteCount}
         />
       )}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-2 py-3">

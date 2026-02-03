@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
-import { eq, and, sql, desc, count, ne } from "drizzle-orm";
-import { inquiryForwarder, organizationMember, inquiry, organization, user, inquiryPackage, quotation } from "@/db/schema";
+import { eq, and, sql, desc, count } from "drizzle-orm";
+import { inquiryDocument, inquiryForwarder, organizationMember, inquiry, organization, user, inquiryPackage, quotation, inquiryNote } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 import { createStatusDateInfo } from "@/lib/date-utils";
@@ -18,6 +18,10 @@ export const forwarderRouter = createTRPCRouter({
       const { db, session } = ctx;
       
       const membership = await requireOrgAndType(ctx);
+      
+      if (membership.organizationType !== "forwarder") {
+        throw new Error("Nur Spediteure können Anfragen öffnen");
+      }
       
 
       const inquiryForwarderRecord = await db.query.inquiryForwarder.findFirst({
@@ -42,24 +46,20 @@ export const forwarderRouter = createTRPCRouter({
     }),
 
 
-    getMyInquiriesFast: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
+    getMyInquiriesFast: protectedProcedure.query(async ({ ctx }) => {
       const { db, session } = ctx;
-      const startTime = Date.now();
       
       try {
-        console.log('🚀 Starting fixed getMyInquiriesFast query...');
-        
-        // Check and update expired items first
+        const membership = await requireOrgAndType(ctx);
+        if (membership.organizationType !== "forwarder") {
+          throw new Error("Nur Spediteure können Anfragen abrufen");
+        }
+    
         await checkAndUpdateExpiredItems(db);
-        
-        // Create proper table alias - THIS IS THE KEY FIX
         const shipperOrg = alias(organization, 'shipper_org');
-        
-        const queryStart = Date.now();
-        
+    
         const result = await db
           .select({
-            // inquiry_forwarder fields
             id: inquiryForwarder.id,
             inquiryId: inquiryForwarder.inquiryId,
             forwarderOrganizationId: inquiryForwarder.forwarderOrganizationId,
@@ -68,8 +68,6 @@ export const forwarderRouter = createTRPCRouter({
             rejectedAt: inquiryForwarder.rejectedAt,
             responseStatus: inquiryForwarder.responseStatus,
             createdAt: inquiryForwarder.createdAt,
-            
-            // inquiry fields
             referenceNumber: inquiry.referenceNumber,
             title: inquiry.title,
             serviceType: inquiry.serviceType,
@@ -78,44 +76,35 @@ export const forwarderRouter = createTRPCRouter({
             originCountry: inquiry.originCountry,
             destinationCity: inquiry.destinationCity,
             destinationCountry: inquiry.destinationCountry,
+            // --- DIESE BEIDEN FELDER HIER HINZUFÜGEN ---
             cargoType: inquiry.cargoType,
             cargoDescription: inquiry.cargoDescription,
+            // ------------------------------------------
             status: inquiry.status,
             validityDate: inquiry.validityDate,
-            
-            // FIXED: Use proper alias fields instead of raw SQL
             shipperName: shipperOrg.name,
             shipperEmail: shipperOrg.email,
-            
-            // created by user fields
             createdByName: user.name,
-            
-            // quotation status and price
             quotationId: quotation.id,
             quotationStatus: quotation.status,
             quotationPrice: quotation.totalPrice,
             quotationCurrency: quotation.currency,
-            
-            // Optimized aggregations
-            totalPieces: sql<number>`COALESCE(SUM(${inquiryPackage.pieces}), 0)`,
-            totalGrossWeight: sql<number>`COALESCE(SUM(${inquiryPackage.grossWeight}), 0)`,
-            totalChargeableWeight: sql<number>`COALESCE(SUM(${inquiryPackage.chargeableWeight}), 0)`,
-            totalVolume: sql<number>`COALESCE(SUM(${inquiryPackage.volume}), 0)`,
-            packageCount: count(inquiryPackage.id),
+            totalPieces: sql<number>`COALESCE(SUM(${inquiryPackage.pieces}), 0)::int`,
+            totalGrossWeight: sql<string>`COALESCE(SUM(${inquiryPackage.grossWeight}), 0)`,
+            totalChargeableWeight: sql<string>`COALESCE(SUM(${inquiryPackage.chargeableWeight}), 0)`,
+            totalVolume: sql<string>`COALESCE(SUM(${inquiryPackage.volume}), 0)`,
+            packageCount: sql<number>`count(${inquiryPackage.id})::int`,
             hasDangerousGoods: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.isDangerous}), false)`,
-            temperatureControlled: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.temperature} IS NOT NULL AND ${inquiryPackage.temperature} != ''), false)`,
-            specialHandling: sql<boolean>`COALESCE(BOOL_OR(${inquiryPackage.specialHandling} IS NOT NULL AND ${inquiryPackage.specialHandling} != ''), false)`
+            documentCount: sql<number>`(SELECT count(*)::int FROM ${inquiryDocument} WHERE ${inquiryDocument.inquiryId} = ${inquiry.id})`,
+            noteCount: sql<number>`(SELECT count(*)::int FROM inquiry_note WHERE inquiry_id = ${inquiry.id})`
           })
           .from(organizationMember)
-          .innerJoin(organization, 
-            and(
-              eq(organizationMember.organizationId, organization.id),
-              eq(organization.type, 'forwarder')
-            )
-          )
+          .innerJoin(organization, and(
+            eq(organizationMember.organizationId, organization.id),
+            eq(organization.type, 'forwarder')
+          ))
           .innerJoin(inquiryForwarder, eq(organization.id, inquiryForwarder.forwarderOrganizationId))
           .innerJoin(inquiry, eq(inquiryForwarder.inquiryId, inquiry.id))
-          // FIXED: Use proper alias join instead of raw SQL
           .innerJoin(shipperOrg, eq(inquiry.shipperOrganizationId, shipperOrg.id))
           .innerJoin(user, eq(inquiry.createdById, user.id))
           .leftJoin(inquiryPackage, eq(inquiry.id, inquiryPackage.inquiryId))
@@ -123,60 +112,21 @@ export const forwarderRouter = createTRPCRouter({
             eq(quotation.inquiryId, inquiry.id),
             eq(quotation.forwarderOrganizationId, organization.id)
           ))
-          .where(
-            and(
-              eq(organizationMember.userId, session.user.id),
-              eq(organizationMember.isActive, true),
-              // Show all inquiries - drafts should be visible so users can edit/delete them
-              // The UI will handle showing appropriate actions based on quotation status
-            )
-          )
+          .where(and(
+            eq(organizationMember.userId, session.user.id),
+            eq(organizationMember.isActive, true)
+          ))
           .groupBy(
-            inquiryForwarder.id,
-            inquiryForwarder.inquiryId,
-            inquiryForwarder.forwarderOrganizationId,
-            inquiryForwarder.sentAt,
-            inquiryForwarder.viewedAt,
-            inquiryForwarder.createdAt,
-            inquiry.id,
-            inquiry.referenceNumber,
-            inquiry.title,
-            inquiry.serviceType,
-            inquiry.serviceDirection,
-            inquiry.originCity,
-            inquiry.originCountry,
-            inquiry.destinationCity,
-            inquiry.destinationCountry,
-            inquiry.cargoType,
-            inquiry.cargoDescription,
-            inquiry.status,
-            inquiry.validityDate,
-            // FIXED: Use alias fields in GROUP BY
-            shipperOrg.name,
-            shipperOrg.email,
-            user.name,
-            quotation.id,
-            quotation.status,
-            quotation.totalPrice,
-            quotation.currency
+            inquiryForwarder.id, inquiry.id, shipperOrg.id, user.id, quotation.id
           )
           .orderBy(desc(inquiryForwarder.createdAt))
           .limit(50);
-        
-        console.log(`⏱️ Fixed query time: ${Date.now() - queryStart}ms`);
-        console.log(`📊 Found ${result.length} inquiries`);
-  
-        // Same transformation logic...
-        const processStart = Date.now();
-        const transformedResult = result.map((row) => ({
-          id: row.id,
-          inquiryId: row.inquiryId,
-          forwarderOrganizationId: row.forwarderOrganizationId,
-          sentAt: row.sentAt,
-          viewedAt: row.viewedAt,
-          rejectedAt: row.rejectedAt,
-          responseStatus: row.responseStatus,
-          createdAt: row.createdAt,
+    
+        return result.map((row) => ({
+          ...row,
+          documents: row.documentCount > 0 ? Array(row.documentCount).fill({}) : [],
+          notes: row.noteCount > 0 ? Array(row.noteCount).fill({}) : [],
+          
           inquiry: {
             id: row.inquiryId,
             referenceNumber: row.referenceNumber,
@@ -187,42 +137,28 @@ export const forwarderRouter = createTRPCRouter({
             originCountry: row.originCountry,
             destinationCity: row.destinationCity,
             destinationCountry: row.destinationCountry,
+            // --- HIER IM MAPPING EBENFALLS HINZUFÜGEN ---
             cargoType: row.cargoType,
             cargoDescription: row.cargoDescription,
+            // --------------------------------------------
             status: row.status,
             validityDate: row.validityDate,
             totalPieces: row.totalPieces,
-            totalGrossWeight: Number(row.totalGrossWeight || 0).toFixed(2),
-            totalChargeableWeight: Number(row.totalChargeableWeight || 0).toFixed(2),
-            totalVolume: Number(row.totalVolume || 0).toFixed(3),
-            shipperOrganization: {
-              name: row.shipperName,
-              email: row.shipperEmail
-            },
-            createdBy: {
-              name: row.createdByName
-            }
+            totalGrossWeight: row.totalGrossWeight,
+            totalChargeableWeight: row.totalChargeableWeight,
+            totalVolume: row.totalVolume,
+            shipperOrganization: { name: row.shipperName, email: row.shipperEmail },
+            createdBy: { name: row.createdByName }
           },
           packageSummary: {
             count: row.packageCount,
-            hasDangerousGoods: Boolean(row.hasDangerousGoods),
-            temperatureControlled: Boolean(row.temperatureControlled),
-            specialHandling: Boolean(row.specialHandling)
+            hasDangerousGoods: row.hasDangerousGoods,
           },
           statusDateInfo: createStatusDateInfo(row.sentAt, row.viewedAt, row.status),
-          quotationId: row.quotationId,
-          quotationStatus: row.quotationStatus,
-          quotationPrice: row.quotationPrice,
-          quotationCurrency: row.quotationCurrency
         }));
-  
-        console.log(`⏱️ Processing time: ${Date.now() - processStart}ms`);
-        console.log(`✅ Total time: ${Date.now() - startTime}ms`);
-        
-        return transformedResult;
       } catch (error) {
-        console.error('Error fetching forwarder inquiries:', error);
-        throw new Error('Failed to fetch inquiries');
+        console.error('Error in getMyInquiriesFast:', error);
+        throw new Error('Fehler beim Laden');
       }
     }),
 
@@ -231,7 +167,11 @@ export const forwarderRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       
-      await requireOrgAndType(ctx);
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "forwarder") {
+        throw new Error("Nur Spediteure können Anfragen abrufen");
+      }
 
       // Create proper table alias
       const shipperOrg = alias(organization, 'shipper_org');
@@ -270,6 +210,12 @@ export const forwarderRouter = createTRPCRouter({
           // created by user fields
           createdByName: user.name,
           
+          // quotation status and price
+          quotationId: quotation.id,
+          quotationStatus: quotation.status,
+          quotationPrice: quotation.totalPrice,
+          quotationCurrency: quotation.currency,
+          
           // package aggregations
           totalPieces: sql<number>`COALESCE(SUM(${inquiryPackage.pieces}), 0)`,
           totalGrossWeight: sql<number>`COALESCE(SUM(${inquiryPackage.grossWeight}), 0)`,
@@ -292,12 +238,15 @@ export const forwarderRouter = createTRPCRouter({
         .innerJoin(shipperOrg, eq(inquiry.shipperOrganizationId, shipperOrg.id))
         .innerJoin(user, eq(inquiry.createdById, user.id))
         .leftJoin(inquiryPackage, eq(inquiry.id, inquiryPackage.inquiryId))
+        .leftJoin(quotation, and(
+          eq(quotation.inquiryId, inquiry.id),
+          eq(quotation.forwarderOrganizationId, organization.id)
+        ))
         .where(
           and(
             eq(organizationMember.userId, session.user.id),
             eq(organizationMember.isActive, true),
-            eq(inquiry.id, input.inquiryId),
-            ne(inquiry.status, "closed") // Exclude closed inquiries
+            eq(inquiry.id, input.inquiryId)
           )
         )
         .groupBy(
@@ -325,7 +274,11 @@ export const forwarderRouter = createTRPCRouter({
           inquiry.validityDate,
           shipperOrg.name,
           shipperOrg.email,
-          user.name
+          user.name,
+          quotation.id,
+          quotation.status,
+          quotation.totalPrice,
+          quotation.currency
         )
         .limit(1);
 
@@ -414,6 +367,10 @@ export const forwarderRouter = createTRPCRouter({
         rejectedAt: row.rejectedAt,
         responseStatus: row.responseStatus,
         createdAt: row.createdAt,
+        quotationId: row.quotationId,
+        quotationStatus: row.quotationStatus,
+        quotationPrice: row.quotationPrice,
+        quotationCurrency: row.quotationCurrency,
         inquiry: {
           id: row.inquiryId,
           referenceNumber: row.referenceNumber,
@@ -462,6 +419,10 @@ export const forwarderRouter = createTRPCRouter({
       try {
         const membership = await requireOrgAndType(ctx);
         
+        if (membership.organizationType !== "forwarder") {
+          throw new Error("Nur Spediteure können Anfragen ablehnen");
+        }
+        
         // Verify the inquiry exists and was sent to this forwarder
         const inquiryForwarderRecord = await db.query.inquiryForwarder.findFirst({
           where: and(
@@ -488,6 +449,108 @@ export const forwarderRouter = createTRPCRouter({
         console.error('❌ Error rejecting inquiry:', error);
         throw new Error(`Failed to reject inquiry: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
+    }),
+
+  getInquiryDocuments: protectedProcedure
+    .input(inquiryIdSchema)
+    .query(async ({ ctx, input }) => {
+      const { db } = ctx;
+
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "forwarder") {
+        throw new Error("Nur Spediteure können Dokumente abrufen");
+      }
+
+      const acceptedQuotation = await db
+        .select({ id: quotation.id })
+        .from(quotation)
+        .where(
+          and(
+            eq(quotation.inquiryId, input.inquiryId),
+            eq(quotation.forwarderOrganizationId, membership.organizationId),
+            eq(quotation.status, "accepted")
+          )
+        )
+        .limit(1);
+
+      if (!acceptedQuotation.length) {
+        throw new Error("Dokumente sind nur für gewonnene Anfragen verfügbar");
+      }
+
+      const documents = await db
+        .select({
+          id: inquiryDocument.id,
+          inquiryId: inquiryDocument.inquiryId,
+          documentType: inquiryDocument.documentType,
+          fileName: inquiryDocument.fileName,
+          fileType: inquiryDocument.fileType,
+          fileSize: inquiryDocument.fileSize,
+          fileKey: inquiryDocument.fileKey,
+          fileUrl: inquiryDocument.fileUrl,
+          createdAt: inquiryDocument.createdAt,
+          uploadedByOrganization: {
+            id: organization.id,
+            name: organization.name,
+          },
+        })
+        .from(inquiryDocument)
+        .innerJoin(organization, eq(inquiryDocument.uploadedByOrganizationId, organization.id))
+        .where(eq(inquiryDocument.inquiryId, input.inquiryId))
+        .orderBy(desc(inquiryDocument.createdAt));
+
+      return documents;
+    }),
+
+  getInquiryNotes: protectedProcedure
+    .input(inquiryIdSchema)
+    .query(async ({ ctx, input }) => {
+      const { db } = ctx;
+
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "forwarder") {
+        throw new Error("Nur Spediteure können Notizen abrufen");
+      }
+
+      const acceptedQuotation = await db
+        .select({ id: quotation.id })
+        .from(quotation)
+        .where(
+          and(
+            eq(quotation.inquiryId, input.inquiryId),
+            eq(quotation.forwarderOrganizationId, membership.organizationId),
+            eq(quotation.status, "accepted")
+          )
+        )
+        .limit(1);
+
+      if (!acceptedQuotation.length) {
+        throw new Error("Notizen sind nur für gewonnene Anfragen verfügbar");
+      }
+
+      const notes = await db
+        .select({
+          id: inquiryNote.id,
+          inquiryId: inquiryNote.inquiryId,
+          content: inquiryNote.content,
+          createdAt: inquiryNote.createdAt,
+          createdBy: {
+            id: user.id,
+            name: user.name,
+          },
+          organization: {
+            id: organization.id,
+            name: organization.name,
+          },
+        })
+        .from(inquiryNote)
+        .innerJoin(user, eq(inquiryNote.userId, user.id))
+        .innerJoin(organization, eq(inquiryNote.organizationId, organization.id))
+        .where(eq(inquiryNote.inquiryId, input.inquiryId))
+        .orderBy(desc(inquiryNote.createdAt));
+
+      return notes;
     }),
 
 });

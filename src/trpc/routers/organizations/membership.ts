@@ -18,18 +18,17 @@ export const membershipRouter = createTRPCRouter({
     .input(z.object({ organizationId: z.string().uuid() }))
     .query(async ({ ctx, input }: { ctx: TRPCContext; input: { organizationId: string } }) => {
       const { db, session } = ctx;
-      const owner = await db.query.organizationMember.findFirst({
+      const membership = await db.query.organizationMember.findFirst({
         where: and(
           eq(organizationMember.userId, session.user.id),
           eq(organizationMember.organizationId, input.organizationId),
-          eq(organizationMember.role, "owner"),
           eq(organizationMember.isActive, true)
         ),
       });
-      if (!owner) {
+      if (!membership) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Nur der Besitzer kann Mitglieder verwalten.",
+          message: "Kein Zugriff auf diese Organisation.",
         });
       }
 
@@ -79,10 +78,11 @@ export const membershipRouter = createTRPCRouter({
       const existingUser = await db.query.user.findFirst({
         where: eq(user.email, input.email),
       });
+
       if (!existingUser) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Kein Benutzer mit dieser E-Mail gefunden.",
+          message: "Benutzer nicht gefunden.",
         });
       }
 

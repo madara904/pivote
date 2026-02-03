@@ -20,11 +20,8 @@ interface RouteDisplayProps {
 export function RouteDisplay({ origin, destination, className }: RouteDisplayProps) {
   return (
     <div className={cn("space-y-2", className)}>
-      <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">
-        Route
-      </h4>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center justify-center w-6 h-6 bg-cyan-100 rounded-full">
             <Send className="h-3 w-3 text-cyan-500" />
           </div>
@@ -34,7 +31,7 @@ export function RouteDisplay({ origin, destination, className }: RouteDisplayPro
           </div>
         </div>
         <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center justify-center w-6 h-6 bg-red-100 rounded-full">
             <FlagTriangleRight className="h-3 w-3 text-rose-400" />
           </div>

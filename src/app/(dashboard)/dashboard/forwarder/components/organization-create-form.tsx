@@ -15,7 +15,15 @@ const orgSchema = z.object({
   name: z.string().min(2, "Name ist erforderlich"),
   email: z.string().email("Gültige Email ist erforderlich"),
   type: z.enum(["shipper", "forwarder"]),
+  description: z.string().optional(),
+  phone: z.string().optional(),
+  website: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
   vatNumber: z.string().min(1, "USt-IdNr. ist erforderlich"),
+  registrationNumber: z.string().optional(),
 });
 
 export type OrgForm = z.infer<typeof orgSchema>;
@@ -67,11 +75,37 @@ export default function OrganizationCrudTest() {
   // Forms
   const createForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
-    defaultValues: { name: "", email: "", type: "shipper", vatNumber: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      type: "shipper",
+      description: "",
+      phone: "",
+      website: "",
+      address: "",
+      city: "",
+      postalCode: "",
+      country: "",
+      vatNumber: "",
+      registrationNumber: "",
+    },
   });
   const editForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
-    defaultValues: { name: "", email: "", type: "shipper", vatNumber: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      type: "shipper",
+      description: "",
+      phone: "",
+      website: "",
+      address: "",
+      city: "",
+      postalCode: "",
+      country: "",
+      vatNumber: "",
+      registrationNumber: "",
+    },
   });
 
   // Set edit form values when org selected
@@ -83,7 +117,15 @@ export default function OrganizationCrudTest() {
         name: org.name,
         email: org.email,
         type: org.type,
+        description: org.description || "",
+        phone: org.phone || "",
+        website: org.website || "",
+        address: org.address || "",
+        city: org.city || "",
+        postalCode: org.postalCode || "",
+        country: org.country || "",
         vatNumber: org.vatNumber || "",
+        registrationNumber: org.registrationNumber || "",
       });
     }
   }, [selectedOrgId, editMode, orgsQuery.data, editForm]);
@@ -177,8 +219,8 @@ export default function OrganizationCrudTest() {
           setEditMode(true);
         }}
         onDelete={handleDelete}
-        canEdit={(org) => org.membershipRole === "owner" || org.membershipRole === "admin"}
-        canDelete={(org) => org.membershipRole === "owner" || org.membershipRole === "admin"}
+        canEdit={(org) => org.membershipRole === "owner"}
+        canDelete={(org) => org.membershipRole === "owner"}
       />
 
       <OrganizationEditDialog
@@ -220,7 +262,6 @@ export default function OrganizationCrudTest() {
 
       {selectedOrgId && (
         <OrganizationMembersCard
-          selectedOrgId={selectedOrgId}
           selectedOrgIsOwner={selectedOrgIsOwner}
           inviteEmail={inviteEmail}
           inviteRole={inviteRole}

@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { AlertCircle, Package as PackageIcon, Plus, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -18,6 +20,7 @@ import { sanitizeIntegerInput, sanitizeDecimalInput } from "@/lib/form-sanitizat
 import { CountrySelect } from "@/components/location/location-fields"
 import { getAirportByCode, getCountryNameByCode, getAirportsByCountry } from "@/lib/locations"
 import { calculateChargeableWeight, calculateVolume } from "@/lib/freight-calculations"
+import { cn } from "@/lib/utils"
 
 // Local interface - stays with the component
 interface InquiryFormProps {
@@ -64,7 +67,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
     onSuccess: (data) => {
       setReferenceNumber(data.referenceNumber)
       toast.success(`Frachtanfrage ${data.referenceNumber} erfolgreich erstellt!`)
-      router.refresh()
+      router.push("/dashboard/shipper/frachtanfragen")
     },
     onError: (error) => {
       toast.error(`Fehler beim Erstellen der Anfrage: ${error.message}`)
@@ -78,6 +81,13 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
       setSelectedForwarders(prev => prev.filter(id => id !== forwarderId))
     }
   }
+
+  const getInitials = (name?: string) => {
+    if (!name) return "";
+    const parts = name.split(" ").filter(Boolean);
+    if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "";
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   const addPackage = () => {
     const packageNumber = String(packages.length + 1)
@@ -303,9 +313,68 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <Card className="border-none shadow-none">
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Forwarder Selection */}
+      <Card className="border-0 shadow-none bg-transparent">
+        <CardHeader>
+          <CardTitle>Spediteure auswählen</CardTitle>
+          <CardDescription>Wählen Sie die Spediteure aus, die diese Anfrage erhalten sollen</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {forwarders.length === 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Keine verbundenen Spediteure verfügbar. Bitte zuerst eine Verbindung herstellen.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {forwarders.map((forwarder) => (
+                <label
+                  key={forwarder.id}
+                  htmlFor={forwarder.id}
+                  className={cn(
+                    "relative flex min-h-[220px] flex-col rounded-xl border p-4 transition-all hover:border-primary/50 hover:bg-muted/40",
+                    selectedForwarders.includes(forwarder.id) && "border-primary bg-primary/5 shadow-sm"
+                  )}
+                >
+                  <Checkbox
+                    id={forwarder.id}
+                    checked={selectedForwarders.includes(forwarder.id)}
+                    onCheckedChange={(checked) => handleForwarderChange(forwarder.id, checked as boolean)}
+                    className="absolute right-3 top-3"
+                  />
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 border">
+                      <AvatarImage src={forwarder.logo || undefined} alt={forwarder.name} />
+                      <AvatarFallback className="text-xs">{getInitials(forwarder.name)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-semibold">{forwarder.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {forwarder.city || "-"}, {forwarder.country || "-"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-auto w-full rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Preis</span>
+                      <span className="font-semibold text-foreground">auf Anfrage</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">Antwortzeit • 24h</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Basic Information */}
-      <Card>
+      <Card className="border">
         <CardHeader>
           <CardTitle>Grundinformationen</CardTitle>
           <CardDescription>Allgemeine Informationen zur Frachtanfrage</CardDescription>
@@ -381,7 +450,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
       </Card>
 
       {/* Origin and Destination */}
-      <Card>
+      <Card className="border">
         <CardHeader>
           <CardTitle>Ursprung und Ziel</CardTitle>
           <CardDescription>Abgangs- und Zielort der Sendung</CardDescription>
@@ -486,7 +555,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
       </Card>
 
       {/* Cargo Information */}
-      <Card>
+      <Card className="border">
         <CardHeader>
           <CardTitle>Frachtinformationen</CardTitle>
           <CardDescription>Details zur zu transportierenden Fracht</CardDescription>
@@ -566,7 +635,7 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
       </Card>
 
       {/* Packages */}
-      <Card>
+      <Card className="border-0 shadow-none bg-transparent">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <PackageIcon className="h-5 w-5" />
@@ -738,50 +807,14 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
           ))}
 
           <Button
-            type="button"
-            variant="outline"
+            type="reset"
+            variant="secondary"
             onClick={addPackage}
-            className="w-full"
+            className=""
           >
             <Plus className="h-4 w-4 mr-2" />
             Weitere Pakete hinzufügen
           </Button>
-        </CardContent>
-      </Card>
-
-      {/* Forwarder Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Spediteure auswählen</CardTitle>
-          <CardDescription>Wählen Sie die Spediteure aus, die diese Anfrage erhalten sollen</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {forwarders.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Keine verbundenen Spediteure verfügbar. Bitte zuerst eine Verbindung herstellen.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {forwarders.map((forwarder) => (
-                <div key={forwarder.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={forwarder.id}
-                    checked={selectedForwarders.includes(forwarder.id)}
-                    onCheckedChange={(checked) => handleForwarderChange(forwarder.id, checked as boolean)}
-                  />
-                  <Label htmlFor={forwarder.id} className="flex-1">
-                    <div className="font-medium">{forwarder.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {forwarder.city}, {forwarder.country}
-                    </div>
-                  </Label>
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -801,7 +834,9 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
           {isSubmitting ? "Wird erstellt..." : "Frachtanfrage erstellen"}
         </Button>
       </div>
-    </form>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 

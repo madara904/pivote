@@ -1,113 +1,77 @@
 "use client"
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { ShipperStatusBadge } from "@/components/ui/shipper-status-badge"
+import { useRouter } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { ServiceIcon } from "@/components/ui/service-icon"
-import { RouteDisplay } from "@/components/ui/route-display"
-import { Clock, Euro, Eye, X, CheckCircle, Package } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Clock, CheckCircle2, XCircle, Euro } from "lucide-react"
+import { ShipperStatusBadge } from "@/components/ui/shipper-status-badge"
 import { 
-  canShipperCancelInquiry,
-  isShipperInquiryFinal,
   ShipperStatusContext,
   ShipperInquiryStatus 
 } from "@/lib/shipper-status-utils"
 
-// Define the inquiry type for the table component
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "?"
+
+const getServiceLabel = (serviceType: string) => {
+  if (serviceType === "air_freight") return "Luftfracht";
+  if (serviceType === "sea_freight") return "Seefracht";
+  if (serviceType === "road_freight") return "Straßenfracht";
+  return serviceType;
+}
+
 interface InquiryForTable {
   id: string
   referenceNumber: string
   status: string
   sentAt?: Date
   responseDate?: Date
-  quotedPrice?: number
-  currency?: string
   serviceType: string
-  serviceDetails?: string
+  serviceDirection?: string
   cargoType: string
   cargoDescription?: string | null
   weight: string | number
   unit?: string
   pieces?: number
   shipperName: string
+  quotationCount: number
+  hasAcceptedQuotation: boolean
+  hasRejectedQuotations: boolean
+  quotedPrice?: number
+  currency?: string
   forwarderResponseSummary?: {
     total: number
     pending: number
     rejected: number
     quoted: number
   }
-  quotationCount: number
-  hasAcceptedQuotation: boolean
-  hasRejectedQuotations: boolean
-  origin: {
-    code: string
-    city?: string
-    country: string
+  nominatedForwarder?: {
+    id: string
+    name: string
+    logo?: string | null
   }
-  destination: {
-    code: string
-    city?: string
-    country: string
-  }
+  origin: { code: string; city?: string; country: string }
+  destination: { code: string; city?: string; country: string }
 }
 
 interface ShipperInquiryTableProps {
   inquiries: InquiryForTable[]
-  onViewInquiry?: (inquiryId: string) => void
-  onViewQuotations?: (inquiryId: string) => void
-  onCancelInquiry?: (inquiryId: string) => void
   className?: string
 }
 
-export function ShipperInquiryTable({
-  inquiries,
-  onViewInquiry,
-  onViewQuotations,
-  onCancelInquiry,
-  className,
-}: ShipperInquiryTableProps) {
-  if (inquiries.length === 0) {
-    return (
-      <div className="container mx-auto px-4">
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-lg font-medium">Keine Frachtanfragen gefunden</p>
-          <p className="text-sm">Erstellen Sie Ihre erste Frachtanfrage über den &quot;Neue Anfrage&quot; Tab.</p>
-        </div>
-      </div>
-    )
-  }
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(date)
-  }
-
-  const getServiceDetails = (serviceType: string) => {
-    switch (serviceType) {
-      case "air_freight":
-        return "Luftfracht • Express"
-      case "sea_freight":
-        return "Seefracht • Container"
-      case "road_freight":
-        return "Straßentransport • LKW"
-      case "rail_freight":
-        return "Schienentransport • Zug"
-      case "multimodal":
-        return "Multimodal • Kombiniert"
-      default:
-        return "Import"
-    }
-  }
+export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTableProps) {
+  const router = useRouter()
 
   return (
-    <div className="container mx-auto px-4">
-      <div className={cn("space-y-4", className)}>
-        {inquiries.map((inquiry) => {
-        // Create status context for this inquiry
+    <div className="grid gap-4 grid-cols-1">
+      {inquiries.map((inquiry) => {
         const statusContext: ShipperStatusContext = {
           inquiryStatus: inquiry.status as ShipperInquiryStatus,
           quotationCount: inquiry.quotationCount,
@@ -116,150 +80,139 @@ export function ShipperInquiryTable({
           forwarderResponseSummary: inquiry.forwarderResponseSummary
         };
 
-        const canCancel = canShipperCancelInquiry(statusContext);
-        const isFinal = isShipperInquiryFinal(statusContext);
+        const isArchived = inquiry.status === "expired" || inquiry.status === "cancelled" || inquiry.status === "closed"
 
         return (
-          <Card key={inquiry.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div className="space-y-1 flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                    <h3 className="font-bold text-base text-primary">{inquiry.referenceNumber}</h3>
-                    <ShipperStatusBadge status={inquiry.status as ShipperInquiryStatus} />
-                    {/* Forwarder Response Summary */}
-                      {inquiry.forwarderResponseSummary && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                            {inquiry.forwarderResponseSummary.quoted} Angebote
-                          </span>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full">
-                            {inquiry.forwarderResponseSummary.pending} Ausstehend
-                          </span>
-                          {inquiry.forwarderResponseSummary.rejected > 0 && (
-                            <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full">
-                              {inquiry.forwarderResponseSummary.rejected} Abgelehnt
-                            </span>
-                          )}
-                        </div>
-                      )}
+          <Card 
+            key={inquiry.id} 
+            className="overflow-hidden relative cursor-pointer hover:border-primary/50 transition-all"
+            onClick={() => router.push(`/dashboard/shipper/frachtanfragen/${inquiry.id}`)}
+          >
+            {inquiry.hasAcceptedQuotation && (
+              <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                <Badge variant="secondary" className="gap-1 shrink-0 text-green-700 bg-green-600/10">
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span className="hidden sm:inline">Spediteur nominiert</span>
+                  <span className="sm:hidden">Nom.</span>
+                </Badge>
+              </div>
+            )}
+            <CardContent className="p-6">
+              <div className="flex flex-col xl:flex-row gap-6">
+                <div className="w-full xl:w-48 flex-shrink-0">
+                  <div className="h-28 w-full flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wide">Route</div>
+                      <div className="text-base font-semibold text-foreground">
+                        {inquiry.origin.code} → {inquiry.destination.code}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {inquiry.origin.country} → {inquiry.destination.country}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span>Sent {inquiry.sentAt ? formatDate(inquiry.sentAt) : "N/A"}</span>
-                    {inquiry.responseDate && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <span>Response {formatDate(inquiry.responseDate)}</span>
-                      </>
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground break-words">{inquiry.referenceNumber}</h3>
+                    <Badge variant="outline" className="text-xs font-medium flex items-center gap-1">
+                      <ServiceIcon serviceType={inquiry.serviceType} className="h-3.5 w-3.5" />
+                      <span>{getServiceLabel(inquiry.serviceType)}</span>
+                      {inquiry.serviceDirection && (
+                        <>
+                          <span className="text-muted-foreground">•</span>
+                          <span>{inquiry.serviceDirection === "import" ? "Import" : "Export"}</span>
+                        </>
+                      )}
+                    </Badge>
+                    {inquiry.hasAcceptedQuotation ? null : isArchived ? (
+                      <Badge variant="destructive" className="gap-1 shrink-0">
+                        <XCircle className="h-3 w-3" />
+                        <span className="hidden sm:inline">{inquiry.status === "expired" ? "Abgelaufen" : inquiry.status === "cancelled" ? "Abgebrochen" : "Geschlossen"}</span>
+                        <span className="sm:hidden">{inquiry.status === "expired" ? "Abg." : inquiry.status === "cancelled" ? "Abb." : "Geschl."}</span>
+                      </Badge>
+                    ) : inquiry.quotationCount > 0 ? (
+                      <Badge variant="default" className="gap-1 shrink-0">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span className="hidden sm:inline">{inquiry.quotationCount} Angebot{inquiry.quotationCount !== 1 ? 'e' : ''}</span>
+                        <span className="sm:hidden">{inquiry.quotationCount}</span>
+                      </Badge>
+                    ) : (
+                      <ShipperStatusBadge status={inquiry.status as ShipperInquiryStatus} />
                     )}
                   </div>
-                </div>
-                <div className="text-left sm:text-right">
-                  {inquiry.quotedPrice && (
-                    <div className="flex items-center gap-1 text-lg font-bold text-primary">
-                      <Euro className="h-4 w-4" />
-                      {inquiry.quotedPrice} {inquiry.currency}
+
+                  {inquiry.nominatedForwarder && (
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <Avatar className="h-7 w-7 border">
+                        <AvatarImage src={inquiry.nominatedForwarder.logo || undefined} alt={inquiry.nominatedForwarder.name} />
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {getInitials(inquiry.nominatedForwarder.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-foreground">{inquiry.nominatedForwarder.name}</span>
                     </div>
                   )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex flex-col lg:flex-row gap-4">
-                {/* Left side - Content */}
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Fracht</span>
-                    </div>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>Gewicht: {inquiry.weight} {inquiry.unit}</p>
-                      {inquiry.pieces && <p>Stückzahl: {inquiry.pieces}</p>}
-                      <p>Versender: {inquiry.shipperName}</p>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Service</h4>
-                    <div className="flex items-start gap-2">
-                      <ServiceIcon serviceType={inquiry.serviceType} />
-                      <div>
-                        <div className="font-semibold text-sm">
-                          {inquiry.serviceType === "air_freight"
-                            ? "Luftfracht"
-                            : inquiry.serviceType === "sea_freight"
-                              ? "Seefracht"
-                              : inquiry.serviceType}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {inquiry.serviceDetails || getServiceDetails(inquiry.serviceType)}
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Fracht</div>
+                      <div className="font-semibold">{inquiry.weight} {inquiry.unit || "kg"}</div>
+                      <div className="text-xs text-muted-foreground">{inquiry.pieces || 1} PKG</div>
                     </div>
                     <div>
-                      <div className="font-medium text-sm">
-                        {inquiry.cargoType === "general" ? "General" : inquiry.cargoType}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{inquiry.cargoDescription || "No description"}</div>
+                      <div className="text-xs text-muted-foreground">Service</div>
+                      <div className="font-semibold">{getServiceLabel(inquiry.serviceType)}</div>
+                      {inquiry.serviceDirection && (
+                        <div className="text-xs text-muted-foreground">{inquiry.serviceDirection === "import" ? "Import" : "Export"}</div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <RouteDisplay origin={inquiry.origin} destination={inquiry.destination} />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Ware</div>
+                      <div className="font-semibold">{inquiry.cargoType === "general" ? "Allgemein" : inquiry.cargoType}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-2">{inquiry.cargoDescription || "Keine Beschreibung"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Timeline</div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>Gesendet {inquiry.sentAt ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(inquiry.sentAt) : "—"}</span>
+                      </div>
+                      {inquiry.responseDate && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Antwort {new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(inquiry.responseDate)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Right side - Actions */}
-                <div className="lg:w-48 flex-shrink-0">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Actions</h4>
-                    <div className="flex flex-col gap-2">
-                      {!isFinal && (
-                        <Button
-                          variant="outline"
-                          onClick={() => onViewInquiry?.(inquiry.id)}
-                          className="justify-start w-full"
-                          size="sm"
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Details anzeigen
-                        </Button>
-                      )}
-                      
-                      {inquiry.forwarderResponseSummary?.quoted && inquiry.forwarderResponseSummary.quoted > 0 && (
-                        <Button
-                          onClick={() => onViewQuotations?.(inquiry.id)}
-                          className="justify-start w-full"
-                          size="sm"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Angebote anzeigen ({inquiry.forwarderResponseSummary.quoted})
-                        </Button>
-                      )}
-                      
-                      {canCancel && (
-                        <Button
-                          variant="destructive"
-                          onClick={() => onCancelInquiry?.(inquiry.id)}
-                          className="justify-start w-full"
-                          size="sm"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Stornieren
-                        </Button>
-                      )}
-                      
+                <div className="w-full xl:w-64 flex flex-col gap-4 justify-end">
+                  {inquiry.quotedPrice && inquiry.hasAcceptedQuotation && (
+                    <div className="flex items-center justify-end gap-1 text-base sm:text-lg font-bold text-primary">
+                      <Euro className="h-4 w-4 shrink-0" />
+                      <span className="whitespace-nowrap">{new Intl.NumberFormat("de-DE", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(inquiry.quotedPrice)} {inquiry.currency || "EUR"}</span>
                     </div>
-                  </div>
+                  )}
+
+                  {inquiry.forwarderResponseSummary && inquiry.forwarderResponseSummary.total > 0 && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div>Antworten: {inquiry.forwarderResponseSummary.total}</div>
+                      {inquiry.forwarderResponseSummary.quoted > 0 && (
+                        <div>Angebote: {inquiry.forwarderResponseSummary.quoted}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
         )
       })}
-      </div>
     </div>
   )
 }

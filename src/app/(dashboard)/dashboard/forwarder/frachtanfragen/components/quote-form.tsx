@@ -173,10 +173,11 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
         />
       )}
 
-      <div className="space-y-6">
+      <Card className="border">
+        <div className="p-6 space-y-6">
         {/* Cost Breakdown */}
-        <Card className="p-4 sm:p-6">
-          <div className="space-y-6">
+        <Card className="border-0 shadow-none bg-transparent">
+          <div className="space-y-6 p-4 sm:p-6">
             <div className="space-y-2">
               <h2 className="text-xl font-semibold">Kostenaufschlüsselung</h2>
               <p className="text-sm text-muted-foreground">
@@ -321,8 +322,8 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
         </Card>
 
         {/* Shipment Details */}
-        <Card className="p-4 sm:p-6">
-          <div className="space-y-6">
+        <Card className="border-0 shadow-none bg-transparent">
+          <div className="space-y-6 p-4 sm:p-6">
             <h2 className="text-xl font-semibold">Versanddetails</h2>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -416,8 +417,8 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
         </Card>
 
         {/* Additional Information */}
-        <Card className="p-4 sm:p-6">
-          <div className="space-y-6">
+        <Card className="border-0 shadow-none bg-transparent">
+          <div className="space-y-6 p-4 sm:p-6">
             <h2 className="text-xl font-semibold">Zusätzliche Informationen</h2>
 
             <div className="space-y-6">
@@ -480,7 +481,8 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
             </span>
           </Button>
         </div>
-      </div>
+        </div>
+      </Card>
     </>
   );
 }

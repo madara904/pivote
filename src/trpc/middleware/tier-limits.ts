@@ -1,5 +1,5 @@
-import { eq, and, gte, sql } from 'drizzle-orm';
-import { quotation, subscription } from '@/db/schema';
+import { eq, and, gte, sql, inArray, ne } from 'drizzle-orm';
+import { quotation, subscription, organizationConnection } from '@/db/schema';
 import type { TRPCContext } from '@/trpc/init';
 
 /**
@@ -98,3 +98,57 @@ export async function checkQuotationLimit(
   };
 }
 
+type ConnectionRole = "shipper" | "forwarder";
+
+async function getConnectionCount(
+  ctx: TRPCContext,
+  organizationId: string,
+  role: ConnectionRole,
+  excludeConnectionId?: string
+): Promise<number> {
+  const { db } = ctx;
+  const statusFilter = ["pending", "connected"] as const;
+  const baseWhere =
+    role === "shipper"
+      ? eq(organizationConnection.shipperOrganizationId, organizationId)
+      : eq(organizationConnection.forwarderOrganizationId, organizationId);
+
+  const whereClause = excludeConnectionId
+    ? and(baseWhere, inArray(organizationConnection.status, statusFilter), ne(organizationConnection.id, excludeConnectionId))
+    : and(baseWhere, inArray(organizationConnection.status, statusFilter));
+
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(organizationConnection)
+    .where(whereClause);
+
+  return result[0]?.count ?? 0;
+}
+
+export const checkConnectionLimit = async (
+  ctx: TRPCContext,
+  organizationId: string,
+  role: ConnectionRole,
+  excludeConnectionId?: string
+): Promise<{ allowed: boolean; reason?: string; current: number; limit: number }> => {
+  const subscription = await getOrganizationSubscription(ctx, organizationId);
+
+  if (subscription.tier !== "basic") {
+    return { allowed: true, current: 0, limit: Infinity };
+  }
+
+  const current = await getConnectionCount(ctx, organizationId, role, excludeConnectionId);
+  const limit = 1;
+
+  if (current >= limit) {
+    return {
+      allowed: false,
+      reason:
+        "Sie haben Ihr Verbindungs-Limit erreicht. Upgrade auf Medium oder Advanced für mehr Verbindungen.",
+      current,
+      limit,
+    };
+  }
+
+  return { allowed: true, current, limit };
+};

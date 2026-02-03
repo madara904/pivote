@@ -50,7 +50,6 @@ export const RegisterForm = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  
   // Get returnTo from URL
   const returnTo = getReturnToFromSearchParams(searchParams);
 
@@ -76,9 +75,10 @@ export const RegisterForm = () => {
         password: data.password,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setLoading(false);
-          sendVerificationEmail({email: data.email, callbackURL:"/"})
+          sendVerificationEmail({email: data.email, callbackURL:"/"});
+
           router.push("/onboarding");
         },
         onError: ({ error }) => {

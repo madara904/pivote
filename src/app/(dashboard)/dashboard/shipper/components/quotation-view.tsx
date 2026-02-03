@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { DotLoading } from "@/components/ui/dot-loading"
 import { formatGermanDate } from "@/lib/date-utils"
@@ -21,7 +20,8 @@ import {
   XCircle, 
   AlertTriangle,
   FileText,
-  Package
+  Package,
+  ChevronDown
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -38,26 +38,13 @@ const statusColors = {
   expired: "bg-red-100 text-red-800",
 }
 
-const statusIcons = {
-  draft: AlertTriangle,
-  submitted: AlertTriangle,
-  accepted: CheckCircle,
-  rejected: XCircle,
-  withdrawn: XCircle,
-  expired: XCircle,
-}
 
 export default function QuotationView({ inquiryId }: QuotationViewProps) {
-  const [selectedQuotationId, setSelectedQuotationId] = useState<string | null>(null)
+  const [expandedQuotationId, setExpandedQuotationId] = useState<string | null>(null)
 
   const { data: quotations, isLoading, error } = trpc.quotation.shipper.getQuotationsForInquiry.useQuery({
     inquiryId
   })
-
-  const { data: selectedQuotation } = trpc.quotation.shipper.getQuotation.useQuery(
-    { quotationId: selectedQuotationId! },
-    { enabled: !!selectedQuotationId }
-  )
 
   const utils = trpc.useUtils()
 
@@ -66,7 +53,9 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
       toast.success("Angebot angenommen!")
       // Refetch quotations
       utils.quotation.shipper.getQuotationsForInquiry.invalidate({ inquiryId })
-      setSelectedQuotationId(null)
+      utils.inquiry.shipper.getInquiryDetail.invalidate({ inquiryId })
+      utils.inquiry.shipper.getMyInquiries.invalidate()
+      setExpandedQuotationId(null)
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`)
@@ -78,7 +67,9 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
       toast.success("Angebot abgelehnt!")
       // Refetch quotations
       utils.quotation.shipper.getQuotationsForInquiry.invalidate({ inquiryId })
-      setSelectedQuotationId(null)
+      utils.inquiry.shipper.getInquiryDetail.invalidate({ inquiryId })
+      utils.inquiry.shipper.getMyInquiries.invalidate()
+      setExpandedQuotationId(null)
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`)
@@ -129,292 +120,197 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
     rejectQuotation.mutate({ quotationId })
   }
 
+  const bestOffer = quotations.reduce((best, current) => {
+    if (!best) return current
+    return current.totalPrice < best.totalPrice ? current : best
+  }, undefined as typeof quotations[number] | undefined)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Eingegangene Angebote ({quotations.length})</h2>
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="list">Übersicht</TabsTrigger>
-          <TabsTrigger value="details" disabled={!selectedQuotationId}>
-            Details
-          </TabsTrigger>
-        </TabsList>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {quotations.map((quotation) => {
+          const isExpanded = expandedQuotationId === quotation.id
+          const isBestOffer = bestOffer?.id === quotation.id
+          const isAccepted = quotation.status === "accepted"
 
-        <TabsContent value="list" className="space-y-4">
-          <div className="grid gap-4">
-            {quotations.map((quotation) => {
-              const StatusIcon = statusIcons[quotation.status as keyof typeof statusIcons]
-              return (
-                <Card 
-                  key={quotation.id} 
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedQuotationId === quotation.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedQuotationId(quotation.id)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <StatusIcon className="h-5 w-5" />
-                        <div>
-                          <CardTitle className="text-lg">{quotation.quotationNumber}</CardTitle>
-                          <CardDescription>
-                            von {quotation.forwarderOrganization.name}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-2 text-2xl font-bold">
-                          <Euro className="h-6 w-6" />
-                          {quotation.totalPrice} {quotation.currency}
-                        </div>
-                        <Badge className={statusColors[quotation.status as keyof typeof statusColors]}>
-                          {quotation.status === 'draft' && 'Entwurf'}
-                          {quotation.status === 'submitted' && 'Eingereicht'}
-                          {quotation.status === 'accepted' && 'Angenommen'}
-                          {quotation.status === 'rejected' && 'Abgelehnt'}
-                          {quotation.status === 'withdrawn' && 'Zurückgezogen'}
-                          {quotation.status === 'expired' && 'Abgelaufen'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-500" />
-                        <span>{quotation.forwarderOrganization.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        <span>{quotation.forwarderOrganization.city}, {quotation.forwarderOrganization.country}</span>
-                      </div>
-                      {quotation.airlineFlight && (
-                        <div className="flex items-center gap-2">
-                          <Plane className="h-4 w-4 text-gray-500" />
-                          <span>{quotation.airlineFlight}</span>
-                        </div>
-                      )}
-                      {quotation.transitTime && (
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-gray-500" />
-                          <span>{quotation.transitTime} Tage</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {quotation.status === 'submitted' && (
-                      <div className="flex gap-2 mt-4">
-                        <Button 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleAccept(quotation.id)
-                          }}
-                          disabled={acceptQuotation.isPending}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Annehmen
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleReject(quotation.id)
-                          }}
-                          disabled={rejectQuotation.isPending}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Ablehnen
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="details">
-          {selectedQuotation && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-2xl">{selectedQuotation.quotationNumber}</CardTitle>
-                      <CardDescription>
-                        von {selectedQuotation.forwarderOrganization.name}
-                      </CardDescription>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-2 text-3xl font-bold">
-                        <Euro className="h-8 w-8" />
-                        {selectedQuotation.totalPrice} {selectedQuotation.currency}
-                      </div>
-                      <Badge className={statusColors[selectedQuotation.status as keyof typeof statusColors]}>
-                        {selectedQuotation.status === 'draft' && 'Entwurf'}
-                        {selectedQuotation.status === 'submitted' && 'Eingereicht'}
-                        {selectedQuotation.status === 'accepted' && 'Angenommen'}
-                        {selectedQuotation.status === 'rejected' && 'Abgelehnt'}
-                        {selectedQuotation.status === 'withdrawn' && 'Zurückgezogen'}
-                        {selectedQuotation.status === 'expired' && 'Abgelaufen'}
+          return (
+            <Card
+              key={quotation.id}
+              className={isAccepted ? "border-primary" : isBestOffer ? "border-primary/50" : undefined}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{quotation.quotationNumber}</CardTitle>
+                    <CardDescription>von {quotation.forwarderOrganization.name}</CardDescription>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isBestOffer && <Badge variant="secondary">Bestes Angebot</Badge>}
+                      {isAccepted && <Badge variant="default">Nominiert</Badge>}
+                      <Badge className={statusColors[quotation.status as keyof typeof statusColors]}>
+                        {quotation.status === "draft" && "Entwurf"}
+                        {quotation.status === "submitted" && "Eingereicht"}
+                        {quotation.status === "accepted" && "Angenommen"}
+                        {quotation.status === "rejected" && "Abgelehnt"}
+                        {quotation.status === "withdrawn" && "Zurückgezogen"}
+                        {quotation.status === "expired" && "Abgelaufen"}
                       </Badge>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        Spediteur
-                      </h4>
-                      <p>{selectedQuotation.forwarderOrganization.name}</p>
-                      <p className="text-sm text-gray-600">{selectedQuotation.forwarderOrganization.email}</p>
-                      <p className="text-sm text-gray-600">
-                        {selectedQuotation.forwarderOrganization.city}, {selectedQuotation.forwarderOrganization.country}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Gültigkeitsdaten
-                      </h4>
-                      <p>Gültig bis: {formatGermanDate(selectedQuotation.validUntil)}</p>
-                      {selectedQuotation.transitTime && (
-                        <p>Transitzeit: {selectedQuotation.transitTime} Tage</p>
-                      )}
+                  <div className="text-right">
+                    <div className="flex items-center gap-2 text-2xl font-bold justify-end">
+                      <Euro className="h-5 w-5" />
+                      {quotation.totalPrice} {quotation.currency}
                     </div>
                   </div>
-
-                  {selectedQuotation.airlineFlight && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <Plane className="h-4 w-4" />
-                        Flugdetails
-                      </h4>
-                      <p>{selectedQuotation.airlineFlight}</p>
-                    </div>
-                  )}
-
-                  {selectedQuotation.notes && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Notizen
-                      </h4>
-                      <p className="text-sm text-gray-700">{selectedQuotation.notes}</p>
-                    </div>
-                  )}
-
-                  {selectedQuotation.terms && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Geschäftsbedingungen
-                      </h4>
-                      <p className="text-sm text-gray-700">{selectedQuotation.terms}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Charges */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Kostenaufstellung</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {selectedQuotation.preCarriage > 0 && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <h5 className="font-medium">Pre-carriage (Abholung)</h5>
-                        </div>
-                        <div className="text-lg font-semibold">
-                          {selectedQuotation.preCarriage} {selectedQuotation.currency}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {selectedQuotation.mainCarriage > 0 && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <h5 className="font-medium">Main carriage (Haupttransport)</h5>
-                        </div>
-                        <div className="text-lg font-semibold">
-                          {selectedQuotation.mainCarriage} {selectedQuotation.currency}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {selectedQuotation.onCarriage > 0 && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <h5 className="font-medium">On-carriage (Zustellung)</h5>
-                        </div>
-                        <div className="text-lg font-semibold">
-                          {selectedQuotation.onCarriage} {selectedQuotation.currency}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {selectedQuotation.additionalCharges > 0 && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <h5 className="font-medium">Additional charges (Zusatzkosten)</h5>
-                        </div>
-                        <div className="text-lg font-semibold">
-                          {selectedQuotation.additionalCharges} {selectedQuotation.currency}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between text-lg font-bold">
-                      <span>Gesamtsumme:</span>
-                      <div className="flex items-center gap-2">
-                        <Euro className="h-5 w-5" />
-                        {selectedQuotation.totalPrice} {selectedQuotation.currency}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {selectedQuotation.status === 'submitted' && (
-                <div className="flex gap-4">
-                  <Button 
-                    onClick={() => handleAccept(selectedQuotation.id)}
-                    disabled={acceptQuotation.isPending}
-                    className="flex-1"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Angebot annehmen
-                  </Button>
-                  <Button 
-                    variant="destructive"
-                    onClick={() => handleReject(selectedQuotation.id)}
-                    disabled={rejectQuotation.isPending}
-                    className="flex-1"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Angebot ablehnen
-                  </Button>
                 </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-gray-500" />
+                    <span>{quotation.forwarderOrganization.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                    <span>{quotation.forwarderOrganization.city}, {quotation.forwarderOrganization.country}</span>
+                  </div>
+                  {quotation.airlineFlight && (
+                    <div className="flex items-center gap-2">
+                      <Plane className="h-4 w-4 text-gray-500" />
+                      <span>{quotation.airlineFlight}</span>
+                    </div>
+                  )}
+                  {quotation.transitTime && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      <span>{quotation.transitTime} Tage</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setExpandedQuotationId(isExpanded ? null : quotation.id)}
+                  >
+                    Details {isExpanded ? "ausblenden" : "anzeigen"}
+                    <ChevronDown className={`ml-2 h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                  </Button>
+                  {quotation.status === "submitted" && (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAccept(quotation.id)}
+                        disabled={acceptQuotation.isPending}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Annehmen
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleReject(quotation.id)}
+                        disabled={rejectQuotation.isPending}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Ablehnen
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {isExpanded && (
+                  <div className="space-y-4">
+                    <Separator />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-2">
+                        <div className="font-semibold flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Spediteur
+                        </div>
+                        <p>{quotation.forwarderOrganization.name}</p>
+                        <p className="text-sm text-gray-600">{quotation.forwarderOrganization.email}</p>
+                        <p className="text-sm text-gray-600">
+                          {quotation.forwarderOrganization.city}, {quotation.forwarderOrganization.country}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="font-semibold flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Gültigkeit
+                        </div>
+                        <p>Gültig bis: {formatGermanDate(quotation.validUntil)}</p>
+                        {quotation.transitTime && <p>Transitzeit: {quotation.transitTime} Tage</p>}
+                      </div>
+                    </div>
+
+                    {(quotation.notes || quotation.terms) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        {quotation.notes && (
+                          <div className="space-y-1">
+                            <div className="font-semibold flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              Notizen
+                            </div>
+                            <p className="text-gray-700">{quotation.notes}</p>
+                          </div>
+                        )}
+                        {quotation.terms && (
+                          <div className="space-y-1">
+                            <div className="font-semibold flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              Bedingungen
+                            </div>
+                            <p className="text-gray-700">{quotation.terms}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Kostenaufstellung</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {quotation.preCarriage > 0 && (
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>Pre-carriage (Abholung)</span>
+                            <span className="font-semibold">{quotation.preCarriage} {quotation.currency}</span>
+                          </div>
+                        )}
+                        {quotation.mainCarriage > 0 && (
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>Main carriage (Haupttransport)</span>
+                            <span className="font-semibold">{quotation.mainCarriage} {quotation.currency}</span>
+                          </div>
+                        )}
+                        {quotation.onCarriage > 0 && (
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>On-carriage (Zustellung)</span>
+                            <span className="font-semibold">{quotation.onCarriage} {quotation.currency}</span>
+                          </div>
+                        )}
+                        {quotation.additionalCharges > 0 && (
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <span>Zusatzkosten</span>
+                            <span className="font-semibold">{quotation.additionalCharges} {quotation.currency}</span>
+                          </div>
+                        )}
+                        <Separator />
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     </div>
   )
 }

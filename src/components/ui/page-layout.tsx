@@ -44,7 +44,7 @@ function PageHeader({ className, children, ...props }: PageHeaderProps) {
   return (
     <div
       className={cn(
-        "px-4 md:px-8 py-4",
+        "px-4 md:px-6 py-4",
         className
       )}
       {...props}
@@ -81,7 +81,7 @@ function PageContainer({ className, children, ...props }: PageContainerProps) {
   return (
     <div
       className={cn(
-        "px-4 md:px-8 pb-4 flex flex-col gap-y-4",
+        "px-4 md:px-8 pb-4 flex flex-col gap-y-4 container mx-auto",
         className
       )}
       {...props}

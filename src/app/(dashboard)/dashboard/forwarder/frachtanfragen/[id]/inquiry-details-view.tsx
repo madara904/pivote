@@ -16,6 +16,8 @@ import {
   User,
   FileText,
   ArrowLeft,
+  CheckCircle,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -50,6 +52,11 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
   const [detail] = trpc.inquiry.forwarder.getInquiryDetail.useSuspenseQuery({
     inquiryId,
   });
+  const isWon = detail.quotationStatus === "accepted";
+  const { data: documents = [], isLoading: documentsLoading } = trpc.inquiry.forwarder.getInquiryDocuments.useQuery(
+    { inquiryId },
+    { enabled: isWon }
+  );
 
   const inquiry = detail.inquiry;
   const toNumber = (value?: string | number | null) => {
@@ -89,6 +96,12 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                   {inquiry.referenceNumber}
                 </h1>
                 <Badge variant="secondary" className="capitalize">{inquiry.status}</Badge>
+                {isWon && (
+                  <Badge variant="default" className="gap-1.5">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    Gewonnen
+                  </Badge>
+                )}
               </div>
               <p className="text-sm sm:text-base text-muted-foreground break-words">{inquiry.title}</p>
               {inquiry.shipperReference && (
@@ -280,6 +293,45 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                       </div>
                     </div>
                   </div>
+                </div>
+              </Card>
+
+              <Card className="p-4 sm:p-6">
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-foreground">Dokumente</h2>
+                  {isWon ? (
+                    <div className="space-y-3">
+                      {documentsLoading ? (
+                        <p className="text-sm text-muted-foreground">Dokumente werden geladen...</p>
+                      ) : documents.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Noch keine Dokumente verfügbar.</p>
+                      ) : (
+                        documents.map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between rounded-lg border p-3">
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{doc.fileName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {doc.documentType.replace(/_/g, " ")} • {doc.uploadedByOrganization?.name || "Versender"}
+                                </p>
+                              </div>
+                            </div>
+                            <Button asChild size="sm" variant="outline">
+                              <a href={doc.fileUrl} target="_blank" rel="noreferrer">
+                                <Download className="mr-2 h-4 w-4" />
+                                Öffnen
+                              </a>
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Dokumente werden erst nach der Nominierung freigeschaltet.
+                    </p>
+                  )}
                 </div>
               </Card>
 

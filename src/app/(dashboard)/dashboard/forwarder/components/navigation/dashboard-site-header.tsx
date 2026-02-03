@@ -76,7 +76,7 @@ export function SiteHeader() {
 
   return (
     <header className="bg-background sticky z-50 flex w-full flex-col border-b" style={{ top: 'var(--banner-height, 0px)' }}>
-      <div className="flex h-(--header-height) w-full items-center px-4">
+      <div className="flex h-[var(--header-height)] min-h-[56px] w-full items-center px-4">
         <SidebarTrigger className="mr-2 md:hidden" />
         <Breadcrumb className="hidden md:block">
           <BreadcrumbList>
@@ -133,9 +133,9 @@ export function SiteHeader() {
           <DashboardUserButton />
         </div>
       </div>
-      <div className="flex h-10 w-full items-center border-t px-4 md:hidden">
+      <div className="flex min-h-[40px] w-full items-center border-t px-4 md:hidden">
         <Breadcrumb>
-          <BreadcrumbList>
+          <BreadcrumbList className="flex-wrap">
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/dashboard/forwarder" className="inline-flex items-center">

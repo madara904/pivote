@@ -1,7 +1,5 @@
 "use client"
 
-import { useState } from "react"
-import QuotationView from "./quotation-view"
 import { ShipperInquiryTable } from "./shipper-inquiry-table"
 import { 
   FixedShipperInquiry, 
@@ -18,13 +16,6 @@ interface InquiryListProps {
 }
 
 const InquiryList = ({ inquiries }: InquiryListProps) => {
-  const [selectedInquiryId, setSelectedInquiryId] = useState<string | null>(null)
-  const [showQuotations, setShowQuotations] = useState(false)
-
-  const handleViewQuote = (inquiryId: string) => {
-    setSelectedInquiryId(inquiryId)
-    setShowQuotations(true)
-  }
 
   const calculateTotalWeight = (packages: ShipperPackage[]) => {
     return packages.reduce((total, pkg) => total + parseFloat(pkg.grossWeight), 0).toFixed(2)
@@ -57,7 +48,7 @@ const InquiryList = ({ inquiries }: InquiryListProps) => {
       quotedPrice: inquiry.quotations.length > 0 ? Number(inquiry.quotations[0].totalPrice) : undefined,
       currency: inquiry.quotations.length > 0 ? inquiry.quotations[0].currency : "EUR",
       serviceType: inquiry.serviceType,
-      serviceDetails: undefined,
+      serviceDirection: inquiry.serviceDirection,
       cargoType: inquiry.cargoType,
       cargoDescription: inquiry.cargoDescription,
       weight: calculateTotalWeight(inquiry.packages),
@@ -84,28 +75,9 @@ const InquiryList = ({ inquiries }: InquiryListProps) => {
     };
   })
 
-  if (showQuotations && selectedInquiryId) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <button 
-            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-            onClick={() => setShowQuotations(false)}
-          >
-            ← Zurück zur Übersicht
-          </button>
-          <h2 className="text-xl font-semibold">Angebote für Anfrage {inquiries.find(i => i.id === selectedInquiryId)?.referenceNumber}</h2>
-        </div>
-        <QuotationView inquiryId={selectedInquiryId} />
-      </div>
-    )
-  }
-
   return (
     <ShipperInquiryTable
       inquiries={transformedInquiries}
-      onViewInquiry={handleViewQuote}
-      onViewQuotations={handleViewQuote}
     />
   )
 }

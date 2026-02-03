@@ -39,7 +39,6 @@ export const LoginForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  
   // Get returnTo from URL
   const returnTo = getReturnToFromSearchParams(searchParams);
 
@@ -61,7 +60,7 @@ export const LoginForm = () => {
         password: data.password,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           // Redirect to returnTo if valid, otherwise default to dashboard
           const redirectPath = returnTo && isValidReturnTo(returnTo) ? returnTo : "/dashboard";
           router.push(redirectPath);

@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
 import { eq, desc, and, ne, inArray } from "drizzle-orm";
-import { organization, organizationMember, organizationConnection, inquiry, inquiryForwarder, inquiryPackage, quotation } from "@/db/schema";
+import { organization, organizationMember, organizationConnection, inquiry, inquiryDocument, inquiryForwarder, inquiryPackage, quotation, inquiryNote, user } from "@/db/schema";
 import { z } from "zod";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 import { inquiryIdSchema } from "@/trpc/common/schemas";
-import { requireOrgId } from "@/trpc/common/membership";
+import { requireOrgAndType, requireOrgId } from "@/trpc/common/membership";
 import { calculateVolume } from "@/lib/freight-calculations";
+import { utapi } from "@/app/api/uploadthing/core";
 
 export const shipperRouter = createTRPCRouter({
   // Get connected forwarders for selection
@@ -49,6 +50,7 @@ export const shipperRouter = createTRPCRouter({
           email: true,
           city: true,
           country: true,
+          logo: true,
           isActive: true
         }
       });
@@ -87,13 +89,17 @@ export const shipperRouter = createTRPCRouter({
         where: eq(inquiry.shipperOrganizationId, membership.organization.id),
         with: {
           packages: true,
+          documents: true,
           sentToForwarders: {
             with: {
               forwarderOrganization: {
                 columns: {
                   id: true,
                   name: true,
-                  email: true
+                  email: true,
+                  logo: true,
+                  city: true,
+                  country: true
                 }
               }
             },
@@ -121,6 +127,18 @@ export const shipperRouter = createTRPCRouter({
               totalPrice: true,
               currency: true,
               status: true
+            },
+            with: {
+              forwarderOrganization: {
+                columns: {
+                  id: true,
+                  name: true,
+                  logo: true,
+                  email: true,
+                  city: true,
+                  country: true,
+                }
+              }
             },
             orderBy: [quotation.totalPrice] // Order by price to get the best price first
           }
@@ -152,6 +170,111 @@ export const shipperRouter = createTRPCRouter({
       throw new Error('Failed to fetch inquiries');
     }
   }),
+
+  getInquiryDetail: protectedProcedure
+    .input(z.object({ inquiryId: z.string() }))
+    .query(async ({ ctx, input }: { ctx: TRPCContext; input: { inquiryId: string } }) => {
+      const { db } = ctx;
+
+      // Check and update expired items first
+      await checkAndUpdateExpiredItems(db);
+
+      const orgId = await requireOrgId(ctx);
+      const membership = await db.query.organizationMember.findFirst({
+        where: eq(organizationMember.organizationId, orgId),
+        with: { organization: true }
+      });
+
+      if (!membership?.organization || membership.organization.type !== 'shipper') {
+        throw new Error("Organisation ist kein Versender");
+      }
+
+      const inquiryResult = await db.query.inquiry.findFirst({
+        where: and(
+          eq(inquiry.id, input.inquiryId),
+          eq(inquiry.shipperOrganizationId, membership.organization.id)
+        ),
+        with: {
+          packages: true,
+          documents: true,
+          sentToForwarders: {
+            with: {
+              forwarderOrganization: {
+                columns: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  logo: true,
+                  city: true,
+                  country: true
+                }
+              }
+            },
+            columns: {
+              id: true,
+              forwarderOrganizationId: true,
+              sentAt: true,
+              viewedAt: true,
+              rejectedAt: true,
+              responseStatus: true,
+              createdAt: true
+            }
+          },
+          createdBy: {
+            columns: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          quotations: {
+            where: ne(quotation.status, "draft"),
+            columns: {
+              id: true,
+              totalPrice: true,
+              currency: true,
+              status: true,
+              transitTime: true,
+              validUntil: true,
+              notes: true,
+              terms: true
+            },
+            with: {
+              forwarderOrganization: {
+                columns: {
+                  id: true,
+                  name: true,
+                  logo: true,
+                  email: true,
+                  city: true,
+                  country: true,
+                }
+              }
+            },
+            orderBy: [quotation.totalPrice]
+          }
+        }
+      });
+
+      if (!inquiryResult) {
+        throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
+      }
+
+      const totalForwarders = inquiryResult.sentToForwarders.length;
+      const pendingResponses = inquiryResult.sentToForwarders.filter(f => f.responseStatus === "pending").length;
+      const rejectedResponses = inquiryResult.sentToForwarders.filter(f => f.responseStatus === "rejected").length;
+      const quotedResponses = inquiryResult.sentToForwarders.filter(f => f.responseStatus === "quoted").length;
+
+      return {
+        ...inquiryResult,
+        forwarderResponseSummary: {
+          total: totalForwarders,
+          pending: pendingResponses,
+          rejected: rejectedResponses,
+          quoted: quotedResponses,
+        },
+      };
+    }),
 
   // Create a new inquiry
   createInquiry: protectedProcedure
@@ -537,11 +660,16 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
         }
 
-        // Check if any quotations exist for this inquiry
+        // Check if any submitted quotations exist for this inquiry
         const hasQuotations = await db
           .select({ id: quotation.id })
           .from(quotation)
-          .where(eq(quotation.inquiryId, input.inquiryId))
+          .where(
+            and(
+              eq(quotation.inquiryId, input.inquiryId),
+              ne(quotation.status, "draft")
+            )
+          )
           .limit(1);
 
         if (hasQuotations.length > 0) {
@@ -561,5 +689,141 @@ export const shipperRouter = createTRPCRouter({
       } catch (error) {
         throw new Error(`Failed to cancel inquiry: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
+    }),
+    getInquiryDocuments: protectedProcedure
+    .input(inquiryIdSchema)
+    .query(async ({ ctx, input }) => {
+      const { db } = ctx;
+
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "shipper") {
+        throw new Error("Nur Versender können Dokumente abrufen");
+      }
+
+      const inquiryResult = await db
+        .select({
+          id: inquiry.id,
+          shipperOrganizationId: inquiry.shipperOrganizationId,
+        })
+        .from(inquiry)
+        .where(eq(inquiry.id, input.inquiryId))
+        .limit(1);
+
+      if (!inquiryResult.length || inquiryResult[0].shipperOrganizationId !== membership.organizationId) {
+        throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
+      }
+
+      const documents = await db
+        .select({
+          id: inquiryDocument.id,
+          inquiryId: inquiryDocument.inquiryId,
+          documentType: inquiryDocument.documentType,
+          fileName: inquiryDocument.fileName,
+          fileType: inquiryDocument.fileType,
+          fileSize: inquiryDocument.fileSize,
+          fileKey: inquiryDocument.fileKey,
+          fileUrl: inquiryDocument.fileUrl,
+          createdAt: inquiryDocument.createdAt,
+          uploadedByOrganization: {
+            id: organization.id,
+            name: organization.name,
+          },
+        })
+        .from(inquiryDocument)
+        .innerJoin(organization, eq(inquiryDocument.uploadedByOrganizationId, organization.id))
+        .where(eq(inquiryDocument.inquiryId, input.inquiryId))
+        .orderBy(desc(inquiryDocument.createdAt));
+
+      return documents;
+    }),
+
+  getInquiryNotes: protectedProcedure
+    .input(inquiryIdSchema)
+    .query(async ({ ctx, input }) => {
+      const { db } = ctx;
+
+      const membership = await requireOrgAndType(ctx);
+
+      if (membership.organizationType !== "shipper") {
+        throw new Error("Nur Versender können Notizen abrufen");
+      }
+
+      const inquiryResult = await db
+        .select({
+          id: inquiry.id,
+          shipperOrganizationId: inquiry.shipperOrganizationId,
+        })
+        .from(inquiry)
+        .where(eq(inquiry.id, input.inquiryId))
+        .limit(1);
+
+      if (!inquiryResult.length || inquiryResult[0].shipperOrganizationId !== membership.organizationId) {
+        throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
+      }
+
+      const notes = await db
+        .select({
+          id: inquiryNote.id,
+          inquiryId: inquiryNote.inquiryId,
+          content: inquiryNote.content,
+          createdAt: inquiryNote.createdAt,
+          createdBy: {
+            id: user.id,
+            name: user.name,
+          },
+          organization: {
+            id: organization.id,
+            name: organization.name,
+          },
+        })
+        .from(inquiryNote)
+        .innerJoin(user, eq(inquiryNote.userId, user.id))
+        .innerJoin(organization, eq(inquiryNote.organizationId, organization.id))
+        .where(eq(inquiryNote.inquiryId, input.inquiryId))
+        .orderBy(desc(inquiryNote.createdAt));
+
+      return notes;
+    }),
+    deleteInquiryDocuments: protectedProcedure
+    .input(inquiryIdSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { db } = ctx;
+      try {
+        // Get membership first
+        const orgId = await requireOrgId(ctx);
+        const membership = await db.query.organizationMember.findFirst({
+          where: eq(organizationMember.organizationId, orgId),
+          with: { organization: true }
+        });
+        
+        if (!membership?.organization || membership.organization.type !== 'shipper') {
+          throw new Error("Organisation ist kein Versender");
+        }
+  
+        // First, get the document to get the file URL
+        const document = await db.query.inquiryDocument.findFirst({
+          where: eq(inquiryDocument.id, input.inquiryId)
+        });
+  
+        if (!document) {
+          throw new Error("Dokument nicht gefunden");
+        }
+  
+        // Delete the document from the database
+        await db
+          .delete(inquiryDocument)
+          .where(eq(inquiryDocument.id, input.inquiryId));
+        
+          const fileKey = document.fileUrl.split('/').pop(); // Extract the file key from the URL
+          if (fileKey) {
+            await utapi.deleteFiles(fileKey);
+          }
+
+        return { success: true };
+      } catch (error) {
+        console.error("Error deleting document:", error);
+        throw new Error("Fehler beim Löschen des Dokuments");
+      }
     })
-}); 
+});

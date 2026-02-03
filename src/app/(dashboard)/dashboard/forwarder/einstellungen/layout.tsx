@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, Lock, User } from "lucide-react";
@@ -46,7 +47,7 @@ export default function EinstellungenLayout({ children }: { children: React.Reac
           );
         })}
       </nav>
-      <main className="flex-1 p-2 md:p-5 space-y-4">{children}</main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

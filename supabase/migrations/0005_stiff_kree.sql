@@ -1,1 +1,0 @@
-ALTER TABLE "inquiry_forwarder" ADD COLUMN "rejected_at" timestamp;

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { sendEmail } from "@/lib/send-email";
 import { env } from "@/lib/env/env";
+import { checkConnectionLimit } from "@/trpc/middleware/tier-limits";
 
 async function requireForwarderMembership(ctx: TRPCContext) {
   const membership = await ctx.db.query.organizationMember.findFirst({
@@ -146,6 +147,19 @@ export const forwarderConnectionsRouter = createTRPCRouter({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Einladung nicht gefunden.",
+        });
+      }
+
+      const connectionLimit = await checkConnectionLimit(
+        ctx,
+        forwarderOrganization.id,
+        "forwarder",
+        connection.id
+      );
+      if (!connectionLimit.allowed) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: connectionLimit.reason ?? "Verbindungs-Limit erreicht.",
         });
       }
 

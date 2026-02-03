@@ -32,10 +32,18 @@ const editOrgSchema = z.object({
   name: z.string().min(2).optional(),
   email: z.string().email().optional(),
   type: z.enum(["shipper", "forwarder"]).optional(),
+  description: z.string().optional(),
+  phone: z.string().optional(),
+  website: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
   vatNumber: z
     .string()
     .regex(/^DE[0-9]{9}$/, "Die UST-ID muss mit 'DE' beginnen und 9 Ziffern enthalten")
     .optional(),
+  registrationNumber: z.string().optional(),
   logo: z.string().url().optional(),
 });
 type EditOrgInput = z.infer<typeof editOrgSchema>;
@@ -215,7 +223,15 @@ export const crudRouter = createTRPCRouter({
             ...(input.name && { name: input.name }),
             ...(input.email && { email: input.email }),
             ...(input.type && { type: input.type }),
+            ...(input.description !== undefined && { description: input.description || null }),
+            ...(input.phone !== undefined && { phone: input.phone || null }),
+            ...(input.website !== undefined && { website: input.website || null }),
+            ...(input.address !== undefined && { address: input.address || null }),
+            ...(input.city !== undefined && { city: input.city || null }),
+            ...(input.postalCode !== undefined && { postalCode: input.postalCode || null }),
+            ...(input.country !== undefined && { country: input.country || null }),
             ...(input.vatNumber && { vatNumber: input.vatNumber }),
+            ...(input.registrationNumber !== undefined && { registrationNumber: input.registrationNumber || null }),
             ...(input.logo !== undefined && { logo: input.logo || null }),
             updatedAt: new Date(),
           })

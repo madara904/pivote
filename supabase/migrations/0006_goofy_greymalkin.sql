@@ -1,1 +1,0 @@
-ALTER TYPE "public"."inquiry_status" ADD VALUE 'rejected';

@@ -3,14 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import UpgradeDialog from "@/components/upgrade-dialog";
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 import { useState } from "react";
+import type { OrganizationGetMyOrganizations } from "@/types/trpc-inferred";
 
 const DashboardOverviewHead = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const isHighTier = false;
-  const [orgs] = trpc.organization.getMyOrganizations.useSuspenseQuery();
+
+  const trpcOptions = useTRPC();
+  const { data: orgs } = useSuspenseQuery(trpcOptions.organization.getMyOrganizations.queryOptions()) as { data: OrganizationGetMyOrganizations };
   const organization = orgs?.[0];
 
   if (!organization?.name) {

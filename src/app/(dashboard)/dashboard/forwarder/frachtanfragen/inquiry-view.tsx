@@ -1,107 +1,82 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import React, { useMemo, useState } from "react";
 import { useQueryState, parseAsStringEnum } from "nuqs";
-import { trpc } from "@/trpc/client";
-import InquiryTable from "./inquiry-table";
-import InquiryHeader from "./inquiry-header";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
-import { InquirySearch } from "@/app/(dashboard)/dashboard/forwarder/frachtanfragen/components/inquiry-search";
-import { ArrowRight, ClipboardX } from "lucide-react";
-import type { FreightInquiry } from "./components/inquiry-data-table";
-import { InboxIcon } from "@/components/icons/inbox-icon";
+import { useTRPC } from "@/trpc/client";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
-import { PageLayout, PageHeader, PageContainer } from "@/components/ui/page-layout";
+import { 
+  Search, 
+  Inbox, 
+  Send, 
+  Trophy, 
+  Plane, 
+  Ship, 
+  Truck, 
+  Train, 
+  ArrowRight, 
+  Box, 
+  CalendarDays, 
+  MoreVertical, 
+  FileText,
+  XCircle,
+  Clock,
+  ExternalLink,
+  MessageSquare,
+  CheckCircle2
+} from "lucide-react";
 
-// Filter function
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+
+// Types
+import type { FreightInquiry } from "./components/inquiry-data-table";
+import { DocumentsNotesDialog } from "./components/documents-notes-dialog";
+
 const filterInquiries = (inquiries: FreightInquiry[], query: string) => {
   if (!query.trim()) return inquiries;
-
   const lowerQuery = query.toLowerCase().trim();
-  
-  return inquiries.filter((inquiry) => {
-    // Search in reference number
-    if (inquiry.referenceNumber?.toLowerCase().includes(lowerQuery)) return true;
-    
-    // Search in shipper name
-    if (inquiry.shipperName?.toLowerCase().includes(lowerQuery)) return true;
-    
-    // Search in origin city/country
-    if (inquiry.origin?.code?.toLowerCase().includes(lowerQuery)) return true;
-    if (inquiry.origin?.country?.toLowerCase().includes(lowerQuery)) return true;
-    
-    // Search in destination city/country
-    if (inquiry.destination?.code?.toLowerCase().includes(lowerQuery)) return true;
-    if (inquiry.destination?.country?.toLowerCase().includes(lowerQuery)) return true;
-    
-    // Search in service type
-    const serviceTypeLabels: Record<string, string> = {
-      air_freight: "luftfracht",
-      sea_freight: "seefracht",
-      road_freight: "straßenfracht",
-    };
-    const serviceLabel = serviceTypeLabels[inquiry.serviceType] || inquiry.serviceType;
-    if (serviceLabel.toLowerCase().includes(lowerQuery)) return true;
-    
-    // Search in cargo description
-    if (inquiry.cargoDescription?.toLowerCase().includes(lowerQuery)) return true;
-    
-    // Search in cargo type
-    if (inquiry.cargoType?.toLowerCase().includes(lowerQuery)) return true;
-
-    return false;
-  });
+  return inquiries.filter((item) => 
+    item.referenceNumber.toLowerCase().includes(lowerQuery) ||
+    item.shipperName.toLowerCase().includes(lowerQuery) ||
+    item.origin.code.toLowerCase().includes(lowerQuery) ||
+    item.destination.code.toLowerCase().includes(lowerQuery)
+  );
 };
 
-const InquiryView = () => {
-  const [activeView, setActiveView] = useQueryState(
-    "view",
-    parseAsStringEnum(["active", "archived"])
-      .withDefault("active")
-      .withOptions({ clearOnDefault: false, history: "replace" })
-  );
-  const [activeTab, setActiveTab] = useQueryState(
-    "tab",
-    parseAsStringEnum(["open", "quoted", "won", "lost"])
-      .withDefault("open")
-      .withOptions({ clearOnDefault: false, history: "replace" })
-  );
+export default function InquiryView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
-  const [, startTransition] = useTransition();
+  const [selectedDocumentsNotesInquiryId, setSelectedDocumentsNotesInquiryId] = useState<string | null>(null);
 
-  // Wrapper to handle tab change from Tabs component
-  const handleViewChange = (value: string) => {
-    if (value === "active" || value === "archived") {
-      startTransition(() => {
-        void setActiveView(value);
-      });
-    }
-  };
+  const [activeTab, setActiveTab] = useQueryState(
+    "tab",
+    parseAsStringEnum(["open", "quoted", "won", "archived"])
+      .withDefault("open")
+      .withOptions({ history: "push", shallow: false })
+  );
 
-  const handleTabChange = (value: string) => {
-    if (value === "open" || value === "quoted" || value === "won" || value === "lost") {
-      startTransition(() => {
-        void setActiveTab(value);
-      });
-    }
-  };
-
-  const [inquiryData] = trpc.inquiry.forwarder.getMyInquiriesFast.useSuspenseQuery(undefined, {
-    staleTime: 1000 * 15,
-    refetchInterval: 1000 * 15,
-    refetchOnWindowFocus: true,
+  const trpcOptions = useTRPC();
+  const { data: rawData } = useSuspenseQuery({
+    ...trpcOptions.inquiry.forwarder.getMyInquiriesFast.queryOptions(),
+    staleTime: 1000 * 30,
   });
 
-  // Transform the data to match the FreightInquiry interface
-  const transformedData = useMemo(() => inquiryData?.map((item) => {
-    return {
-      id: item.inquiryId, 
+  const { categorized, metrics } = useMemo(() => {
+    const transformed: FreightInquiry[] = (rawData || []).map((item) => ({
+      id: item.inquiryId,
       referenceNumber: item.inquiry.referenceNumber,
-      status: item.inquiry.status, 
-      quotationStatus: item.quotationStatus, 
+      status: item.inquiry.status,
+      quotationStatus: item.quotationStatus,
       quotationId: item.quotationId,
       responseStatus: item.responseStatus,
       sentAt: item.sentAt,
@@ -113,282 +88,294 @@ const InquiryView = () => {
       cargoType: item.inquiry.cargoType,
       cargoDescription: item.inquiry.cargoDescription,
       weight: item.inquiry.totalGrossWeight,
-      unit: "kg" as const,
+      unit: "kg",
       pieces: item.inquiry.totalPieces,
       shipperName: item.inquiry.shipperOrganization.name,
-      origin: {
-        code: item.inquiry.originCity,
-        country: item.inquiry.originCountry
-      },
-      destination: {
-        code: item.inquiry.destinationCity,
-        country: item.inquiry.destinationCountry
-      },
+      origin: { code: item.inquiry.originCity, country: item.inquiry.originCountry },
+      destination: { code: item.inquiry.destinationCity, country: item.inquiry.destinationCountry },
       documentCount: item.documentCount,
-      noteCount: item.noteCount
+      noteCount: item.noteCount,
+      // Zusätzliche Felder für Forwarder-Ansicht
+      totalVolume: item.inquiry.totalVolume,
+      hasDangerousGoods: item.packageSummary.hasDangerousGoods,
+      validityDate: item.inquiry.validityDate
+    }));
+
+    const buckets = {
+      open: [] as FreightInquiry[],
+      quoted: [] as FreightInquiry[],
+      won: [] as FreightInquiry[],
+      archived: [] as FreightInquiry[],
     };
-  }) || [], [inquiryData]);
 
-  // Categorize inquiries
-  const categorizedInquiries = useMemo(() => {
-    const open: typeof transformedData = [];
-    const quoted: typeof transformedData = [];
-    const won: typeof transformedData = [];
-    const lost: typeof transformedData = [];
-    const expired: typeof transformedData = [];
-
-    transformedData.forEach((inquiry) => {
-      const isWon = inquiry.quotationStatus === "accepted";
-      const isLost = inquiry.quotationStatus === "rejected";
-      const isForwarderRejected = inquiry.responseStatus === "rejected";
-      const isQuoted = inquiry.responseStatus === "quoted" && !isWon && !isLost;
-      const isOpen = inquiry.status === "open" && inquiry.responseStatus === "pending" && !isQuoted && !isWon;
-      const isArchivedStatus =
-        inquiry.status === "expired" ||
-        inquiry.status === "cancelled" ||
-        inquiry.status === "closed" ||
-        inquiry.status === "rejected";
-
-      if (isWon) {
-        won.push(inquiry);
-      } else if (isLost) {
-        lost.push(inquiry);
-      } else if (isArchivedStatus || isForwarderRejected) {
-        expired.push(inquiry);
-      } else if (isQuoted) {
-        quoted.push(inquiry);
-      } else if (isOpen) {
-        open.push(inquiry);
-      } else {
-        // Default to open for any other cases
-        open.push(inquiry);
+    transformed.forEach((inq) => {
+      const isWon = inq.quotationStatus === "accepted";
+      const isLost = inq.quotationStatus === "rejected";
+      const isArchived = ["expired", "cancelled", "closed"].includes(inq.status);
+      const isQuoted = inq.responseStatus === "quoted" && !isWon && !isLost;
+      
+      if (isWon) buckets.won.push(inq);
+      else if (isLost) {
+        // Verlorene Anfragen ins Archiv aufnehmen
+        buckets.archived.push(inq);
       }
+      else if (isArchived) buckets.archived.push(inq);
+      else if (isQuoted) buckets.quoted.push(inq);
+      else buckets.open.push(inq);
     });
 
-    // Apply search filter with debounced query
-    const filteredOpen = filterInquiries(open, debouncedSearchQuery);
-    const filteredQuoted = filterInquiries(quoted, debouncedSearchQuery);
-    const filteredWon = filterInquiries(won, debouncedSearchQuery);
-    const filteredLost = filterInquiries(lost, debouncedSearchQuery);
-    const filteredExpired = filterInquiries(expired, debouncedSearchQuery);
-
-    return { 
-      open: filteredOpen, 
-      quoted: filteredQuoted, 
-      won: filteredWon,
-      lost: filteredLost,
-      expired: filteredExpired 
+    return {
+      categorized: {
+        open: filterInquiries(buckets.open, debouncedSearchQuery),
+        quoted: filterInquiries(buckets.quoted, debouncedSearchQuery),
+        won: filterInquiries(buckets.won, debouncedSearchQuery),
+        archived: filterInquiries(buckets.archived, debouncedSearchQuery),
+      },
+      metrics: {
+        open: buckets.open.length,
+        quoted: buckets.quoted.length,
+        won: buckets.won.length,
+        archived: buckets.archived.length
+      }
     };
-  }, [transformedData, debouncedSearchQuery]);
+  }, [rawData, debouncedSearchQuery]);
 
-  if (!inquiryData || inquiryData.length === 0) {
-    return (
-      <PageLayout>
-        <PageHeader>
-          <InquiryHeader/>
-        </PageHeader>
-        <PageContainer>
-          <Empty className="border border-dashed rounded-lg py-16">
-            <EmptyHeader>
-              <EmptyMedia>
-                <InboxIcon className="h-16 w-16 text-muted-foreground" />
-              </EmptyMedia>
-              <EmptyTitle>Keine Frachtanfragen gefunden</EmptyTitle>
-              <EmptyDescription>
-                Es wurden noch keine Frachtanfragen erstellt.
-              </EmptyDescription>
-              <div className="mt-6">
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="group hover:bg-primary hover:text-primary-foreground transition-colors duration-200"
-                >
-                  Mit Versendern verbinden
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-                </Button>
-              </div>
-            </EmptyHeader>
-          </Empty>
-        </PageContainer>
-      </PageLayout>
-    );
-  }
+  const currentData = categorized[activeTab as keyof typeof categorized] || [];
 
   return (
-    <PageLayout>
-      <PageHeader>
-        <InquiryHeader/>
-      </PageHeader>
-      <PageContainer>
-        <InquirySearch 
-          className="mb-4" 
-          onSearch={setSearchQuery}
-          searchValue={searchQuery}
+    <div className="w-full p-6 sm:p-10 space-y-8 min-h-screen bg-white">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2 text-slate-900">
+            Frachtanfragen
+          </h1>
+          <div className="flex items-center gap-6 mt-6 overflow-x-auto pb-2 no-scrollbar">
+            <TabButton active={activeTab === 'open'} onClick={() => setActiveTab('open')} label="Neue Anfragen" count={metrics.open} icon={<Inbox className="w-3 h-3" />} />
+            <TabButton active={activeTab === 'quoted'} onClick={() => setActiveTab('quoted')} label="Aktuell" count={metrics.quoted} icon={<Send className="w-3 h-3" />} />
+            <TabButton active={activeTab === 'won'} onClick={() => setActiveTab('won')} label="Aufträge" count={metrics.won} icon={<Trophy className="w-3 h-3" />} />
+            <TabButton active={activeTab === 'archived'} onClick={() => setActiveTab('archived')} label="Archiv" count={metrics.archived} icon={<Box className="w-3 h-3" />} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative group flex-1 md:flex-none">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input 
+              className="h-10 w-full md:w-[280px] pl-9 pr-3 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder="Referenz, Versender oder Route..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <Separator className="opacity-50" />
+
+      <div className="space-y-4">
+        {currentData.length === 0 ? (
+           <div className="h-64 flex flex-col items-center justify-center text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+              <Inbox className="w-10 h-10 mb-3 opacity-20" />
+              <span className="text-xs uppercase tracking-[0.2em] font-bold">Keine Anfragen in dieser Kategorie</span>
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {currentData.map((inquiry) => (
+              <ListItem 
+                key={inquiry.id} 
+                inquiry={inquiry} 
+                tab={activeTab || "open"}
+                onOpenDocumentsNotes={() => setSelectedDocumentsNotesInquiryId(inquiry.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {selectedDocumentsNotesInquiryId && (
+        <DocumentsNotesDialog
+          inquiryId={selectedDocumentsNotesInquiryId}
+          open={!!selectedDocumentsNotesInquiryId}
+          onOpenChange={(open) => !open && setSelectedDocumentsNotesInquiryId(null)}
+          documentCount={currentData.find(r => r.id === selectedDocumentsNotesInquiryId)?.documentCount}
+          noteCount={currentData.find(r => r.id === selectedDocumentsNotesInquiryId)?.noteCount}
         />
-        <Tabs value={activeView} onValueChange={handleViewChange} className="w-full" activationMode="manual">
-          <TabsList className="h-auto bg-transparent p-0 gap-0 w-full grid grid-cols-2 border-b border-border/40 rounded-none overflow-x-auto">
-            <TabsTrigger
-              value="active"
-              className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
-            >
-              <span className="text-xs sm:text-sm font-medium text-center truncate w-full">Aktuell</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="archived"
-              className="flex flex-col items-center justify-center gap-1 py-2 sm:py-3 px-2 sm:px-4 rounded-none border-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground data-[state=active]:border-b-2 data-[state=active]:border-b-primary relative shrink-0 min-w-0"
-            >
-              <span className="text-xs sm:text-sm font-medium text-center truncate w-full">
-                Historie ({categorizedInquiries.expired.length})
-              </span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="active" className="space-y-4 mt-4">
-            <div className="flex flex-wrap gap-2 border-b border-border/40 pb-3">
-              <Button
-                type="button"
-                size="sm"
-                variant={activeTab === "open" ? "default" : "outline"}
-                className="rounded-full"
-                aria-pressed={activeTab === "open"}
-                onClick={() => handleTabChange("open")}
-              >
-                Offen ({categorizedInquiries.open.length})
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={activeTab === "quoted" ? "default" : "outline"}
-                className="rounded-full"
-                aria-pressed={activeTab === "quoted"}
-                onClick={() => handleTabChange("quoted")}
-              >
-                Angeboten ({categorizedInquiries.quoted.length})
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={activeTab === "won" ? "default" : "outline"}
-                className="rounded-full"
-                aria-pressed={activeTab === "won"}
-                onClick={() => handleTabChange("won")}
-              >
-                Gewonnen ({categorizedInquiries.won.length})
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={activeTab === "lost" ? "default" : "outline"}
-                className="rounded-full"
-                aria-pressed={activeTab === "lost"}
-                onClick={() => handleTabChange("lost")}
-              >
-                Nicht gewonnen ({categorizedInquiries.lost.length})
-              </Button>
-            </div>
-
-            {activeTab === "open" && (
-              <div className="space-y-4 mt-4">
-                {categorizedInquiries.open.length === 0 ? (
-                  <Empty className="border border-dashed rounded-lg py-16">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                      </EmptyMedia>
-                      <EmptyTitle>Keine offenen Anfragen</EmptyTitle>
-                      <EmptyDescription>
-                        Es gibt derzeit keine offenen Anfragen.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : (
-                  <InquiryTable data={categorizedInquiries.open} />
-                )}
-              </div>
-            )}
-
-            {activeTab === "quoted" && (
-              <div className="space-y-4 mt-4">
-                {categorizedInquiries.quoted.length === 0 ? (
-                  <Empty className="border border-dashed rounded-lg py-16">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                      </EmptyMedia>
-                      <EmptyTitle>Keine Angebote abgegeben</EmptyTitle>
-                      <EmptyDescription>
-                        Sie haben noch keine Angebote abgegeben.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : (
-                  <InquiryTable data={categorizedInquiries.quoted} />
-                )}
-              </div>
-            )}
-
-            {activeTab === "won" && (
-              <div className="space-y-4 mt-4">
-                {categorizedInquiries.won.length === 0 ? (
-                  <Empty className="border border-dashed rounded-lg py-16">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                      </EmptyMedia>
-                      <EmptyTitle>Keine gewonnenen Angebote</EmptyTitle>
-                      <EmptyDescription>
-                        Sie haben noch keine Angebote gewonnen.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : (
-                  <InquiryTable data={categorizedInquiries.won} />
-                )}
-              </div>
-            )}
-
-            {activeTab === "lost" && (
-              <div className="space-y-4 mt-4">
-                {categorizedInquiries.lost.length === 0 ? (
-                  <Empty className="border border-dashed rounded-lg py-16">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                      </EmptyMedia>
-                      <EmptyTitle>Keine nicht gewonnenen Anfragen</EmptyTitle>
-                      <EmptyDescription>
-                        Es gibt derzeit keine abgelehnten Angebote.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : (
-                  <InquiryTable data={categorizedInquiries.lost} />
-                )}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="archived" className="space-y-4 mt-4">
-            {categorizedInquiries.expired.length === 0 ? (
-              <Empty className="border border-dashed rounded-lg py-16">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <ClipboardX className="h-12 w-12 text-muted-foreground" />
-                  </EmptyMedia>
-                  <EmptyTitle>Keine abgelaufenen Anfragen</EmptyTitle>
-                  <EmptyDescription>
-                    Es gibt derzeit keine abgelaufenen oder abgebrochenen Anfragen.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <InquiryTable data={categorizedInquiries.expired} />
-            )}
-          </TabsContent>
-        </Tabs>
-      </PageContainer>
-    </PageLayout>
+      )}
+    </div>
   );
-};
+}
 
-export default InquiryView;
+function TabButton({ active, onClick, label, count, icon }: { active: boolean, onClick: () => void, label: string, count: number, icon: React.ReactNode }) {
+  return (
+    <Button 
+      onClick={onClick}
+      variant={"outline"}
+      className={cn(
+        "flex items-center gap-2 pb-3 transition-all duration-200 whitespace-nowrap",
+        active 
+          ? "border-primary text-slate-900" 
+          : "border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200"
+      )}
+    >
+      <span className={active ? "text-primary" : ""}>{icon}</span>
+      <span className="text-[10px] uppercase font-bold tracking-wider">{label}</span>
+      {count > 0 && (
+        <span className={cn(
+          "text-[9px] px-1.5 py-0.5 rounded font-bold transition-colors",
+          active ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
+        )}>
+          {count}
+        </span>
+      )}
+    </Button>
+  );
+}
+
+function ListItem({ inquiry, tab, onOpenDocumentsNotes }: { inquiry: FreightInquiry, tab: string, onOpenDocumentsNotes: () => void }) {
+    const Icon = inquiry.serviceType === 'air_freight' ? Plane : 
+                 inquiry.serviceType === 'sea_freight' ? Ship :
+                 inquiry.serviceType === 'rail_freight' ? Train : Truck;
+                 
+    const isNew = !inquiry.responseDate && tab === 'open';
+    const isLost = inquiry.quotationStatus === "rejected";
+    const isLostInArchive = tab === 'archived' && isLost;
+    const isNominated = inquiry.quotationStatus === "accepted";
+    const hasNotes = (inquiry.noteCount ?? 0) > 0;
+    const hasDocuments = (inquiry.documentCount ?? 0) > 0;
+
+    return (
+      <div className={cn(
+        "group relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border transition-all duration-200",
+        isNominated 
+          ? "border-green-200 bg-green-50/50 hover:border-green-300 hover:shadow-lg hover:shadow-green-200/50" 
+          : "border-slate-200 bg-white hover:border-primary/30 hover:shadow-lg hover:shadow-slate-200/50"
+      )}>
+        {/* Status Indicator Line */}
+        {isNew && <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-500 rounded-r" />}
+        {isLostInArchive && <div className="absolute left-0 top-4 bottom-4 w-1 bg-red-500 rounded-r" />}
+        {isNominated && <div className="absolute left-0 top-4 bottom-4 w-1 bg-green-500 rounded-r" />}
+
+        <div className="flex items-center gap-4 flex-1">
+          <div className={cn(
+            "h-12 w-12 rounded-lg flex items-center justify-center border shadow-sm shrink-0",
+            inquiry.serviceType === 'air_freight' ? "bg-sky-50 border-sky-100 text-sky-600" :
+            inquiry.serviceType === 'sea_freight' ? "bg-blue-50 border-blue-100 text-blue-600" :
+            "bg-amber-50 border-amber-100 text-amber-600"
+          )}>
+            <Icon className="w-6 h-6" strokeWidth={1.5} />
+          </div>
+          
+          <div className="min-w-[120px]">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-900 leading-none">{inquiry.referenceNumber}</span>
+              {isLostInArchive && (
+                <Badge variant="destructive" className="text-[8px] px-1.5 py-0 h-4">
+                  Nicht erfolgreich
+                </Badge>
+              )}
+            </div>
+            <p className="text-[10px] uppercase tracking-tight font-semibold text-slate-500 mt-1 truncate max-w-[150px]">
+              {inquiry.shipperName}
+            </p>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-6 px-6 border-l border-slate-100 ml-4">
+             <div className="text-right">
+                <span className="block text-xs font-bold text-slate-800">{inquiry.origin.code}</span>
+                <span className="text-[9px] text-slate-400 uppercase font-medium">{inquiry.origin.country}</span>
+             </div>
+             <ArrowRight className="w-3 h-3 text-slate-300" />
+             <div>
+                <span className="block text-xs font-bold text-slate-800">{inquiry.destination.code}</span>
+                <span className="text-[9px] text-slate-400 uppercase font-medium">{inquiry.destination.country}</span>
+             </div>
+          </div>
+        </div>
+
+        {/* Technical Details Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-1 my-4 md:my-0 md:px-8 border-l border-slate-100 ml-4">
+          <div className="flex items-center gap-2">
+            <Box className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-xs font-medium text-slate-700">{inquiry.pieces} Stk / {inquiry.weight} {inquiry.unit}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-xs font-medium text-slate-700">{inquiry.totalVolume || '-'} m³</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-xs font-medium text-slate-700">
+              {inquiry.validityDate
+                ? new Date(inquiry.validityDate).toLocaleDateString('de-DE')
+                : '-'}
+            </span>
+          </div>
+        </div>
+
+        {/* Action / Price Area */}
+        <div className="flex items-center gap-3 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 min-w-[200px] justify-end">
+          {/* Preis mit grünem Haken für nominierte Anfragen */}
+          {inquiry.quotedPrice && (
+            <div className="text-right mr-4">
+              <div className="flex items-center gap-1.5 justify-end">
+                {isNominated && (
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                )}
+                <span className="block text-sm font-black text-primary tracking-tight">
+                  {new Intl.NumberFormat('de-DE', { style: 'currency', currency: inquiry.currency }).format(inquiry.quotedPrice)}
+                </span>
+              </div>
+              <span className="text-[9px] uppercase font-bold text-slate-400">Dein Angebot</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            {tab === 'open' ? (
+              <>
+                <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase border-slate-200 hover:bg-slate-50 text-slate-600">
+                  <XCircle className="w-3.5 h-3.5 mr-1.5" /> Ablehnen
+                </Button>
+                <Link href={`/dashboard/forwarder/frachtanfragen/${inquiry.id}/angebot`}>
+                  <Button size="sm" className="h-8 text-[10px] font-bold uppercase shadow-sm">
+                    Anbieten
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Link href={`/dashboard/forwarder/frachtanfragen/${inquiry.id}`}>
+                <Button size="sm" variant="secondary" className="h-8 text-[10px] font-bold uppercase">
+                  Details <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              </Link>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {hasNotes && (
+                  <DropdownMenuItem onClick={onOpenDocumentsNotes} className="cursor-pointer">
+                    <MessageSquare className="w-4 h-4 mr-2 text-blue-500" />
+                    <span className="text-[10px] font-bold uppercase">Notizen {inquiry.noteCount && `(${inquiry.noteCount})`}</span>
+                  </DropdownMenuItem>
+                )}
+                {hasDocuments && (
+                  <DropdownMenuItem onClick={onOpenDocumentsNotes} className="cursor-pointer">
+                    <FileText className="w-4 h-4 mr-2 text-slate-600" />
+                    <span className="text-[10px] font-bold uppercase">Dokumente {inquiry.documentCount && `(${inquiry.documentCount})`}</span>
+                  </DropdownMenuItem>
+                )}
+                {!hasNotes && !hasDocuments && (
+                  <DropdownMenuItem disabled className="text-slate-400">
+                    <span className="text-[10px] font-bold uppercase">Keine Notizen oder Dokumente</span>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+    );
+}

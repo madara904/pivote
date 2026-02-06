@@ -12,9 +12,6 @@ const ShipperConnectionsPage = async () => {
           <h1 className="text-2xl font-semibold text-foreground">
             Spediteurverbindungen
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Verwalten Sie Ihre Spediteurverbindungen und finden Sie neue Partner.
-          </p>
         </div>
       </PageHeaderWithBorder>
       <PageContainer className="pt-6 pb-8">

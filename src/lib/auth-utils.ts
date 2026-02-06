@@ -13,7 +13,7 @@ type AccessContext = {
 
 // Main function to get access context from session only
 // Cached to deduplicate session calls within the same request/render
-const getAccessContext = cache(async (): Promise<AccessContext | null> => {
+const getAccessContext = async (): Promise<AccessContext | null> => {
   const session = await auth.api.getSession({
     headers: await headers()
   });
@@ -28,7 +28,7 @@ const getAccessContext = cache(async (): Promise<AccessContext | null> => {
       ? null 
       : session.user.orgType as "shipper" | "forwarder"
   };
-});
+};
 
 async function getAccessContextWithRedirect(): Promise<AccessContext> {
   const ctx = await getAccessContext();

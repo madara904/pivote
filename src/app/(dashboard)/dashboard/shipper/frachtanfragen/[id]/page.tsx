@@ -1,8 +1,9 @@
 import { requireShipperAccess } from "@/lib/auth-utils";
-import { HydrateClient, trpc } from "@/trpc/server";
+import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 import { Suspense } from "react";
 import InquiryDetailsView from "./inquiry-details-view";
 import { InquiryDetailsLoadingState } from "./inquiry-details-loading-state";
+import { inquiry } from "@/db/schema";
 
 interface ShipperInquiryDetailPageProps {
   params: Promise<{ id: string }>;
@@ -12,8 +13,7 @@ const ShipperInquiryDetailPage = async ({ params }: ShipperInquiryDetailPageProp
   await requireShipperAccess();
   const { id } = await params;
 
-  // Prefetch the inquiry detail data
-  trpc.inquiry.shipper.getInquiryDetail.prefetch({ inquiryId: id });
+  await prefetch(trpc.inquiry.shipper.getInquiryDetail.queryOptions({ inquiryId: id }));
 
   return (
     <HydrateClient>

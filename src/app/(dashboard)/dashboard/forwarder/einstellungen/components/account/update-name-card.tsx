@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { authClient, useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
 
 export default function UpdateNameCard() {
   const { data, refetch, isPending } = useSession();
@@ -13,7 +13,11 @@ export default function UpdateNameCard() {
   const [isSaving, setIsSaving] = useState(false);
   const hasLoaded = useRef(false);
   const initialName = useRef("");
-  const [hasTouched, setHasTouched] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!hasLoaded.current && data?.user?.name !== undefined) {
@@ -39,32 +43,37 @@ export default function UpdateNameCard() {
     } else {
       toast.success("Name aktualisiert.");
       await refetch();
+      initialName.current = name.trim();
     }
     setIsSaving(false);
   };
 
+  if (!mounted) return null;
+
   return (
-    <Card className="shadow-none">
-      <CardHeader>
-        <CardTitle>Benutzername</CardTitle>
-        <CardDescription>Aktualisieren Sie Ihren Anzeigenamen.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">Anzeigename</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Ihr Name, wie er innerhalb der Plattform für Kollegen angezeigt wird.
+        </p>
+      </div>
+      <div className="md:col-span-2 max-w-md space-y-4">
         <Input
           value={name}
-          onChange={(event) => {
-            if (!hasTouched) setHasTouched(true);
-            setName(event.target.value);
-          }}
+          onChange={(e) => setName(e.target.value)}
           placeholder="Ihr Name"
-          disabled={isPending}
+          disabled={isPending || isSaving}
         />
-      </CardContent>
-      <CardFooter>
-        <Button onClick={handleSave} disabled={isSaving || isPending || !hasTouched || !isDirty}>
-          {isSaving ? "Speichern..." : "Speichern"}
+        <Button 
+          onClick={handleSave} 
+          disabled={!isDirty || isSaving || isPending}
+          size="sm"
+        >
+          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Änderungen speichern
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

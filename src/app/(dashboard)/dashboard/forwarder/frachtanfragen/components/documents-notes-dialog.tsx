@@ -4,7 +4,8 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { trpc } from "@/trpc/client"
+import { useTRPC } from "@/trpc/client"
+import { useQuery } from "@tanstack/react-query"
 import { FileText, MessageSquare, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
@@ -26,15 +27,16 @@ export function DocumentsNotesDialog({
   noteCount = 0,
 }: DocumentsNotesDialogProps) {
   const isMobile = useIsMobile()
-  const { data: documents = [], isLoading: documentsLoading } = trpc.inquiry.forwarder.getInquiryDocuments.useQuery(
-    { inquiryId: inquiryId! },
-    { enabled: open && !!inquiryId }
-  )
+  const trpcOptions = useTRPC()
+  const { data: documents = [], isLoading: documentsLoading } = useQuery({
+    ...trpcOptions.inquiry.forwarder.getInquiryDocuments.queryOptions({ inquiryId: inquiryId! }),
+    enabled: open && !!inquiryId,
+  })
 
-  const { data: notes = [], isLoading: notesLoading } = trpc.inquiry.forwarder.getInquiryNotes.useQuery(
-    { inquiryId: inquiryId! },
-    { enabled: open && !!inquiryId }
-  )
+  const { data: notes = [], isLoading: notesLoading } = useQuery({
+    ...trpcOptions.inquiry.forwarder.getInquiryNotes.queryOptions({ inquiryId: inquiryId! }),
+    enabled: open && !!inquiryId,
+  })
 
   const tabsContent = (
     <Tabs defaultValue="documents" className="flex-1 flex flex-col min-h-0">

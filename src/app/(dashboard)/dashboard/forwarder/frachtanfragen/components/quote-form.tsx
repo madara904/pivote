@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "lucide-react";
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -23,7 +24,8 @@ interface QuoteFormProps {
 
 export function QuoteForm({ inquiryId }: QuoteFormProps) {
   const router = useRouter();
-  const utils = trpc.useUtils();
+  const trpcOptions = useTRPC();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     totalPrice: 0,
     currency: "EUR",
@@ -41,34 +43,40 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
-  const saveDraftQuotation = trpc.quotation.forwarder.saveDraftQuotation.useMutation({
+  const saveDraftQuotation = useMutation(trpcOptions.quotation.forwarder.saveDraftQuotation.mutationOptions({
     onSuccess: () => {
       toast.success("Entwurf erfolgreich gespeichert");
       router.refresh();
     },
-    onError: (error) => {
-      toast.error(`Fehler beim Speichern: ${error.message}`);
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler beim Speichern: ${(error as { message?: string }).message}`);
+      } else {
+        toast.error("Fehler beim Speichern");
+      }
     },
-  });
+  }));
 
-  const createQuotation = trpc.quotation.forwarder.createQuotation.useMutation({
-    onSuccess: () => {
+  const createQuotation = useMutation(trpcOptions.quotation.forwarder.createQuotation.mutationOptions({
+    onSuccess: async () => {
       // Invalidate inquiry list to ensure it updates immediately
-      utils.inquiry.forwarder.getMyInquiriesFast.invalidate();
+      await queryClient.invalidateQueries(trpcOptions.inquiry.forwarder.getMyInquiriesFast.queryFilter());
       toast.info("Angebot erfolgreich eingereicht");
       router.push("/dashboard/forwarder/frachtanfragen?tab=quoted");
       setUpgradeDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       // Only show toast for non-quota errors (quota errors show upgrade dialog)
-      if (error.data?.code !== "FORBIDDEN") {
-        toast.error(`Fehler beim Erstellen: ${error.message}`);
+      if (error && typeof error === "object" && "data" in error && (error as { data?: { code?: string } }).data?.code !== "FORBIDDEN") {
+        if ("message" in error) {
+          toast.error(`Fehler beim Erstellen: ${(error as { message?: string }).message}`);
+        }
         setUpgradeDialogOpen(false);
       } else {
         setUpgradeDialogOpen(true);
       }
     },
-  });
+  }));
 
   // Calculate total price from cost breakdown
   const calculatedTotal =

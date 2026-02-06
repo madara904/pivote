@@ -1,5 +1,5 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
-import { HydrateClient, trpc } from "@/trpc/server";
+import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 import { Suspense } from "react";
 import InquiryDetailsView from "./inquiry-details-view";
 import { InquiryDetailsLoadingState } from "./inquiry-details-loading-state";
@@ -13,7 +13,7 @@ export default async function InquiryDetailsPage({
   const { id } = await params;
 
   // Prefetch the inquiry detail data
-  trpc.inquiry.forwarder.getInquiryDetail.prefetch({ inquiryId: id });
+  await prefetch(trpc.inquiry.forwarder.getInquiryDetail.queryOptions({ inquiryId: id }));
 
   return (
     <HydrateClient>

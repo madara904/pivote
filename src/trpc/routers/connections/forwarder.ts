@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { organization, organizationConnection, organizationMember } from "@/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { z } from "zod";
@@ -6,8 +6,9 @@ import { TRPCError } from "@trpc/server";
 import { sendEmail } from "@/lib/send-email";
 import { env } from "@/lib/env/env";
 import { checkConnectionLimit } from "@/trpc/middleware/tier-limits";
+import { db } from "@/db";
 
-async function requireForwarderMembership(ctx: TRPCContext) {
+async function requireForwarderMembership(ctx: { db: typeof db; session: { user: { id: string } } }) {
   const membership = await ctx.db.query.organizationMember.findFirst({
     where: and(
       eq(organizationMember.userId, ctx.session.user.id),
@@ -61,6 +62,7 @@ export const forwarderConnectionsRouter = createTRPCRouter({
             city: true,
             country: true,
             postalCode: true,
+            logo: true,
           },
         },
       },
@@ -99,6 +101,7 @@ export const forwarderConnectionsRouter = createTRPCRouter({
             city: true,
             country: true,
             postalCode: true,
+            logo: true,
           },
         },
       },

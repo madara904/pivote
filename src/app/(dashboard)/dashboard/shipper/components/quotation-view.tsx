@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { trpc } from "@/trpc/client"
+import { useTRPC } from "@/trpc/client"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -41,40 +42,48 @@ const statusColors = {
 
 export default function QuotationView({ inquiryId }: QuotationViewProps) {
   const [expandedQuotationId, setExpandedQuotationId] = useState<string | null>(null)
+  const trpcOptions = useTRPC();
+  const queryClient = useQueryClient();
 
-  const { data: quotations, isLoading, error } = trpc.quotation.shipper.getQuotationsForInquiry.useQuery({
+  const { data: quotations, isLoading, error } = useQuery(trpcOptions.quotation.shipper.getQuotationsForInquiry.queryOptions({
     inquiryId
-  })
+  }))
 
-  const utils = trpc.useUtils()
-
-  const acceptQuotation = trpc.quotation.shipper.acceptQuotation.useMutation({
-    onSuccess: () => {
+  const acceptQuotation = useMutation(trpcOptions.quotation.shipper.acceptQuotation.mutationOptions({
+    onSuccess: async () => {
       toast.success("Angebot angenommen!")
       // Refetch quotations
-      utils.quotation.shipper.getQuotationsForInquiry.invalidate({ inquiryId })
-      utils.inquiry.shipper.getInquiryDetail.invalidate({ inquiryId })
-      utils.inquiry.shipper.getMyInquiries.invalidate()
+      await queryClient.invalidateQueries(trpcOptions.quotation.shipper.getQuotationsForInquiry.queryFilter({ inquiryId }))
+      await queryClient.invalidateQueries(trpcOptions.inquiry.shipper.getInquiryDetail.queryFilter({ inquiryId }))
+      await queryClient.invalidateQueries(trpcOptions.inquiry.shipper.getMyInquiries.queryFilter())
       setExpandedQuotationId(null)
     },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`)
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler: ${(error as { message?: string }).message}`)
+      } else {
+        toast.error("Fehler aufgetreten")
+      }
     }
-  })
+  }))
 
-  const rejectQuotation = trpc.quotation.shipper.rejectQuotation.useMutation({
-    onSuccess: () => {
+  const rejectQuotation = useMutation(trpcOptions.quotation.shipper.rejectQuotation.mutationOptions({
+    onSuccess: async () => {
       toast.success("Angebot abgelehnt!")
       // Refetch quotations
-      utils.quotation.shipper.getQuotationsForInquiry.invalidate({ inquiryId })
-      utils.inquiry.shipper.getInquiryDetail.invalidate({ inquiryId })
-      utils.inquiry.shipper.getMyInquiries.invalidate()
+      await queryClient.invalidateQueries(trpcOptions.quotation.shipper.getQuotationsForInquiry.queryFilter({ inquiryId }))
+      await queryClient.invalidateQueries(trpcOptions.inquiry.shipper.getInquiryDetail.queryFilter({ inquiryId }))
+      await queryClient.invalidateQueries(trpcOptions.inquiry.shipper.getMyInquiries.queryFilter())
       setExpandedQuotationId(null)
     },
-    onError: (error) => {
-      toast.error(`Fehler: ${error.message}`)
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler: ${(error as { message?: string }).message}`)
+      } else {
+        toast.error("Fehler aufgetreten")
+      }
     }
-  })
+  }))
 
   if (isLoading) {
     return (
@@ -120,7 +129,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
     rejectQuotation.mutate({ quotationId })
   }
 
-  const bestOffer = quotations.reduce((best, current) => {
+  const bestOffer = quotations?.reduce((best, current) => {
     if (!best) return current
     return current.totalPrice < best.totalPrice ? current : best
   }, undefined as typeof quotations[number] | undefined)
@@ -132,7 +141,7 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {quotations.map((quotation) => {
+        {quotations?.map((quotation) => {
           const isExpanded = expandedQuotationId === quotation.id
           const isBestOffer = bestOffer?.id === quotation.id
           const isAccepted = quotation.status === "accepted"

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { trpc } from "@/trpc/client"
+import { useTRPC } from "@/trpc/client"
+import { useMutation } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,16 +64,21 @@ const InquiryForm = ({ forwarders }: InquiryFormProps) => {
 
   const [referenceNumber, setReferenceNumber] = useState<string>("")
 
-  const createInquiry = trpc.inquiry.shipper.createInquiry.useMutation({
-    onSuccess: (data) => {
+  const trpcOptions = useTRPC();
+  const createInquiry = useMutation(trpcOptions.inquiry.shipper.createInquiry.mutationOptions({
+    onSuccess: (data: { referenceNumber: string }) => {
       setReferenceNumber(data.referenceNumber)
       toast.success(`Frachtanfrage ${data.referenceNumber} erfolgreich erstellt!`)
       router.push("/dashboard/shipper/frachtanfragen")
     },
-    onError: (error) => {
-      toast.error(`Fehler beim Erstellen der Anfrage: ${error.message}`)
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler beim Erstellen der Anfrage: ${(error as { message?: string }).message}`)
+      } else {
+        toast.error("Fehler beim Erstellen der Anfrage")
+      }
     }
-  })
+  }))
 
   const handleForwarderChange = (forwarderId: string, checked: boolean) => {
     if (checked) {

@@ -2,9 +2,9 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
-import { trpc } from "@/trpc/client"
+import { useTRPC } from "@/trpc/client"
+import { useSuspenseQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query"
 import { CheckCircle, Upload, FileText, Loader2, Search, Trash, MessageSquare, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -23,49 +23,71 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
 
-  const utils = trpc.useUtils()
+  const trpcOptions = useTRPC();
+  const queryClient = useQueryClient();
 
-  const { data, error, isLoading } = trpc.inquiry.shipper.getInquiryDetail.useQuery(
+  const { data: detail } = useSuspenseQuery(trpcOptions.inquiry.shipper.getInquiryDetail.queryOptions({
+    inquiryId,
+  }))
+
+  const { data: inquiryQuotations = [] } = useQuery(trpcOptions.quotation.shipper.getQuotationsForInquiry.queryOptions(
     { inquiryId },
     { enabled: Boolean(inquiryId) }
-  )
+  ))
 
-  const { data: inquiryQuotations = [] } = trpc.quotation.shipper.getQuotationsForInquiry.useQuery(
+  const { data: notes = [], isLoading: notesLoading } = useQuery(trpcOptions.inquiry.shipper.getInquiryNotes.queryOptions(
     { inquiryId },
     { enabled: Boolean(inquiryId) }
-  )
+  ))
 
-  const { data: notes = [], isLoading: notesLoading } = trpc.inquiry.shipper.getInquiryNotes.useQuery(
-    { inquiryId },
-    { enabled: Boolean(inquiryId) }
-  )
-
-  const acceptQuotation = trpc.quotation.shipper.acceptQuotation.useMutation({
+  const acceptQuotation = useMutation(trpcOptions.quotation.shipper.acceptQuotation.mutationOptions({
     onSuccess: async () => {
       toast.success("Spediteur nominiert")
-      utils.invalidate();
+      await queryClient.invalidateQueries();
     },
-    onError: (e) => toast.error(e?.message)
-  });
+    onError: (e: unknown) => {
+      if (e && typeof e === "object" && "message" in e) {
+        toast.error((e as { message?: string }).message || "Fehler aufgetreten");
+      } else {
+        toast.error("Fehler aufgetreten");
+      }
+    }
+  }));
 
-  const addNote = trpc.quotation.shipper.addNote.useMutation({
-    onSuccess: () => {
+  const addNote = useMutation(trpcOptions.quotation.shipper.addNote.mutationOptions({
+    onSuccess: async () => {
       toast.success("Notiz gespeichert");
       setNoteText("");
-      utils.inquiry.shipper.getInquiryNotes.invalidate({ inquiryId });
+      await queryClient.invalidateQueries(
+        trpcOptions.inquiry.shipper.getInquiryNotes.queryFilter({ inquiryId })
+      );
     },
-    onError: (e) => toast.error(e.message),
-  });
+    onError: (e: unknown) => {
+      if (e && typeof e === "object" && "message" in e) {
+        toast.error((e as { message?: string }).message || "Fehler aufgetreten");
+      } else {
+        toast.error("Fehler aufgetreten");
+      }
+    },
+  }));
 
-  const deleteFile = trpc.inquiry.shipper.deleteInquiryDocuments.useMutation({
-    onSuccess: () => {
+  const deleteFile = useMutation(trpcOptions.inquiry.shipper.deleteInquiryDocuments.mutationOptions({
+    onSuccess: async () => {
       toast.success("Dokument gelöscht")
-      utils.inquiry.shipper.getInquiryDetail.invalidate({ inquiryId });
+      await queryClient.invalidateQueries(
+        trpcOptions.inquiry.shipper.getInquiryDetail.queryFilter({ inquiryId })
+      );
     },
-    onError: (e) => toast.error(e.message)
-  })
+    onError: (e: unknown) => {
+      if (e && typeof e === "object" && "message" in e) {
+        toast.error((e as { message?: string }).message || "Fehler aufgetreten");
+      } else {
+        toast.error("Fehler aufgetreten");
+      }
+    }
+  }))
 
-  const acceptedQuotation = inquiryQuotations.find((q) => q.status === "accepted")
+  const acceptedQuotation = inquiryQuotations.find((q: { status: string }) => q.status === "accepted")
   
   const bestPriceQuotationId = [...inquiryQuotations].sort(
     (a, b) => Number(a.totalPrice) - Number(b.totalPrice)
@@ -93,7 +115,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
             </Link>
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-2xl font-semibold text-foreground break-words">
-                Anfrage: {data?.referenceNumber || "..."}
+                Anfrage: {detail.referenceNumber}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Details und Angebote für Ihre Frachtanfrage
@@ -105,32 +127,23 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
 
       <PageContainer>
         <div className="max-w-4xl mx-auto w-full">
-          {isLoading ? (
-            <div className="flex h-40 items-center justify-center">
-              <Loader2 className="animate-spin text-muted-foreground" />
-            </div>
-          ) : error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error.message}</AlertDescription>
-            </Alert>
-          ) : data && (
-            <div className="space-y-6">
+          <div className="space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 mt-3 bg-muted/30 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs uppercase">Route</p>
-                <p className="font-semibold">{data.originCity} → {data.destinationCity}</p>
+                <p className="font-semibold">{detail.originCity} → {detail.destinationCity}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs uppercase">Service</p>
-                <p className="font-semibold">{data.serviceType === 'air_freight' ? 'Luftfracht' : 'Seefracht'}</p>
+                <p className="font-semibold">{detail.serviceType === 'air_freight' ? 'Luftfracht' : 'Seefracht'}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs uppercase">Gewicht</p>
-                <p className="font-semibold">{data.packages.reduce((s, p) => s + Number(p.grossWeight), 0)} kg</p>
+                <p className="font-semibold">{detail.packages.reduce((s, p) => s + Number(p.grossWeight), 0)} kg</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs uppercase">Erstellt am</p>
-                <p className="font-semibold">{formatDate(data.createdAt)}</p>
+                <p className="font-semibold">{formatDate(detail.createdAt)}</p>
               </div>
             </div>
 
@@ -162,7 +175,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                       <MessageSquare className="h-3 w-3" /> Notizen ({notes.length})
                     </label>
                     <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                      {notes.map((note) => (
+                      {notes.map((note: { id: string; createdBy: { name: string }; createdAt: Date; content: string }) => (
                         <div
                           key={note.id}
                           className="rounded-md border bg-white/80 p-2 text-xs"
@@ -210,11 +223,11 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               </div>
             )}
 
-            {data.documents && data.documents.length > 0 && (
+            {detail.documents && detail.documents.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold px-1">Dokumente</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {data.documents.map((doc) => (
+                  {detail.documents.map((doc) => (
                     <div key={doc.id} className="flex items-center justify-between p-2 pl-3 bg-white border rounded-lg hover:border-primary/50 transition-colors">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <FileText className="h-4 w-4 text-primary shrink-0" />
@@ -263,8 +276,8 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               
               <TabsContent value="offers" className="mt-0">
                 <div className="space-y-3">
-                  {data.sentToForwarders.map((f) => {
-                    const q = inquiryQuotations.find(quote => quote.forwarderOrganization.id === f.forwarderOrganizationId);
+                  {detail.sentToForwarders.map((f) => {
+                    const q = inquiryQuotations.find((quote: { forwarderOrganization: { id: string } }) => quote.forwarderOrganization.id === f.forwarderOrganizationId);
                     const isBest = q?.id === bestPriceQuotationId;
                     
                     return (
@@ -348,11 +361,11 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">Referenznummer</p>
-                        <p className="font-medium">{data.referenceNumber}</p>
+                        <p className="font-medium">{detail.referenceNumber}</p>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">Status</p>
-                        <p className="font-medium capitalize">{data.status}</p>
+                        <p className="font-medium capitalize">{detail.status}</p>
                       </div>
                     </div>
                   </div>
@@ -362,11 +375,11 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">Abholort</p>
-                        <p className="font-medium">{data.originCity}, {data.originCountry}</p>
+                        <p className="font-medium">{detail.originCity}, {detail.originCountry}</p>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">Zielort</p>
-                        <p className="font-medium">{data.destinationCity}, {data.destinationCountry}</p>
+                        <p className="font-medium">{detail.destinationCity}, {detail.destinationCountry}</p>
                       </div>
                     </div>
                   </div>
@@ -374,7 +387,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                   <div className="space-y-4">
                     <h3 className="font-semibold text-sm">Frachtdetails</h3>
                     <div className="space-y-4">
-                      {data.packages.map((pkg, index) => (
+                      {detail.packages.map((pkg, index) => (
                         <div key={index} className="border rounded-lg p-4 bg-white">
                           <h4 className="font-medium mb-3 text-sm">Paket {index + 1}</h4>
                           <div className="grid grid-cols-3 gap-4">
@@ -399,7 +412,6 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
               </TabsContent>
             </Tabs>
           </div>
-        )}
         </div>
       </PageContainer>
 

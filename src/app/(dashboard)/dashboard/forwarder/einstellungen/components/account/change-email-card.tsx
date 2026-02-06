@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { authClient, useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Loader2, Mail } from "lucide-react";
 
 export default function ChangeEmailCard() {
   const { data, isPending } = useSession();
@@ -14,16 +14,24 @@ export default function ChangeEmailCard() {
   const hasLoaded = useRef(false);
   const initialEmail = useRef("");
   const [hasTouched, setHasTouched] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
   const callbackURL = useMemo(() => {
     if (typeof window === "undefined") return undefined;
+    // Leitet den User nach der Bestätigung zurück zur Account-Seite
     return `${window.location.origin}/dashboard/forwarder/einstellungen/account`;
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   useEffect(() => {
     if (!hasLoaded.current && data?.user?.email) {
       setNewEmail(data.user.email);
       initialEmail.current = data.user.email;
+      setCurrentEmail(data.user.email);
       hasLoaded.current = true;
     }
   }, [data?.user?.email]);
@@ -49,36 +57,59 @@ export default function ChangeEmailCard() {
     if (result.error) {
       toast.error(result.error.message || "E-Mail konnte nicht aktualisiert werden.");
     } else {
-      toast.success("E-Mail-Änderung gestartet.");
+      toast.success("Bestätigungs-E-Mail wurde gesendet. Bitte prüfen Sie Ihr Postfach.");
       setNewEmail("");
+      setHasTouched(false);
     }
 
     setIsSaving(false);
   };
 
+  if (!mounted) return null;
+
   return (
-    <Card className="shadow-none">
-      <CardHeader>
-        <CardTitle>E-Mail-Adresse</CardTitle>
-        <CardDescription>Aktuelle E-Mail: {data?.user?.email || "—"}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <Input
-          value={newEmail}
-          onChange={(event) => {
-            if (!hasTouched) setHasTouched(true);
-            setNewEmail(event.target.value);
-          }}
-          placeholder="neue-email@beispiel.de"
-          type="email"
-          disabled={isPending}
-        />
-      </CardContent>
-      <CardFooter>
-        <Button onClick={handleChangeEmail} disabled={isSaving || isPending || !hasTouched || !isDirty}>
-          {isSaving ? "Senden..." : "E-Mail ändern"}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10 border-b border-border/50">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          E-Mail-Adresse
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Ihre aktuelle Adresse: <span className="font-medium text-foreground">{currentEmail || data?.user?.email || "—"}</span>
+        </p>
+      </div>
+      
+      <div className="md:col-span-2 max-w-md space-y-4">
+        <div className="space-y-2">
+          <Input
+            value={newEmail}
+            onChange={(event) => {
+              if (!hasTouched) setHasTouched(true);
+              setNewEmail(event.target.value);
+            }}
+            placeholder="neue-email@beispiel.de"
+            type="email"
+            disabled={isPending || isSaving}
+          />
+          <p className="text-[12px] text-muted-foreground italic">
+            Nach der Änderung müssen Sie die neue E-Mail-Adresse bestätigen, bevor sie aktiv wird.
+          </p>
+        </div>
+
+        <Button 
+          onClick={handleChangeEmail} 
+          disabled={isSaving || isPending || !hasTouched || !isDirty}
+          size="sm"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Wird gesendet...
+            </>
+          ) : (
+            "E-Mail ändern"
+          )}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

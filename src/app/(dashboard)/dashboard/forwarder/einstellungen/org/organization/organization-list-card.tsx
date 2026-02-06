@@ -1,9 +1,9 @@
 "use client";
 
-import { Building2, Edit3, Trash2, Loader2, Mail, ShieldCheck } from "lucide-react";
+import { Edit3, Trash2, Loader2, } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 export interface OrganizationListItem {
   id: string;
@@ -83,20 +83,43 @@ export default function OrganizationListCard({
                   >
                     <Edit3 className="w-4 h-4" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => onDelete(org.id)}
-                    disabled={deletePending || !canDelete(org)}
-                    title="Löschen"
-                  >
-                    {deletePending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
+                  {canDelete(org) ? (
+                    <ConfirmationDialog
+                      title="Organisation löschen"
+                      description={`Möchten Sie die Organisation "${org.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden. Alle Daten, Mitglieder und Verbindungen werden permanent gelöscht.`}
+                      confirmText="Organisation löschen"
+                      cancelText="Abbrechen"
+                      variant="destructive"
+                      onConfirm={() => onDelete(org.id)}
+                      disabled={deletePending}
+                      loading={deletePending}
+                      loadingText="Löschen..."
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={deletePending || !canDelete(org)}
+                        title="Löschen"
+                      >
+                        {deletePending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </ConfirmationDialog>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      disabled={true}
+                      title="Löschen"
+                    >
                       <Trash2 className="w-4 h-4" />
-                    )}
-                  </Button>
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

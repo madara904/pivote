@@ -66,7 +66,7 @@ export const shipperRouter = createTRPCRouter({
     const { db, session } = ctx;
     
     try {
-      // Get membership first
+      // Get membership first - this will throw if user has no organization
       const membership = await requireOrgAndType(ctx);
       if (membership.organizationType !== "shipper") {
         throw new Error("Organisation ist kein Versender");
@@ -157,8 +157,9 @@ export const shipperRouter = createTRPCRouter({
       });
       
       return inquiriesWithResponseSummary;
-    } catch {
-      throw new Error('Failed to fetch inquiries');
+    } catch (error) {
+      console.error('Error in getMyInquiries:', error);
+      throw new Error('Fehler beim Laden');
     }
   }),
 

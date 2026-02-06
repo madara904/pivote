@@ -3,7 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
-import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import { headers } from "next/headers";
+import { cloakSSROnlySecret } from "ssr-only-secrets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,13 +65,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const cookie = headersList.get("cookie");
+  const encryptedCookie = await cloakSSROnlySecret(cookie ?? "", "SECRET_CLIENT_COOKIE_VAR");
+
   return (
-    <TRPCReactProvider>
+    <TRPCReactProvider ssrOnlySecret={encryptedCookie}>
       <NuqsAdapter>
         <html lang="de">
           <head>

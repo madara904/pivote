@@ -8,6 +8,7 @@ import { createTRPCContext } from '@trpc/tanstack-react-query';
 import superjson from 'superjson';
 import { makeQueryClient } from './query-client';
 import type { AppRouter } from './routers/_app';
+import { readSSROnlySecret } from "ssr-only-secrets";
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
@@ -28,7 +29,7 @@ function getUrl() {
   return `${base}/api/trpc`;
 }
 
-export function TRPCReactProvider(props: { children: React.ReactNode }) {
+export function TRPCReactProvider(props: { ssrOnlySecret: string; children: React.ReactNode }) {
   const queryClient = getQueryClient();
   const [trpcClient] = useState(() =>
     createTRPCClient<AppRouter>({
@@ -38,10 +39,15 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
           url: getUrl(),
 
           // Use this function to pass headers from the browser to the server
-          headers() {
+          async headers() {
             const headers = new Headers();
+            const secret = props.ssrOnlySecret;
+            const value = await readSSROnlySecret(secret, "SECRET_CLIENT_COOKIE_VAR");
             headers.set("x-trpc-source", "nextjs-react");
-            return headers
+            if (value) {
+              headers.set("cookie", value);
+            }
+            return headers;
           },
         }),
       ],

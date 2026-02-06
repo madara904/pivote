@@ -1,4 +1,4 @@
-import { protectedProcedure, createTRPCRouter, TRPCContext } from "@/trpc/init";
+import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { getUserMemberships } from "./utils";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -6,17 +6,17 @@ import { and, eq } from "drizzle-orm";
 import { organizationMember, user } from "@/db/schema";
 
 export const membershipRouter = createTRPCRouter({
-  getMyOrganizations: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
+  getMyOrganizations: protectedProcedure.query(async ({ ctx }) => {
     const { db, session } = ctx;
     const memberships = await getUserMemberships(db, session.user.id);
-    return memberships.map((m) => ({
+    return memberships.map((m: typeof memberships[0]) => ({
       ...m.organization,
       membershipRole: m.role,
     }));
   }),
   listMembers: protectedProcedure
     .input(z.object({ organizationId: z.string().uuid() }))
-    .query(async ({ ctx, input }: { ctx: TRPCContext; input: { organizationId: string } }) => {
+    .query(async ({ ctx, input }) => {
       const { db, session } = ctx;
       const membership = await db.query.organizationMember.findFirst({
         where: and(
@@ -58,7 +58,7 @@ export const membershipRouter = createTRPCRouter({
         role: z.enum(["admin", "member"]).default("member"),
       })
     )
-    .mutation(async ({ ctx, input }: { ctx: TRPCContext; input: { organizationId: string; email: string; role: "admin" | "member" } }) => {
+    .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       const owner = await db.query.organizationMember.findFirst({
         where: and(
@@ -116,7 +116,7 @@ export const membershipRouter = createTRPCRouter({
         role: z.enum(["admin", "member"]),
       })
     )
-    .mutation(async ({ ctx, input }: { ctx: TRPCContext; input: { organizationId: string; memberId: string; role: "admin" | "member" } }) => {
+    .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       const owner = await db.query.organizationMember.findFirst({
         where: and(
@@ -168,7 +168,7 @@ export const membershipRouter = createTRPCRouter({
         memberId: z.string().uuid(),
       })
     )
-    .mutation(async ({ ctx, input }: { ctx: TRPCContext; input: { organizationId: string; memberId: string } }) => {
+    .mutation(async ({ ctx, input }) => {
       const { db, session } = ctx;
       const owner = await db.query.organizationMember.findFirst({
         where: and(

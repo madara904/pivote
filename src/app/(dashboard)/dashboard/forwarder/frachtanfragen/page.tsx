@@ -1,6 +1,6 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
 import InquiryView from "./inquiry-view";
-import { HydrateClient, trpc } from "@/trpc/server";
+import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 import { Suspense } from "react";
 import { InquiryLoadingState } from "./inquiry-loading-state";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -8,7 +8,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 export default async function ForwarderInquiriesPage() {
 
   await requireForwarderAccess();
-   trpc.inquiry.forwarder.getMyInquiriesFast.prefetch();
+  await prefetch(trpc.inquiry.forwarder.getMyInquiriesFast.queryOptions());
 
 
   return (

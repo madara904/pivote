@@ -1,9 +1,11 @@
-import type { TRPCContext } from "@/trpc/init";
 import { organizationMember } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import type * as schema from "@/db/schema";
 
 export async function getUserMemberships(
-  db: TRPCContext["db"],
+  db: PostgresJsDatabase<typeof schema>,
   userId: string
 ) {
   return db.query.organizationMember.findMany({

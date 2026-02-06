@@ -1,25 +1,18 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
 import ForwarderConnectionsView from "./verbindungen-view";
-import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout";
+import { prefetch, trpc, HydrateClient } from "@/trpc/server";
+import { DotLoading } from "@/components/ui/dot-loading";
+import { Suspense } from "react";
 
 export default async function VerbindungenPage() {
   await requireForwarderAccess();
+  void prefetch(trpc.connections.forwarder.listPendingInvites.queryOptions());
 
   return (
-    <PageLayout>
-      <PageHeaderWithBorder>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Versenderverbindungen
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Verwalten Sie Ihre Versenderverbindungen und Einladungen.
-          </p>
-        </div>
-      </PageHeaderWithBorder>
-      <PageContainer className="pt-6 pb-8">
+    <HydrateClient>
+      <Suspense fallback={<DotLoading />}>
         <ForwarderConnectionsView />
-      </PageContainer>
-    </PageLayout>
+      </Suspense>
+    </HydrateClient>
   );
 }

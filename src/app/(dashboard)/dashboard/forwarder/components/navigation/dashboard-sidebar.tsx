@@ -16,9 +16,9 @@ import {
 import { 
   Link2,
   Settings, 
-  BarChart3,
   ClipboardList,
-  House
+  House,
+  LogsIcon
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,9 +41,9 @@ const menuItems = {
       icon: Link2,
     },
     {
-      title: "Statistiken",
-      url: "/dashboard/forwarder/statistiken",
-      icon: BarChart3,
+      title: "Logs & Events",
+      url: "/dashboard/forwarder/logs",
+      icon: LogsIcon,
     },
   ],
   settings: [

@@ -4,7 +4,8 @@ import { ResponsiveModal } from "@/components/responsive-modal";
 import { Badge } from "@/components/ui/badge";
 import { DotLoading } from "@/components/ui/dot-loading";
 import { Separator } from "@/components/ui/separator";
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface QuotationViewDialogProps {
   inquiryId: string;
@@ -13,7 +14,11 @@ interface QuotationViewDialogProps {
 }
 
 export function QuotationViewDialog({ inquiryId, open, onOpenChange }: QuotationViewDialogProps) {
-  const { data: quotations, isLoading } = trpc.quotation.forwarder.getInquiryQuotations.useQuery({ inquiryId }, { enabled: open });
+  const trpcOptions = useTRPC();
+  const { data: quotations, isLoading } = useQuery({
+    ...trpcOptions.quotation.forwarder.getInquiryQuotations.queryOptions({ inquiryId }),
+    enabled: open,
+  });
 
   if (!open) {
     return null;

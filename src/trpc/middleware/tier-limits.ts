@@ -1,12 +1,12 @@
 import { eq, and, gte, sql, inArray, ne } from 'drizzle-orm';
 import { quotation, subscription, organizationConnection } from '@/db/schema';
-import type { TRPCContext } from '@/trpc/init';
+import { db } from '@/db';
 
 /**
  * Helper function to get subscription for an organization
  */
 export async function getOrganizationSubscription(
-  ctx: TRPCContext,
+  ctx: { db: typeof db },
   organizationId: string
 ) {
   const { db } = ctx;
@@ -39,7 +39,7 @@ export async function getOrganizationSubscription(
  * Helper function to count quotations created this month
  */
 export async function getQuotationsThisMonth(
-  ctx: TRPCContext,
+  ctx: { db: typeof db },
   organizationId: string
 ): Promise<number> {
   const { db } = ctx;
@@ -65,7 +65,7 @@ export async function getQuotationsThisMonth(
  * Check if organization can create quotation based on tier limits
  */
 export async function checkQuotationLimit(
-  ctx: TRPCContext,
+  ctx: { db: typeof db },
   organizationId: string
 ): Promise<{ allowed: boolean; reason?: string; current: number; limit: number }> {
   const subscription = await getOrganizationSubscription(ctx, organizationId);
@@ -101,7 +101,7 @@ export async function checkQuotationLimit(
 type ConnectionRole = "shipper" | "forwarder";
 
 async function getConnectionCount(
-  ctx: TRPCContext,
+  ctx: { db: typeof db },
   organizationId: string,
   role: ConnectionRole,
   excludeConnectionId?: string
@@ -126,7 +126,7 @@ async function getConnectionCount(
 }
 
 export const checkConnectionLimit = async (
-  ctx: TRPCContext,
+  ctx: { db: typeof db },
   organizationId: string,
   role: ConnectionRole,
   excludeConnectionId?: string

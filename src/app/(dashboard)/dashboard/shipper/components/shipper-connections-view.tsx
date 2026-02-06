@@ -1,6 +1,7 @@
 "use client";
 
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,41 +13,50 @@ import { Mail, Link2Off } from "lucide-react";
 import { toast } from "sonner";
 
 const ShipperConnectionsView = () => {
-  const utils = trpc.useUtils();
+  const trpcOptions = useTRPC();
+  const queryClient = useQueryClient();
 
   const { data: connectedData, isLoading: connectedLoading } =
-    trpc.connections.shipper.listConnectedForwarders.useQuery();
+    useQuery(trpcOptions.connections.shipper.listConnectedForwarders.queryOptions());
   const { data: pendingData, isLoading: pendingLoading } =
-    trpc.connections.shipper.listPendingInvites.useQuery();
+    useQuery(trpcOptions.connections.shipper.listPendingInvites.queryOptions());
   const { data: recommendedData, isLoading: recommendedLoading } =
-    trpc.connections.shipper.listRecommendedForwarders.useQuery();
+    useQuery(trpcOptions.connections.shipper.listRecommendedForwarders.queryOptions());
 
-  const inviteForwarder = trpc.connections.shipper.inviteForwarder.useMutation({
-    onSuccess: (data) => {
+  const inviteForwarder = useMutation(trpcOptions.connections.shipper.inviteForwarder.mutationOptions({
+    onSuccess: async (data: { alreadyInvited?: boolean }) => {
       if (data.alreadyInvited) {
         toast.info("Einladung bereits ausstehend.");
       } else {
         toast.success("Einladung gesendet.");
       }
-      utils.connections.shipper.listPendingInvites.invalidate();
-      utils.connections.shipper.listConnectedForwarders.invalidate();
-      utils.connections.shipper.listRecommendedForwarders.invalidate();
+      await queryClient.invalidateQueries(trpcOptions.connections.shipper.listPendingInvites.queryFilter());
+      await queryClient.invalidateQueries(trpcOptions.connections.shipper.listConnectedForwarders.queryFilter());
+      await queryClient.invalidateQueries(trpcOptions.connections.shipper.listRecommendedForwarders.queryFilter());
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error((error as { message?: string }).message || "Fehler aufgetreten");
+      } else {
+        toast.error("Fehler aufgetreten");
+      }
     },
-  });
+  }));
 
-  const removeConnection = trpc.connections.shipper.removeConnection.useMutation({
-    onSuccess: () => {
+  const removeConnection = useMutation(trpcOptions.connections.shipper.removeConnection.mutationOptions({
+    onSuccess: async () => {
       toast.success("Verbindung entfernt.");
-      utils.connections.shipper.listConnectedForwarders.invalidate();
-      utils.connections.shipper.listRecommendedForwarders.invalidate();
+      await queryClient.invalidateQueries(trpcOptions.connections.shipper.listConnectedForwarders.queryFilter());
+      await queryClient.invalidateQueries(trpcOptions.connections.shipper.listRecommendedForwarders.queryFilter());
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error((error as { message?: string }).message || "Fehler aufgetreten");
+      } else {
+        toast.error("Fehler aufgetreten");
+      }
     },
-  });
+  }));
 
   const getInitials = (name?: string | null) => {
     if (!name) return "";

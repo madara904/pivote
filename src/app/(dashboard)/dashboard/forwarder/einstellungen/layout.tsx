@@ -3,51 +3,52 @@
 import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Lock, User } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
-  { key: "account", label: "Konto", icon: User, href: "/dashboard/forwarder/einstellungen/account" },
-  { key: "security", label: "Sicherheit", icon: Lock, href: "/dashboard/forwarder/einstellungen/security" },
-  { key: "org", label: "Organisation", icon: Building2, href: "/dashboard/forwarder/einstellungen/org" },
+  { key: "account", label: "Konto", href: "/dashboard/forwarder/einstellungen/account" },
+  { key: "security", label: "Sicherheit", href: "/dashboard/forwarder/einstellungen/security" },
+  { key: "org", label: "Organisation", href: "/dashboard/forwarder/einstellungen/org" },
 ] as const;
 
 export default function EinstellungenLayout({ children }: { children: React.ReactNode }) {
-  const isMobile = useIsMobile();
   const pathname = usePathname();
 
   return (
-    <div className={cn("flex", isMobile ? "flex-col" : "")}>
-      <nav
-        className={cn(
-          "flex gap-2 bg-background",
-          isMobile ? "flex-row p-4 border-b" : "w-56 p-6 flex-col"
-        )}
-      >
-        {NAV_ITEMS.map(({ key, label, icon: Icon, href }) => {
-          const isActive = pathname?.startsWith(href);
-          return (
-            <Button
-              key={key}
-              asChild
-              variant={isActive ? "default" : "ghost"}
-              className={cn(
-                "flex items-center gap-2",
-                isMobile ? "justify-center flex-1" : "justify-start w-full"
-              )}
-              title={isMobile ? label : undefined}
-            >
-              <Link href={href}>
-                <Icon className="w-5 h-5" />
-                {!isMobile && <span>{label}</span>}
+    <div className="flex flex-col min-h-screen">
+      <div className="pt-8 pb-0 px-6 md:px-10 border-b bg-background/50 backdrop-blur-md sticky top-0 z-10">
+        <h1 className="text-2xl font-bold tracking-tight mb-6">Einstellungen</h1>
+        
+        <nav className="flex items-center gap-6 overflow-x-auto no-scrollbar">
+          {NAV_ITEMS.map(({ key, label, href }) => {
+            const isActive = pathname === href;
+            return (
+              <Link
+                key={key}
+                href={href}
+                className={cn(
+                  "relative pb-3 text-sm transition-all duration-200 ease-in-out whitespace-nowrap",
+                  isActive 
+                    ? "text-foreground font-medium" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {label}
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-foreground" />
+                )}
               </Link>
-            </Button>
-          );
-        })}
-      </nav>
-      <main className="flex-1">{children}</main>
+            );
+          })}
+        </nav>
+      </div>
+
+
+      <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full">
+        <div className="animate-in fade-in duration-500">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

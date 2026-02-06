@@ -4,12 +4,16 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { trpc } from "@/trpc/client";
-import OrganizationCreateCard from "./organization/organization-create-card";
-import OrganizationListCard from "./organization/organization-list-card";
-import OrganizationEditDialog from "./organization/organization-edit-dialog";
-import OrganizationLogoCard from "./organization/organization-logo-card";
-import OrganizationMembersCard from "./organization/organization-members-card";
+import { useTRPC } from "@/trpc/client";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useOrganizationActions } from "@/hooks/use-organization-actions";
+import OrganizationCreateCard from "./organization-create-card";
+import OrganizationListCard from "./organization-list-card";
+import OrganizationEditDialog from "./organization-edit-dialog";
+import OrganizationLogoCard from "./organization-logo-card";
+import OrganizationMembersCard from "./organization-members-card";
+import type { OrganizationGetMyOrganizations } from "@/types/trpc-inferred";
 
 const orgSchema = z.object({
   name: z.string().min(2, "Name ist erforderlich"),
@@ -29,40 +33,41 @@ const orgSchema = z.object({
 export type OrgForm = z.infer<typeof orgSchema>;
 
 export default function OrganizationCrudTest() {
+  const trpcOptions = useTRPC();
+  
+  // Use the organization actions hook
+  const {
+    createOrganization,
+    editOrganization,
+    deleteOrganization,
+    addMember,
+    updateMemberRole,
+    removeMember,
+  } = useOrganizationActions();
 
-  const utils = trpc.useUtils()
   // State
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [membersMessage, setMembersMessage] = useState<string | null>(null);
-  const [membersMessageTone, setMembersMessageTone] = useState<"success" | "error">("success");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
 
-  // Queries & Mutations
-  const orgsQuery = trpc.organization.getMyOrganizations.useQuery();
-  const createOrg = trpc.organization.createOrganization.useMutation();
-  const editOrg = trpc.organization.editOrganization.useMutation();
-  const deleteOrg = trpc.organization.deleteOrganization.useMutation();
-  const membersQuery = trpc.organization.listMembers.useQuery(
-    { organizationId: selectedOrgId ?? "" },
-    { enabled: !!selectedOrgId }
-  );
-  const addMember = trpc.organization.addMember.useMutation();
-  const updateMemberRole = trpc.organization.updateMemberRole.useMutation();
-  const removeMember = trpc.organization.removeMember.useMutation();
+  // Queries
+  const { data: orgsData } = useSuspenseQuery(trpcOptions.organization.getMyOrganizations.queryOptions()) as { data: OrganizationGetMyOrganizations };
+  const membersQuery = useQuery({
+    ...trpcOptions.organization.listMembers.queryOptions({ organizationId: selectedOrgId ?? "" }),
+    enabled: !!selectedOrgId,
+  });
 
   // Get selected organization data
-  const selectedOrg = orgsQuery.data?.find((o) => o.id === selectedOrgId);
+  const selectedOrg = orgsData?.find((o) => o.id === selectedOrgId);
   const selectedOrgIsOwner = selectedOrg?.membershipRole === "owner";
 
   // Auto-select organization if user has only one
   useEffect(() => {
-    if (!selectedOrgId && orgsQuery.data && orgsQuery.data.length === 1) {
-      setSelectedOrgId(orgsQuery.data[0].id);
+    if (!selectedOrgId && orgsData && orgsData.length === 1) {
+      setSelectedOrgId(orgsData[0].id);
     }
-  }, [orgsQuery.data, selectedOrgId]);
+  }, [orgsData, selectedOrgId]);
 
   // Debug: Log selected org data
   useEffect(() => {
@@ -111,7 +116,7 @@ export default function OrganizationCrudTest() {
   // Set edit form values when org selected
   useEffect(() => {
     if (!editMode) return;
-    const org = orgsQuery.data?.find((o) => o.id === selectedOrgId);
+    const org = orgsData?.find((o) => o.id === selectedOrgId);
     if (org) {
       editForm.reset({
         name: org.name,
@@ -128,48 +133,36 @@ export default function OrganizationCrudTest() {
         registrationNumber: org.registrationNumber || "",
       });
     }
-  }, [selectedOrgId, editMode, orgsQuery.data, editForm]);
+  }, [selectedOrgId, editMode, orgsData, editForm]);
 
   // Handlers
   const handleCreate = (data: OrgForm) => {
-    setMessage(null);
-    createOrg.mutate(data, {
+    createOrganization.mutate(data, {
       onSuccess: () => {
-        setMessage("Organisation erstellt!");
         createForm.reset();
-        orgsQuery.refetch();
       },
-      onError: (err) => setMessage(err.message),
     });
   };
 
   const handleEdit = (data: OrgForm) => {
     if (!selectedOrgId) return;
-    setMessage(null);
-    editOrg.mutate(
+    editOrganization.mutate(
       { organizationId: selectedOrgId, ...data },
       {
         onSuccess: () => {
-          setMessage("Organisation bearbeitet!");
           setEditMode(false);
-          utils.organization.getMyOrganizations.invalidate();
         },
-        onError: (err) => setMessage(err.message),
       }
     );
   };
 
   const handleDelete = (id: string) => {
-    setMessage(null);
-    deleteOrg.mutate(
+    deleteOrganization.mutate(
       { organizationId: id },
       {
         onSuccess: () => {
-          setMessage("Organisation gelöscht!");
           if (selectedOrgId === id) setSelectedOrgId(null);
-          utils.organization.getMyOrganizations.invalidate();
         },
-        onError: (err) => setMessage(err.message),
       }
     );
   };
@@ -177,23 +170,14 @@ export default function OrganizationCrudTest() {
   const handleInviteMember = () => {
     if (!selectedOrgId) return;
     if (!inviteEmail.trim()) {
-      setMembersMessage("Bitte eine E-Mail-Adresse eingeben.");
-      setMembersMessageTone("error");
+      toast.error("Bitte eine E-Mail-Adresse eingeben.");
       return;
     }
-    setMembersMessage(null);
     addMember.mutate(
       { organizationId: selectedOrgId, email: inviteEmail.trim(), role: inviteRole },
       {
         onSuccess: () => {
           setInviteEmail("");
-          setMembersMessage("Mitglied hinzugefügt!");
-          setMembersMessageTone("success");
-          membersQuery.refetch();
-        },
-        onError: (err) => {
-          setMembersMessage(err.message);
-          setMembersMessageTone("error");
         },
       }
     );
@@ -205,15 +189,15 @@ export default function OrganizationCrudTest() {
       <OrganizationCreateCard
         form={createForm}
         onSubmit={handleCreate}
-        isSubmitting={createOrg.isPending}
+        isSubmitting={createOrganization.isPending}
         hidden={!!selectedOrgId}
       />
 
       <OrganizationListCard
-        organizations={orgsQuery.data}
-        isLoading={orgsQuery.isLoading}
-        errorMessage={orgsQuery.error?.message}
-        deletePending={deleteOrg.isPending}
+        organizations={orgsData}
+        isLoading={false}
+        errorMessage={undefined}
+        deletePending={deleteOrganization.isPending}
         onEdit={(orgId) => {
           setSelectedOrgId(orgId);
           setEditMode(true);
@@ -230,34 +214,26 @@ export default function OrganizationCrudTest() {
         }}
         form={editForm}
         onSubmit={handleEdit}
-        isSubmitting={editOrg.isPending}
+        isSubmitting={editOrganization.isPending}
         canEdit={selectedOrgIsOwner}
       />
 
-      {message && <div className="mt-4 text-green-600">{message}</div>}
-
       <OrganizationLogoCard
         selectedOrgId={selectedOrgId}
-        selectedOrgName={selectedOrg?.name ?? null}
         selectedOrgLogo={selectedOrg?.logo ?? null}
         selectedOrgIsOwner={selectedOrgIsOwner}
-        hasOrganizations={Boolean(orgsQuery.data && orgsQuery.data.length > 0)}
         onLogoUploaded={(url) => {
           if (!selectedOrgId) return;
-          editOrg.mutate(
+          editOrganization.mutate(
             { organizationId: selectedOrgId, logo: url },
             {
               onSuccess: () => {
-                setMessage("Logo erfolgreich hochgeladen!");
-                orgsQuery.refetch();
-              },
-              onError: (err) => {
-                setMessage(`Fehler beim Speichern: ${err.message}`);
+                toast.success("Logo erfolgreich hochgeladen!");
               },
             }
           );
         }}
-        onLogoError={(messageText) => setMessage(messageText)}
+        onLogoError={(messageText) => toast.error(messageText)}
       />
 
       {selectedOrgId && (
@@ -272,42 +248,20 @@ export default function OrganizationCrudTest() {
           members={membersQuery.data}
           membersLoading={membersQuery.isLoading}
           membersError={membersQuery.error?.message}
-          onUpdateRole={(memberId, role) =>
+          onUpdateRole={(memberId: string, role: "admin" | "member") =>
             updateMemberRole.mutate(
-              { organizationId: selectedOrgId, memberId, role },
-              {
-                onSuccess: () => {
-                  setMembersMessage("Rolle aktualisiert.");
-                  setMembersMessageTone("success");
-                  membersQuery.refetch();
-                },
-                onError: (err) => {
-                  setMembersMessage(err.message);
-                  setMembersMessageTone("error");
-                },
-              }
+              { organizationId: selectedOrgId, memberId, role }
             )
           }
-          onRemoveMember={(memberId) =>
+          onRemoveMember={(memberId: string) =>
             removeMember.mutate(
-              { organizationId: selectedOrgId, memberId },
-              {
-                onSuccess: () => {
-                  setMembersMessage("Mitglied entfernt.");
-                  setMembersMessageTone("success");
-                  membersQuery.refetch();
-                },
-                onError: (err) => {
-                  setMembersMessage(err.message);
-                  setMembersMessageTone("error");
-                },
-              }
+              { organizationId: selectedOrgId, memberId }
             )
           }
           updateRolePending={updateMemberRole.isPending}
           removePending={removeMember.isPending}
-          message={membersMessage}
-          messageTone={membersMessageTone}
+          message={null}
+          messageTone="success"
         />
       )}
     </div>

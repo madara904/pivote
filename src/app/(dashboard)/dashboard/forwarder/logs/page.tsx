@@ -8,9 +8,9 @@ export default async function ReportsPage() {
     <PageLayout>
       <PageHeaderWithBorder>
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Statistiken</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Logs & Events</h1>
           <p className="text-sm text-muted-foreground">
-            Übersicht über Ihre Statistiken und Berichte.
+            
           </p>
         </div>
       </PageHeaderWithBorder>

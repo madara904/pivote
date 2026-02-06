@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { TRPCProvider } from "@/trpc/client";
+import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     title: "Pivote DE | Dein sicherer Platz für effizienten Transporteinkauf!",
     description:
       "Pivote ist die moderne Plattform für Spedition & Logistik. Effizient, sicher und digital Transporte einkaufen und verwalten.",
-    url: "https://your-domain.com",
+    url: "https://pivote.de",
     siteName: "Pivote",
     images: [
       {
@@ -69,7 +69,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <TRPCProvider>
+    <TRPCReactProvider>
       <NuqsAdapter>
         <html lang="de">
           <head>
@@ -83,6 +83,6 @@ export default function RootLayout({
           </body>
         </html>
       </NuqsAdapter>
-    </TRPCProvider>
+    </TRPCReactProvider>
   );
 }

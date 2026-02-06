@@ -3,15 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { QuoteForm } from "../../components/quote-form";
 import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout";
 
 export function QuoteFormView({ inquiryId }: { inquiryId: string }) {
-
-  const [detail] = trpc.inquiry.forwarder.getInquiryDetail.useSuspenseQuery({
+  const trpcOptions = useTRPC();
+  const { data: detail } = useSuspenseQuery(trpcOptions.inquiry.forwarder.getInquiryDetail.queryOptions({
     inquiryId,
-  });
+  }));
 
   const inquiry = detail.inquiry;
 

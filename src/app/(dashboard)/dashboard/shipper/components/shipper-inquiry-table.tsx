@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ServiceIcon } from "@/components/ui/service-icon"
@@ -11,6 +10,7 @@ import {
   ShipperStatusContext,
   ShipperInquiryStatus 
 } from "@/lib/shipper-status-utils"
+import Link from "next/link"
 
 const getInitials = (name: string) =>
   name
@@ -67,7 +67,6 @@ interface ShipperInquiryTableProps {
 }
 
 export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTableProps) {
-  const router = useRouter()
 
   return (
     <div className="grid gap-4 grid-cols-1">
@@ -83,10 +82,10 @@ export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTabl
         const isArchived = inquiry.status === "expired" || inquiry.status === "cancelled" || inquiry.status === "closed"
 
         return (
+          <Link prefetch key={inquiry.id} href={`/dashboard/shipper/frachtanfragen/${inquiry.id}`}>
           <Card 
             key={inquiry.id} 
             className="overflow-hidden relative cursor-pointer hover:border-primary/50 transition-all"
-            onClick={() => router.push(`/dashboard/shipper/frachtanfragen/${inquiry.id}`)}
           >
             {inquiry.hasAcceptedQuotation && (
               <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
@@ -107,7 +106,7 @@ export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTabl
                         {inquiry.origin.code} → {inquiry.destination.code}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {inquiry.origin.country} → {inquiry.destination.country}
+                        {inquiry.origin.country} - {inquiry.destination.country}
                       </div>
                     </div>
                   </div>
@@ -211,6 +210,7 @@ export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTabl
               </div>
             </CardContent>
           </Card>
+          </Link>
         )
       })}
     </div>

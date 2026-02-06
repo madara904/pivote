@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileUp, Info, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,8 @@ export function InquiryDocumentUploadDialog({
 }) {
   const [docType, setDocType] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
-  const utils = trpc.useUtils();
+  const trpcOptions = useTRPC();
+  const queryClient = useQueryClient();
 
   const handleUploadError = (error: Error) => {
     setIsUploading(false);
@@ -49,11 +51,11 @@ export function InquiryDocumentUploadDialog({
     toast.error("Fehler beim Hochladen des Dokuments");
   };
 
-  const handleUploadComplete = () => {
+  const handleUploadComplete = async () => {
     setIsUploading(false);
     toast.success("Dokument erfolgreich hochgeladen");
     // Cache refreshen
-    utils.inquiry.shipper.getInquiryDetail.invalidate({ inquiryId });
+    await queryClient.invalidateQueries(trpcOptions.inquiry.shipper.getInquiryDetail.queryFilter({ inquiryId }));
     setDocType(""); 
     onClose();
   };

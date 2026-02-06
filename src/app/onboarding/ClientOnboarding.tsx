@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,10 +41,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LogoLoader } from "@/components/ui/loader";
-import { trpc } from "@/trpc/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
+import { useTRPC } from "@/trpc/client";
+import { useMutation } from "@tanstack/react-query";
 
 const organizationSchema = z.object({
   name: z.string().min(2, "Name muss mindestens 2 Zeichen lang sein"),
@@ -121,31 +122,21 @@ export default function OnboardingForm() {
   const [redirecting, setRedirecting] = useState(false);
   const [orgType, setOrgType] = useState<string | undefined>(undefined);
   const router = useRouter();
+  const trpcOptions = useTRPC();
 
-  const createOrg = trpc.organization.createOrganization.useMutation({
-    onSuccess: async (_, variables) => {
-      setOrgType(variables.type);
+  const createOrg = useMutation(trpcOptions.organization.createOrganization.mutationOptions({
+    onSuccess: async (data) => {
+      setOrgType(data.organization.type);
       setRedirecting(true);
-      
-      // Force refresh the session by disabling cookie cache
-      try {
-        await authClient.getSession({ query: { disableCookieCache: true } });
-      } catch (error) {
-        // Handle session refresh error
-      }
-      
-      // Use window.location.href for a hard redirect to ensure fresh session
-      if (variables.type === "forwarder") {
-        window.location.href = "/dashboard/forwarder";
+    },
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler beim Erstellen der Organisation: ${(error as { message?: string }).message}`);
       } else {
-        window.location.href = "/dashboard/shipper";
+        toast.error("Fehler beim Erstellen der Organisation: Unbekannter Fehler");
       }
     },
-    onError: (error) => {
-      toast.error(error.message ?? "Fehler beim Erstellen der Organisation.");
-      setIsSubmitting(false);
-    },
-  });
+  }));
 
   const form = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
@@ -167,6 +158,13 @@ export default function OnboardingForm() {
 
   const watchedName = form.watch("name");
   const watchedType = form.watch("type");
+
+  // Handle redirect after successful organization creation
+  useEffect(() => {
+    if (redirecting && orgType) {
+      router.push(`/dashboard/${orgType}`);
+    }
+  }, [redirecting, orgType, router]);
 
   // Navigation function - only validates and moves to next step
   const nextStep = async () => {
@@ -204,25 +202,20 @@ export default function OnboardingForm() {
     createOrg.mutate(
       { ...data, vatNumber: `DE${data.vatNumber}` },
       {
-        onError: () => {
-          setIsSubmitting(false);
-        },
         onSuccess: () => {
           setIsSubmitting(false);
+        },
+        onError: (error: unknown) => {
+          setIsSubmitting(false);
+          if (error && typeof error === "object" && "message" in error) {
+            toast.error(`Fehler beim Erstellen der Organisation: ${(error as { message?: string }).message}`);
+          } else {
+            toast.error("Fehler beim Erstellen der Organisation: Unbekannter Fehler");
+          }
         },
       }
     );
   };
-
-  if (redirecting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
-        <div className="flex flex-col items-center justify-center w-full h-full">
-          <LogoLoader size={64} color="var(--primary)" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[var(--background)] font-sans">
@@ -835,19 +828,19 @@ export default function OnboardingForm() {
                     <Button
                       type="button"
                       onClick={form.handleSubmit(handleSubmit)}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || createOrg.isPending}
                       className="flex items-center space-x-2 bg-primary"
                     >
-                      {isSubmitting && (
+                      {(isSubmitting || createOrg.isPending) && (
                         <DotLoading size="sm" className="mr-2" />
                       )}
                       <span className="hidden sm:inline">
-                        {isSubmitting
+                        {(isSubmitting || createOrg.isPending)
                           ? "Erstelle Organisation.."
                           : "Organisation erstellen"}
                       </span>
                       <span className="sm:hidden">
-                        {isSubmitting ? "Erstelle.." : "Erstellen"}
+                        {(isSubmitting || createOrg.isPending) ? "Erstelle.." : "Erstellen"}
                       </span>
                     </Button>
                   )}

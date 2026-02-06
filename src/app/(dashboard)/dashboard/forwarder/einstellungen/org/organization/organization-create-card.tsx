@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UseFormReturn } from "react-hook-form";
-import type { OrgForm } from "../organization-create-form";
+import type { OrgForm } from "./organization-create-form";
 
 interface OrganizationCreateCardProps {
   form: UseFormReturn<OrgForm>;

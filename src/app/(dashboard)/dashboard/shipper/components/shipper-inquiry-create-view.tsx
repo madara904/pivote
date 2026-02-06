@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useQuery } from "@tanstack/react-query";
 import InquiryForm from "./inquiry-form";
 import { DotLoading } from "@/components/ui/dot-loading";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,11 +10,12 @@ import { AlertTriangle } from "lucide-react";
 import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout";
 
 const ShipperInquiryCreateView = () => {
+  const trpcOptions = useTRPC();
   const {
     data: forwardersData,
     error: forwardersError,
     isLoading: forwardersLoading,
-  } = trpc.inquiry.shipper.getConnectedForwarders.useQuery();
+  } = useQuery(trpcOptions.inquiry.shipper.getConnectedForwarders.queryOptions());
 
   const errorMessage = useMemo(
     () => forwardersError?.message || "Unbekannter Fehler",

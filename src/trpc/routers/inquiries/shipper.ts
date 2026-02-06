@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { createTRPCRouter, protectedProcedure, TRPCContext } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, desc, and, ne, inArray } from "drizzle-orm";
 import { organization, organizationMember, organizationConnection, inquiry, inquiryDocument, inquiryForwarder, inquiryPackage, quotation, inquiryNote, user } from "@/db/schema";
 import { z } from "zod";
@@ -11,7 +11,7 @@ import { utapi } from "@/app/api/uploadthing/core";
 
 export const shipperRouter = createTRPCRouter({
   // Get connected forwarders for selection
-  getConnectedForwarders: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
+  getConnectedForwarders: protectedProcedure.query(async ({ ctx }) => {
     const { db } = ctx;
     
     try {
@@ -62,31 +62,22 @@ export const shipperRouter = createTRPCRouter({
   }),
 
   // Get shipper's inquiries
-  getMyInquiries: protectedProcedure.query(async ({ ctx }: { ctx: TRPCContext }) => {
+  getMyInquiries: protectedProcedure.query(async ({ ctx }) => {
     const { db, session } = ctx;
     
     try {
-      // Check and update expired items first
-      await checkAndUpdateExpiredItems(db);
-      
       // Get membership first
-      const orgId = await requireOrgId(ctx);
-      const membership = await db.query.organizationMember.findFirst({
-        where: eq(organizationMember.organizationId, orgId),
-        with: { organization: true }
-      });
-      
-      if (!membership?.organization) {
-        return [];
-      }
-
-      if (membership.organization.type !== 'shipper') {
+      const membership = await requireOrgAndType(ctx);
+      if (membership.organizationType !== "shipper") {
         throw new Error("Organisation ist kein Versender");
       }
       
+      // Check and update expired items
+      await checkAndUpdateExpiredItems(db);
+      
       // Get inquiries created by this shipper with quotation data
       const inquiries = await db.query.inquiry.findMany({
-        where: eq(inquiry.shipperOrganizationId, membership.organization.id),
+        where: eq(inquiry.shipperOrganizationId, membership.organizationId),
         with: {
           packages: true,
           documents: true,
@@ -173,7 +164,7 @@ export const shipperRouter = createTRPCRouter({
 
   getInquiryDetail: protectedProcedure
     .input(z.object({ inquiryId: z.string() }))
-    .query(async ({ ctx, input }: { ctx: TRPCContext; input: { inquiryId: string } }) => {
+    .query(async ({ ctx, input }) => {
       const { db } = ctx;
 
       // Check and update expired items first

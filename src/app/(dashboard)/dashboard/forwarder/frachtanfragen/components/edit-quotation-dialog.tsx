@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "lucide-react";
-import { trpc } from "@/trpc/client";
+import { useTRPC } from "@/trpc/client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { sanitizeMoneyInput, sanitizeIntegerInput } from "@/lib/form-sanitization";
 import { DotLoading } from "@/components/ui/dot-loading";
@@ -21,7 +22,8 @@ interface EditQuotationDialogProps {
 }
 
 export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange }: EditQuotationDialogProps) {
-  const utils = trpc.useUtils();
+  const trpcOptions = useTRPC();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     totalPrice: 0,
     currency: "EUR",
@@ -38,10 +40,10 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { data: quotationData, isLoading: isLoadingQuotation } = trpc.quotation.forwarder.getQuotation.useQuery(
-    { quotationId },
-    { enabled: open && !!quotationId }
-  );
+  const { data: quotationData, isLoading: isLoadingQuotation } = useQuery({
+    ...trpcOptions.quotation.forwarder.getQuotation.queryOptions({ quotationId }),
+    enabled: open && !!quotationId,
+  });
 
   // Load quotation data into form when it's available
   useEffect(() => {
@@ -66,17 +68,21 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
     }
   }, [quotationData]);
 
-  const correctQuotation = trpc.quotation.forwarder.correctQuotation.useMutation({
-    onSuccess: () => {
-      utils.inquiry.forwarder.getMyInquiriesFast.invalidate();
-      utils.quotation.forwarder.getInquiryQuotations.invalidate({ inquiryId });
+  const correctQuotation = useMutation(trpcOptions.quotation.forwarder.correctQuotation.mutationOptions({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries(trpcOptions.inquiry.forwarder.getMyInquiriesFast.queryFilter());
+      await queryClient.invalidateQueries(trpcOptions.quotation.forwarder.getInquiryQuotations.queryFilter({ inquiryId }));
       toast.success("Angebot erfolgreich korrigiert");
       onOpenChange(false);
     },
-    onError: (error) => {
-      toast.error(`Fehler beim Korrigieren: ${error.message}`);
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler beim Korrigieren: ${(error as { message?: string }).message}`);
+      } else {
+        toast.error("Fehler beim Korrigieren");
+      }
     }
-  });
+  }));
 
   // Calculate total price from cost breakdown
   const calculatedTotal =

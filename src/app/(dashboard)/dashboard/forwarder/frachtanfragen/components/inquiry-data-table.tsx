@@ -16,8 +16,9 @@ import { Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2, Mes
 import { ServiceIcon } from "@/components/ui/service-icon"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { trpc } from "@/trpc/client"
+import { useTRPC } from "@/trpc/client";
 import { toast } from "sonner"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { QuotationViewDialog } from "./quotation-view-dialog"
 import { EditQuotationDialog } from "./edit-quotation-dialog"
@@ -67,6 +68,9 @@ export type FreightInquiry = {
   destination: { code: string; country: string }
   documentCount?: number
   noteCount?: number
+  totalVolume?: string | number
+  validityDate?: Date | string | null
+  hasDangerousGoods?: boolean
 }
 
 interface InquiryDataTableProps<TData extends FreightInquiry> {
@@ -77,16 +81,23 @@ interface InquiryDataTableProps<TData extends FreightInquiry> {
 }
 
 function RejectInquiryButton({ inquiryId }: { inquiryId: string }) {
-  const utils = trpc.useUtils();
-  const rejectInquiry = trpc.inquiry.forwarder.rejectInquiry.useMutation({
-    onSuccess: () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const rejectInquiry = useMutation(trpc.inquiry.forwarder.rejectInquiry.mutationOptions({
+    onSuccess: async () => {
       toast.info("Anfrage erfolgreich abgelehnt");
-      utils.inquiry.forwarder.getMyInquiriesFast.invalidate();
+      await queryClient.invalidateQueries(
+        trpc.inquiry.forwarder.getMyInquiriesFast.queryFilter()
+      );
     },
-    onError: (error) => {
-      toast.error(`Fehler beim Ablehnen: ${error.message}`);
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler beim Ablehnen: ${(error as { message?: string }).message}`);
+      } else {
+        toast.error("Fehler beim Ablehnen: Unbekannter Fehler");
+      }
     }
-  });
+  }));
 
   const handleReject = () => {
     rejectInquiry.mutate({ inquiryId });
@@ -118,16 +129,23 @@ function RejectInquiryButton({ inquiryId }: { inquiryId: string }) {
 }
 
 function DeleteQuotationButton({ quotationId }: { quotationId: string }) {
-  const utils = trpc.useUtils();
-  const deleteQuotation = trpc.quotation.forwarder.deleteQuotation.useMutation({
-    onSuccess: () => {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const deleteQuotation = useMutation(trpc.quotation.forwarder.deleteQuotation.mutationOptions({
+    onSuccess: async () => {
       toast.success("Angebot erfolgreich gelöscht");
-      utils.inquiry.forwarder.getMyInquiriesFast.invalidate();
+      await queryClient.invalidateQueries(
+        trpc.inquiry.forwarder.getMyInquiriesFast.queryFilter()
+      );
     },
-    onError: (error) => {
-      toast.error(`Fehler beim Löschen: ${error.message}`);
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        toast.error(`Fehler beim Löschen: ${(error as { message?: string }).message}`);
+      } else {
+        toast.error("Fehler beim Löschen: Unbekannter Fehler");
+      }
     }
-  });
+  }));
 
   return (
     <ConfirmationDialog

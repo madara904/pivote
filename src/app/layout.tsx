@@ -4,6 +4,7 @@ import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { ThemeProvider } from "@/components/theme-provider"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,20 +70,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <TRPCReactProvider>
-      <NuqsAdapter>
-        <html lang="de">
+
+      <TRPCReactProvider>
+        <NuqsAdapter>
+          <html lang="de" suppressHydrationWarning>
           <head>
             <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
           </head>
-          <body
+          <body 
             className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+            suppressHydrationWarning
           >
-            {children}
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="root"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
             <Toaster closeButton={true} theme="light" richColors/>
           </body>
         </html>
-      </NuqsAdapter>
-    </TRPCReactProvider>
+        </NuqsAdapter>
+      </TRPCReactProvider>
   );
 }

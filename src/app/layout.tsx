@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { headers } from "next/headers";
 import { cloakSSROnlySecret } from "ssr-only-secrets";
+import { Analytics } from '@vercel/analytics/next';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,6 +87,7 @@ export default async function RootLayout({
           >
             {children}
             <Toaster closeButton={true} theme="light" richColors/>
+            <Analytics />
           </body>
         </html>
       </NuqsAdapter>

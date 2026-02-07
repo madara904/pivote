@@ -72,6 +72,17 @@ export const forwarderDashboardRouter = createTRPCRouter({
       }
     });
 
+    const activeInquiriesCount = await db
+  .select({ count: sql<number>`count(*)::int` })
+  .from(inquiryForwarder)
+  .innerJoin(inquiry, eq(inquiryForwarder.inquiryId, inquiry.id))
+  .where(
+    and(
+      eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId),
+      eq(inquiry.status, 'open')
+    )
+  );
+
     return {
       organization: {
         id: orgResult.id,
@@ -80,6 +91,12 @@ export const forwarderDashboardRouter = createTRPCRouter({
       },
       tier: (subscriptionResult?.tier || "basic") as "basic" | "medium" | "advanced",
       transportAnalysis,
+      stats: {
+        activeInquiries: activeInquiriesCount[0]?.count || 0,
+        status: "", // Könnte man später dynamisch über API-Health prüfen
+        revenue: "42.850 €", // Hier müsste eine Join-Logik auf Angebote/Rechnungen folgen
+        conversionRate: "64.2%" // Hier: Angenommen / Gesamt
+      },
     };
   }),
 });

@@ -2,28 +2,35 @@ import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-export const dynamic = 'force-dynamic'; // Wichtig für Vercel!
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const dbStart = Date.now();
+  
   const health = {
-    status: "OK",
+    status: "healthy",
     timestamp: new Date().toISOString(),
-    environment: process.env.VERCEL_ENV || "http://localhost:3000",
+    uptime: process.uptime(),
     checks: {
-      database: { status: "OK", responseTime: 0 },
+      database: {
+        status: "up",
+        responseTime: 0,
+      },
     },
   };
 
+  // Database Check
   try {
     const dbStart = Date.now();
     await db.execute(sql`SELECT 1`);
     health.checks.database.responseTime = Date.now() - dbStart;
-    
-    return NextResponse.json(health, { status: 200 });
   } catch (error) {
-    health.status = "ERROR";
-    health.checks.database.status = "ERROR";
+    health.status = "unhealthy";
+    health.checks.database.status = "down";
+    health.checks.database.responseTime = Date.now() - dbStart;
     
     return NextResponse.json(health, { status: 503 });
   }
+
+  return NextResponse.json(health, { status: 200 });
 }

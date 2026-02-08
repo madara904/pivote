@@ -42,21 +42,21 @@ export const SEARCH_FUNCTIONALITY_LIST: FunctionalityAction[] = [
 
     {
         title: "Kontoeinstellungen ändern",
-        url: "/dashboard/forwarder/einstellungen?tab=account",
+        url: "/dashboard/forwarder/einstellungen/konto",
         icon: User,
         keywords: ["account", "konto", "profile", "settings", "einstellungen", "profil", "ändern"],
         group: "settings",
     },
     {
         title: "Sicherheitseinstellungen ändern",
-        url: "/dashboard/forwarder/einstellungen?tab=security",
+        url: "/dashboard/forwarder/einstellungen/sicherheit",
         icon: Lock,
         keywords: ["security", "sicherheit", "password", "passwort", "settings", "einstellungen", "ändern"],
         group: "settings",
     },
     {
         title: "Organisation verwalten",
-        url: "/dashboard/forwarder/einstellungen?tab=org",
+        url: "/dashboard/forwarder/einstellungen/organisation",
         icon: Building2,
         keywords: ["organization", "organisation", "org", "company", "firma", "settings", "einstellungen", "verwalten"],
         group: "settings",

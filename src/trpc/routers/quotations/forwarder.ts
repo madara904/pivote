@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure, forwarderQuotationLimitMiddleware } from "@/trpc/init";
 import { eq, and } from "drizzle-orm";
-import { quotation, inquiry, inquiryForwarder, organizationConnection } from "@/db/schema";
+import { quotation, inquiry, inquiryForwarder, organizationConnection, activityEvent } from "@/db/schema";
 import { z } from "zod";
 import { inquiryIdSchema, quotationIdSchema } from "@/trpc/common/schemas";
 import { requireOrgId } from "@/trpc/common/membership";
@@ -54,6 +54,7 @@ export const forwarderRouter = createTRPCRouter({
           id: inquiry.id,
           status: inquiry.status,
           shipperOrganizationId: inquiry.shipperOrganizationId,
+          referenceNumber: inquiry.referenceNumber,
         })
         .from(inquiry)
         .where(eq(inquiry.id, input.inquiryId))
@@ -196,6 +197,7 @@ export const forwarderRouter = createTRPCRouter({
           id: inquiry.id,
           status: inquiry.status,
           shipperOrganizationId: inquiry.shipperOrganizationId,
+          referenceNumber: inquiry.referenceNumber,
         })
         .from(inquiry)
         .where(eq(inquiry.id, input.inquiryId))
@@ -289,6 +291,20 @@ export const forwarderRouter = createTRPCRouter({
               )
             );
 
+          await db.insert(activityEvent).values({
+            organizationId,
+            actorUserId: session.user.id,
+            type: "quotation.submitted",
+            entityType: "quotation",
+            entityId: existingQuotation[0].id,
+            payload: {
+              inquiryId: input.inquiryId,
+              referenceNumber: inquiryResult[0].referenceNumber,
+              totalPrice: input.totalPrice,
+              currency: input.currency,
+            },
+          });
+
           return { 
             success: true, 
             quotationId: existingQuotation[0].id,
@@ -327,6 +343,20 @@ export const forwarderRouter = createTRPCRouter({
           .returning({ id: quotation.id });
 
         const quotationId = quotationResult[0].id;
+
+        await db.insert(activityEvent).values({
+          organizationId,
+          actorUserId: session.user.id,
+          type: "quotation.submitted",
+          entityType: "quotation",
+          entityId: quotationId,
+          payload: {
+            inquiryId: input.inquiryId,
+            referenceNumber: inquiryResult[0].referenceNumber,
+            totalPrice: input.totalPrice,
+            currency: input.currency,
+          },
+        });
 
         // Update inquiry_forwarder response status to "quoted"
         await db
@@ -557,7 +587,11 @@ export const forwarderRouter = createTRPCRouter({
 
       // Verify the inquiry exists
       const inquiryResult = await db
-        .select({ id: inquiry.id, status: inquiry.status })
+        .select({
+          id: inquiry.id,
+          status: inquiry.status,
+          referenceNumber: inquiry.referenceNumber,
+        })
         .from(inquiry)
         .where(eq(inquiry.id, input.inquiryId))
         .limit(1);
@@ -620,6 +654,20 @@ export const forwarderRouter = createTRPCRouter({
             eq(inquiryForwarder.forwarderOrganizationId, organizationId)
           )
         );
+
+      await db.insert(activityEvent).values({
+        organizationId,
+        actorUserId: session.user.id,
+        type: "quotation.submitted",
+        entityType: "quotation",
+        entityId: input.quotationId,
+        payload: {
+          inquiryId: input.inquiryId,
+          referenceNumber: inquiryResult[0].referenceNumber,
+          totalPrice: input.totalPrice,
+          currency: input.currency,
+        },
+      });
 
       return { 
         success: true,

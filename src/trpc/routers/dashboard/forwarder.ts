@@ -1,9 +1,42 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { eq, and, sql } from "drizzle-orm";
-import { inquiryForwarder, organizationMember, inquiry, organization, subscription } from "@/db/schema";
+import { eq, and, sql, desc } from "drizzle-orm";
+import { activityEvent, inquiryForwarder, organizationMember, inquiry, organization, subscription, user } from "@/db/schema";
 import { requireOrgAndType } from "@/trpc/common/membership";
+import { z } from "zod";
 
 export const forwarderDashboardRouter = createTRPCRouter({
+  getActivityFeed: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const membership = await requireOrgAndType(ctx);
+      if (membership.organizationType !== "forwarder") {
+        throw new Error("Nur Spediteure können Aktivitäten abrufen");
+      }
+
+      const limit = input?.limit ?? 10;
+
+      const rows = await ctx.db
+        .select({
+          id: activityEvent.id,
+          type: activityEvent.type,
+          createdAt: activityEvent.createdAt,
+          payload: activityEvent.payload,
+          actorName: user.name,
+        })
+        .from(activityEvent)
+        .leftJoin(user, eq(activityEvent.actorUserId, user.id))
+        .where(eq(activityEvent.organizationId, membership.organizationId))
+        .orderBy(desc(activityEvent.createdAt))
+        .limit(limit);
+
+      return rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        createdAt: row.createdAt,
+        payload: row.payload ?? null,
+        actorName: row.actorName ?? null,
+      }));
+    }),
   getOverview: protectedProcedure.query(async ({ ctx }) => {
     const { db, session } = ctx;
     
@@ -83,20 +116,35 @@ export const forwarderDashboardRouter = createTRPCRouter({
     )
   );
 
-    return {
-      organization: {
-        id: orgResult.id,
-        name: orgResult.name,
-        logo: orgResult.logo,
-      },
-      tier: (subscriptionResult?.tier || "basic") as "basic" | "medium" | "advanced",
-      transportAnalysis,
-      stats: {
-        activeInquiries: activeInquiriesCount[0]?.count || 0,
-        status: "", // Könnte man später dynamisch über API-Health prüfen
-        revenue: "42.850 €", // Hier müsste eine Join-Logik auf Angebote/Rechnungen folgen
-        conversionRate: "64.2%" // Hier: Angenommen / Gesamt
-      },
-    };
-  }),
+  let systemStatus: "Healthy" | "Degraded" | "Down" = "Healthy";
+  let dbResponseTime = 0;
+  
+  try {
+    const dbStart = Date.now();
+    await db.execute(sql`SELECT 1`);
+    dbResponseTime = Date.now() - dbStart;
+    
+    if (dbResponseTime > 1000) {
+      systemStatus = "Degraded";
+    }
+  } catch (error) {
+    systemStatus = "Down";
+  }
+
+  return {
+    organization: {
+      id: orgResult.id,
+      name: orgResult.name,
+      logo: orgResult.logo,
+    },
+    tier: (subscriptionResult?.tier || "basic") as "basic" | "medium" | "advanced",
+    transportAnalysis,
+    stats: {
+      activeInquiries: activeInquiriesCount[0]?.count || 0,
+      status: systemStatus,
+      revenue: "42.850 €",
+      conversionRate: "64.2%"
+    },
+  };
+})
 });

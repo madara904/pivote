@@ -67,7 +67,7 @@ export default function DashboardOverviewNew() {
         <div className="flex flex-col min-h-0 lg:min-h-[460px] py-4">
            <div className="flex flex-col w-full space-y-6 lg:space-y-10 lg:flex-1 lg:justify-center">
               <div className="space-y-2 shrink-0">
-                <Select defaultValue="30d">
+                <Select defaultValue="30d" >
                   <SelectTrigger className="w-[160px] h-8 text-[11px] font-bold bg-background border-border/60">
                     <CalendarDays className="h-3.5 w-3.5 mr-2 text-muted-foreground"/>
                     <SelectValue placeholder="Zeitraum" />
@@ -208,7 +208,6 @@ export default function DashboardOverviewNew() {
 
       <div className="mt-12">
         <ActivityAndQuickActions />
-        <Analytics />
       </div>
     </div>
   );
@@ -275,7 +274,138 @@ function MetricBlock({ icon, label, value, sub }: any) {
   );
 }
 
+type ActivityFeedItem = {
+  id: string;
+  type: string;
+  createdAt: Date;
+  payload: Record<string, unknown> | null;
+  actorName: string | null;
+};
+
+type ActivityEntry = {
+  id: string;
+  time: string;
+  message: string;
+  detailPrimary?: string;
+  detailSecondary?: string;
+};
+
+const serviceTypeLabels: Record<string, string> = {
+  air_freight: "Air",
+  sea_freight: "Sea",
+  road_freight: "Road",
+  rail_freight: "Rail",
+};
+
+function formatRelativeTime(date: Date) {
+  const diffMs = Date.now() - new Date(date).getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 1) return "Gerade eben";
+  if (diffMinutes < 60) return `Vor ${diffMinutes} Min`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `Vor ${diffHours} Std`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `Vor ${diffDays} Tg`;
+}
+
+function formatCurrency(value: unknown, currency: string | undefined) {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) return null;
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: currency || "EUR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function buildActivityEntry(item: ActivityFeedItem): ActivityEntry {
+  const payload = (item.payload ?? {}) as Record<string, unknown>;
+  const referenceNumber = payload.referenceNumber as string | undefined;
+  const shipperOrgName = payload.shipperOrgName as string | undefined;
+  const serviceType = payload.serviceType as string | undefined;
+  const originCity = payload.originCity as string | undefined;
+  const destinationCity = payload.destinationCity as string | undefined;
+  const currency = payload.currency as string | undefined;
+  const priceLabel = formatCurrency(payload.totalPrice, currency);
+  const actorName = item.actorName ?? "Jemand";
+
+  switch (item.type) {
+    case "inquiry.received":
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `Neue Anfrage${referenceNumber ? ` #${referenceNumber}` : ""} erhalten`,
+        detailPrimary: shipperOrgName || "Versender",
+        detailSecondary: serviceTypeLabels[serviceType ?? ""] || "Anfrage",
+      };
+    case "quotation.submitted":
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `${actorName} hat ein Angebot${referenceNumber ? ` #${referenceNumber}` : ""} eingereicht`,
+        detailPrimary: priceLabel || "Angebot",
+        detailSecondary: shipperOrgName ? "Versender" : "Angebot",
+      };
+    case "quotation.accepted":
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `Angebot${referenceNumber ? ` #${referenceNumber}` : ""} angenommen`,
+        detailPrimary: shipperOrgName || "Versender",
+        detailSecondary: "Akzeptiert",
+      };
+    case "quotation.rejected":
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `Angebot${referenceNumber ? ` #${referenceNumber}` : ""} abgelehnt`,
+        detailPrimary: shipperOrgName || "Versender",
+        detailSecondary: "Abgelehnt",
+      };
+    case "connection.requested":
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `Verbindungsanfrage von ${shipperOrgName || "Versender"}`,
+        detailPrimary: shipperOrgName || "Versender",
+        detailSecondary: actorName,
+      };
+    case "connection.accepted":
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `Verbindung mit ${shipperOrgName || "Versender"} angenommen`,
+        detailPrimary: shipperOrgName || "Versender",
+        detailSecondary: actorName,
+      };
+    case "connection.removed":
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `Verbindung mit ${shipperOrgName || "Versender"} entfernt`,
+        detailPrimary: shipperOrgName || "Versender",
+        detailSecondary: actorName,
+      };
+    default:
+      return {
+        id: item.id,
+        time: formatRelativeTime(item.createdAt),
+        message: `${actorName} hat eine Aktion ausgeführt`,
+      };
+  }
+}
+
 function ActivityAndQuickActions() {
+  const trpcOptions = useTRPC();
+  const { data: activityItems } = useSuspenseQuery(
+    trpcOptions.dashboard.forwarder.getActivityFeed.queryOptions({ limit: 8 })
+  );
+
+  const entries = activityItems.map((item) => buildActivityEntry(item));
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 lg:mx-auto lg:w-full mt-12 pb-20">
       <div className="space-y-6">
@@ -283,18 +413,28 @@ function ActivityAndQuickActions() {
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Aktivitäten</h3>
         </div>
         <div className="space-y-4">
-          {[{ time: "Vor 2 Min", msg: "Anfrage #RF-2024-001 erhalten", city: "HAMBURG (DE)", type: "Air" }, { time: "Vor 14 Min", msg: "Angebot akzeptiert: €12.400", city: "SHANGHAI (CN)", type: "Sea" }, { time: "Vor 1 Std", msg: "Dokumente hochgeladen: Packing List", city: "MÜNCHEN (DE)", type: "Road" }].map((item, i) => (
-            <div key={i} className="group flex items-center justify-between p-3 bg-slate-50/10 border border-transparent hover:border-border hover:bg-background transition-all cursor-pointer">
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black text-muted-foreground/40 uppercase">{item.time}</span>
-                <span className="text-sm font-bold text-slate-900 tracking-tight">{item.msg}</span>
-              </div>
-              <div className="text-right">
-                <div className="text-xs font-black text-primary">{item.city}</div>
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{item.type}</div>
-              </div>
+          {entries.length === 0 ? (
+            <div className="p-6 border border-dashed rounded-xl text-sm text-muted-foreground">
+              Noch keine Aktivitäten vorhanden.
             </div>
-          ))}
+          ) : (
+            entries.map((item) => (
+              <div key={item.id} className="group flex items-center justify-between p-3 bg-slate-50/10 border border-transparent hover:border-border hover:bg-background transition-all cursor-pointer">
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black text-muted-foreground/40 uppercase">{item.time}</span>
+                  <span className="text-sm font-bold text-slate-900 tracking-tight">{item.message}</span>
+                </div>
+                <div className="text-right">
+                  {item.detailPrimary && (
+                    <div className="text-xs font-black text-primary">{item.detailPrimary}</div>
+                  )}
+                  {item.detailSecondary && (
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{item.detailSecondary}</div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

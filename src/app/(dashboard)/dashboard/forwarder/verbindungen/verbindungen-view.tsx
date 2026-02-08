@@ -63,11 +63,11 @@ const ForwarderConnectionsView = () => {
           {/* Tab 1: Netzwerk */}
           <TabsTrigger 
             value="active" 
-            className="data-[state=active]:border-primary border border-border bg-background p-6 rounded-none flex items-center gap-x-6 transition-all shadow-sm justify-start w-full text-left"
+            className="data-[state=active]:border-primary border border-border bg-background p-5 rounded-none flex items-center gap-x-6 transition-all shadow-sm justify-start w-full text-left"
           >
-            <div className="flex items-center justify-center p-4 shrink-0">
-              <Users className="text-primary" size={32} strokeWidth={1.5} />
-            </div>
+            <div className="flex items-center justify-center p-4">
+              <Users className="text-foreground size-6" />
+            </div>  
             <div className="flex flex-col items-start">
               <span className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground/80 leading-none mb-1">
                 Verbundene Partner
@@ -84,13 +84,13 @@ const ForwarderConnectionsView = () => {
           {/* Tab 2: Anfragen */}
           <TabsTrigger 
             value="pending" 
-            className="data-[state=active]:border-primary border border-border bg-background p-6 rounded-none flex items-center gap-x-6 transition-all shadow-sm justify-start relative overflow-hidden w-full text-left"
+            className="data-[state=active]:border-primary border border-border bg-background rounded-none flex items-center p-5 gap-x-6 transition-all shadow-sm justify-start relative overflow-hidden w-full text-left"
           >
             {pendingData?.items.length ? (
                 <div className="absolute top-0 right-0 h-1.5 w-full bg-orange-500" />
             ) : null}
-            <div className="flex items-center justify-center p-4 shrink-0 w-fit h-fit">
-              <UserPlus className="text-primary" size={24} strokeWidth={1.5} />
+            <div className="flex items-center justify-center p-4">
+              <UserPlus className="text-foreground size-6" />
             </div>
             <div className="flex flex-col items-start">
               <span className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground/80 leading-none mb-1">
@@ -143,6 +143,11 @@ const ForwarderConnectionsView = () => {
                             <ConfirmationDialog
                               title="Verbindung trennen"
                               description="Möchten Sie diese Verbindung wirklich trennen?"
+                              confirmText="Verbindung trennen"
+                              cancelText="Abbrechen"
+                              variant="destructive"
+                              loading={removeConnection.isPending}
+                              loadingText="Verbindung trennen..."
                               onConfirm={() => removeConnection.mutate({ connectionId: connection.id })}
                             >
                               <Button 

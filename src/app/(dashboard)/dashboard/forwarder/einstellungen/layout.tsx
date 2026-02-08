@@ -6,26 +6,31 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { key: "account", label: "Konto", href: "/dashboard/forwarder/einstellungen/account" },
-  { key: "security", label: "Sicherheit", href: "/dashboard/forwarder/einstellungen/security" },
-  { key: "org", label: "Organisation", href: "/dashboard/forwarder/einstellungen/org" },
+  { key: "konto", label: "Konto", href: "/dashboard/forwarder/einstellungen/konto" },
+  { key: "sicherheit", label: "Sicherheit", href: "/dashboard/forwarder/einstellungen/sicherheit" },
+  { key: "organisation", label: "Organisation", href: "/dashboard/forwarder/einstellungen/organisation" },
 ] as const;
 
 export default function EinstellungenLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const normalizedPathname =
+    pathname === "/dashboard/forwarder/einstellungen"
+      ? "/dashboard/forwarder/einstellungen/konto"
+      : pathname;
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="pt-8 pb-0 px-6 md:px-10 border-b bg-background/50 backdrop-blur-md sticky top-0 z-10">
+      <div className="pt-8 pb-0 px-6 md:px-10 border-b bg-background/50 backdrop-blur-md">
         <h1 className="text-2xl font-bold tracking-tight mb-6">Einstellungen</h1>
         
         <nav className="flex items-center gap-6 overflow-x-auto no-scrollbar">
           {NAV_ITEMS.map(({ key, label, href }) => {
-            const isActive = pathname === href;
+            const isActive = normalizedPathname === href;
             return (
               <Link
                 key={key}
                 href={href}
+                prefetch
                 className={cn(
                   "relative pb-3 text-sm transition-all duration-200 ease-in-out whitespace-nowrap",
                   isActive 

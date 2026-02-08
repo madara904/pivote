@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { IconInput } from "@/components/ui/icon-input";
 
 import { CircleAlert, Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from "lucide-react";
 
@@ -226,29 +226,26 @@ export const ResetPasswordForm = ({ token }: ResetPasswordFormProps) => {
                           Neues Passwort
                         </FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <div className="absolute left-0 top-1 bottom-1 flex items-center pl-3 pr-3 border-r border-border">
-                              <Lock className="text-muted-foreground h-4 w-4" />
-                            </div>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="********"
-                              className="h-10 pl-12 pr-10"
-                              {...field}
-                            />
-                            <button
-                              type="button"
-                              onClick={togglePasswordVisibility}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                              tabIndex={-1}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4 cursor-pointer" />
-                              ) : (
-                                <Eye className="h-4 w-4 cursor-pointer" />
-                              )}
-                            </button>
-                          </div>
+                          <IconInput
+                            icon={<Lock className="h-4 w-4" />}
+                            type={showPassword ? "text" : "password"}
+                            placeholder="********"
+                            rightElement={
+                              <button
+                                type="button"
+                                onClick={togglePasswordVisibility}
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                tabIndex={-1}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4 cursor-pointer" />
+                                ) : (
+                                  <Eye className="h-4 w-4 cursor-pointer" />
+                                )}
+                              </button>
+                            }
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
@@ -264,29 +261,26 @@ export const ResetPasswordForm = ({ token }: ResetPasswordFormProps) => {
                           Passwort bestätigen
                         </FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <div className="absolute left-0 top-1 bottom-1 flex items-center pl-3 pr-3 border-r border-border">
-                              <Lock className="text-muted-foreground h-4 w-4" />
-                            </div>
-                            <Input
-                              type={showConfirmPassword ? "text" : "password"}
-                              placeholder="********"
-                              className="h-10 pl-12 pr-10"
-                              {...field}
-                            />
-                            <button
-                              type="button"
-                              onClick={toggleConfirmPasswordVisibility}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                              tabIndex={-1}
-                            >
-                              {showConfirmPassword ? (
-                                <EyeOff className="h-4 w-4 cursor-pointer" />
-                              ) : (
-                                <Eye className="h-4 w-4 cursor-pointer" />
-                              )}
-                            </button>
-                          </div>
+                          <IconInput
+                            icon={<Lock className="h-4 w-4" />}
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="********"
+                            rightElement={
+                              <button
+                                type="button"
+                                onClick={toggleConfirmPasswordVisibility}
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                tabIndex={-1}
+                              >
+                                {showConfirmPassword ? (
+                                  <EyeOff className="h-4 w-4 cursor-pointer" />
+                                ) : (
+                                  <Eye className="h-4 w-4 cursor-pointer" />
+                                )}
+                              </button>
+                            }
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>

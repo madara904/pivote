@@ -20,6 +20,15 @@
   }
 }
 
+@keyframes dotScale {
+  0%, 80%, 100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.5);
+  }
+}
+
 :root {
   --background: oklch(0.9940 0 0);
   --foreground: oklch(0 0 0);

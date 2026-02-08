@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { LoginForm } from "../components/login-form";
 import { LogoLoader } from "@/components/ui/loader";
+import LoginForm from "../components/login-form";
 
 export default function LoginPage() {
   return (

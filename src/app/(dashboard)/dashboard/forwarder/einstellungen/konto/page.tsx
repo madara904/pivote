@@ -5,6 +5,7 @@ import UpdateNameCard from "../components/account/update-name-card";
 import { PageContainer } from "@/components/ui/page-layout";
 import { Suspense } from "react";
 import Loading from "./loading";
+import { prefetch, trpc } from "@/trpc/server";
 
 export default async function AccountSettingsPage() {
   await requireForwarderAccess();

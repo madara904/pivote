@@ -7,6 +7,7 @@ import {
   pgEnum,
   integer,
   unique,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { randomUUID } from "crypto";
 import { relations } from "drizzle-orm";
@@ -105,6 +106,7 @@ export const user = pgTable("user", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
   image: text("image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
@@ -159,6 +161,35 @@ export const verification = pgTable("verification", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+});
+
+export const twoFactor = pgTable("twoFactor", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  secret: text("secret").notNull(),
+  backupCodes: text("backup_codes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const activityEvent = pgTable("activity_event", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "set null" }),
+  type: text("type").notNull(),
+  entityType: text("entity_type"),
+  entityId: text("entity_id"),
+  payload: jsonb("payload").$type<Record<string, unknown> | null>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const organization = pgTable("organization", {
@@ -513,6 +544,24 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+  user: one(user, {
+    fields: [twoFactor.userId],
+    references: [user.id],
+  }),
+}));
+
+export const activityEventRelations = relations(activityEvent, ({ one }) => ({
+  organization: one(organization, {
+    fields: [activityEvent.organizationId],
+    references: [organization.id],
+  }),
+  actor: one(user, {
+    fields: [activityEvent.actorUserId],
+    references: [user.id],
+  }),
+}));
+
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(organizationMember),
   connectionsAsShipper: many(organizationConnection, {
@@ -665,3 +714,5 @@ export type SelectQuotation = typeof quotation.$inferSelect;
 // Removed quotationCharge types - charges are now columns in quotation table
 export type InsertChargeTemplate = typeof chargeTemplate.$inferInsert;
 export type SelectChargeTemplate = typeof chargeTemplate.$inferSelect;
+export type InsertActivityEvent = typeof activityEvent.$inferInsert;
+export type SelectActivityEvent = typeof activityEvent.$inferSelect;

@@ -1,17 +1,10 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { IconInput } from "@/components/ui/icon-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveModal } from "@/components/responsive-modal";
 import type { UseFormReturn } from "react-hook-form";
 import type { OrgForm } from "./organization-create-form";
 import { Loader2 } from "lucide-react";
@@ -34,22 +27,22 @@ export default function OrganizationEditDialog({
   canEdit,
 }: OrganizationEditDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-0 gap-0">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-xl">Organisation bearbeiten</DialogTitle>
-          <DialogDescription>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Organisation bearbeiten"
+      contentClassName="sm:max-w-[600px]"
+    >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <p className="text-muted-foreground text-sm">
             Passen Sie die Stammdaten und Kontaktinformationen Ihrer Organisation an.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6">
+          </p>
           {/* Basis Informationen */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Unternehmensname</Label>
-                <Input 
+                <IconInput 
                   id="name"
                   placeholder="Beispiel Industrie AG" 
                   {...form.register("name")} 
@@ -57,7 +50,7 @@ export default function OrganizationEditDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Geschäfts-E-Mail</Label>
-                <Input 
+                <IconInput 
                   id="email"
                   type="email"
                   placeholder="beispiel@industrie.com" 
@@ -84,11 +77,11 @@ export default function OrganizationEditDialog({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefon</Label>
-              <Input id="phone" placeholder="+49 123 456789" {...form.register("phone")} />
+              <IconInput id="phone" placeholder="+49 123 456789" {...form.register("phone")} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="website">Website</Label>
-              <Input id="website" placeholder="https://musterweb.com" {...form.register("website")} />
+              <IconInput id="website" placeholder="https://musterweb.com" {...form.register("website")} />
             </div>
           </div>
 
@@ -98,23 +91,23 @@ export default function OrganizationEditDialog({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="address">Straße & Hausnummer</Label>
-              <Input id="address" placeholder="Musterstraße 12" {...form.register("address")} />
+              <IconInput id="address" placeholder="Musterstraße 12" {...form.register("address")} />
             </div>
             
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
               <div className="space-y-2 md:col-span-1">
                 <Label htmlFor="postalCode">PLZ</Label>
-                <Input id="postalCode" placeholder="90400" {...form.register("postalCode")} />
+                <IconInput id="postalCode" placeholder="90400" {...form.register("postalCode")} />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="city">Stadt</Label>
-                <Input id="city" placeholder="Nürnberg" {...form.register("city")} />
+                <IconInput id="city" placeholder="Nürnberg" {...form.register("city")} />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="country">Land</Label>
-              <Input id="country" placeholder="Deutschland" {...form.register("country")} />
+              <IconInput id="country" placeholder="Deutschland" {...form.register("country")} />
             </div>
           </div>
 
@@ -124,11 +117,11 @@ export default function OrganizationEditDialog({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="vatNumber">USt-IdNr.</Label>
-              <Input id="vatNumber" placeholder="DE123456789" {...form.register("vatNumber")} />
+              <IconInput id="vatNumber" placeholder="DE123456789" {...form.register("vatNumber")} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="registrationNumber">Handelsregisternummer</Label>
-              <Input id="registrationNumber" placeholder="HRB 12345" {...form.register("registrationNumber")} />
+              <IconInput id="registrationNumber" placeholder="HRB 12345" {...form.register("registrationNumber")} />
             </div>
           </div>
 
@@ -144,7 +137,7 @@ export default function OrganizationEditDialog({
             </select>
           </div>
 
-          <DialogFooter className="bg-muted/30 -mx-6 -mb-6 p-6 border-t mt-4">
+          <div className="bg-muted/30 rounded-md p-4 border mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button 
               type="button" 
               variant="ghost" 
@@ -163,9 +156,8 @@ export default function OrganizationEditDialog({
                 "Änderungen speichern"
               )}
             </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </div>
+      </form>
+    </ResponsiveModal>
   );
 }

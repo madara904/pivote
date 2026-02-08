@@ -1,9 +1,11 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { organization, organizationConnection, organizationMember } from "@/db/schema";
+import { organization, organizationConnection, organizationMember, activityEvent, user } from "@/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { sendEmail } from "@/lib/send-email";
+import { ConnectionAccepted } from "@/emails/connection-accepted";
+import { createElement } from "react";
 import { env } from "@/lib/env/env";
 import { checkConnectionLimit } from "@/trpc/middleware/tier-limits";
 import { db } from "@/db";
@@ -143,6 +145,13 @@ export const forwarderConnectionsRouter = createTRPCRouter({
         ),
         with: {
           shipperOrganization: true,
+          invitedBy: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
         },
       });
 
@@ -178,16 +187,56 @@ export const forwarderConnectionsRouter = createTRPCRouter({
         .returning();
 
       const acceptedUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/shipper`;
-      const emailBody = `
-        <p><strong>${forwarderOrganization.name}</strong> hat die Verbindung angenommen.</p>
-        <p>Sie können nun Anfragen an diesen Spediteur senden.</p>
-        <p><a href="${acceptedUrl}">${acceptedUrl}</a></p>
-      `;
+      let recipients: string[] = [];
+      if (connection.invitedBy?.email) {
+        recipients = [connection.invitedBy.email];
+      } else {
+        const ownerMembers = await ctx.db.query.organizationMember.findMany({
+          where: and(
+            eq(organizationMember.organizationId, connection.shipperOrganization.id),
+            eq(organizationMember.role, "owner"),
+            eq(organizationMember.isActive, true)
+          ),
+          with: {
+            user: {
+              columns: {
+                email: true,
+              },
+            },
+          },
+        });
+        recipients = ownerMembers
+          .map((member) => member.user?.email)
+          .filter((email): email is string => Boolean(email));
+      }
 
-      await sendEmail({
-        to: connection.shipperOrganization.email,
-        subject: "Verbindung angenommen",
-        text: emailBody,
+      recipients = Array.from(new Set(recipients));
+
+      if (recipients.length) {
+        await Promise.all(
+          recipients.map((email) =>
+            sendEmail({
+              to: email,
+              subject: "Verbindung angenommen",
+              react: createElement(ConnectionAccepted, {
+                forwarderName: forwarderOrganization.name,
+                dashboardUrl: acceptedUrl,
+              }),
+            })
+          )
+        );
+      }
+
+      await ctx.db.insert(activityEvent).values({
+        organizationId: forwarderOrganization.id,
+        actorUserId: ctx.session.user.id,
+        type: "connection.accepted",
+        entityType: "connection",
+        entityId: connection.id,
+        payload: {
+          shipperOrgId: connection.shipperOrganization.id,
+          shipperOrgName: connection.shipperOrganization.name,
+        },
       });
 
       return updated;
@@ -214,6 +263,14 @@ export const forwarderConnectionsRouter = createTRPCRouter({
             forwarderOrganization.id
           )
         ),
+        with: {
+          shipperOrganization: {
+            columns: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       });
 
       if (!connection) {
@@ -226,6 +283,18 @@ export const forwarderConnectionsRouter = createTRPCRouter({
       await ctx.db
         .delete(organizationConnection)
         .where(eq(organizationConnection.id, connection.id));
+
+      await ctx.db.insert(activityEvent).values({
+        organizationId: forwarderOrganization.id,
+        actorUserId: ctx.session.user.id,
+        type: "connection.removed",
+        entityType: "connection",
+        entityId: connection.id,
+        payload: {
+          shipperOrgId: connection.shipperOrganization?.id,
+          shipperOrgName: connection.shipperOrganization?.name,
+        },
+      });
 
       return { success: true };
     }),

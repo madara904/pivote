@@ -1,8 +1,8 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
-import { redirect } from "next/navigation";
+import AccountSettingsPage from "./konto/page";
 
 export default async function EinstellungenPage() {
   await requireForwarderAccess();
 
-  redirect("/dashboard/forwarder/einstellungen/account");
+  return <AccountSettingsPage />;
 }

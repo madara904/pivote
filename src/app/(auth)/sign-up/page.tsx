@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { RegisterForm } from "../components/register-form";
+import RegisterForm from "../components/register-form";
 import { LogoLoader } from "@/components/ui/loader";
 
 export default function RegisterPage() {

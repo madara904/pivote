@@ -27,25 +27,17 @@ export function DotLoading({ className, size = "md", color = "bg-primary" }: Dot
       {[0, 1, 2, 3].map((index) => (
         <div
           key={index}
-          className={cn("rounded-full animate-bounce", sizeClasses[size], color)}
+          className={cn("rounded-full", sizeClasses[size], color)}
           style={{
-            animationDelay: `${index * 0.2}s`,
+            animationName: "dotScale",
             animationDuration: "1.2s",
+            animationTimingFunction: "ease-in-out",
+            animationIterationCount: "infinite",
+            animationDelay: `${index * 0.2}s`,
             transform: "scale(1)",
-            animation: `dotScale 1.2s ease-in-out infinite ${index * 0.2}s`,
           }}
         />
       ))}
-      <style jsx>{`
-        @keyframes dotScale {
-          0%, 80%, 100% {
-            transform: scale(1);
-          }
-          40% {
-            transform: scale(1.5);
-          }
-        }
-      `}</style>
     </div>
   )
 }

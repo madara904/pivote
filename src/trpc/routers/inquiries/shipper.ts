@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, desc, and, ne, inArray } from "drizzle-orm";
-import { organization, organizationMember, organizationConnection, inquiry, inquiryDocument, inquiryForwarder, inquiryPackage, quotation, inquiryNote, user } from "@/db/schema";
+import { organization, organizationMember, organizationConnection, inquiry, inquiryDocument, inquiryForwarder, inquiryPackage, quotation, inquiryNote, user, activityEvent } from "@/db/schema";
 import { z } from "zod";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
 import { inquiryIdSchema } from "@/trpc/common/schemas";
@@ -406,6 +406,27 @@ export const shipperRouter = createTRPCRouter({
           }));
           
           await db.insert(inquiryForwarder).values(forwarderData);
+
+          await db.insert(activityEvent).values(
+            input.selectedForwarderIds.map((forwarderId) => ({
+              organizationId: forwarderId,
+              actorUserId: session.user.id,
+              type: "inquiry.received",
+              entityType: "inquiry",
+              entityId: inquiryId,
+              payload: {
+                inquiryId,
+                referenceNumber,
+                shipperOrgId: membership.organization.id,
+                shipperOrgName: membership.organization.name,
+                serviceType: input.serviceType,
+                originCity: input.originCity,
+                originCountry: input.originCountry,
+                destinationCity: input.destinationCity,
+                destinationCountry: input.destinationCountry,
+              },
+            }))
+          );
         }
 
         return {
@@ -562,7 +583,16 @@ export const shipperRouter = createTRPCRouter({
 
         // Verify inquiry exists and belongs to this shipper
         const inquiryResult = await db
-          .select({ id: inquiry.id, status: inquiry.status })
+          .select({
+            id: inquiry.id,
+            status: inquiry.status,
+            referenceNumber: inquiry.referenceNumber,
+            serviceType: inquiry.serviceType,
+            originCity: inquiry.originCity,
+            originCountry: inquiry.originCountry,
+            destinationCity: inquiry.destinationCity,
+            destinationCountry: inquiry.destinationCountry,
+          })
           .from(inquiry)
           .where(
             and(
@@ -610,6 +640,27 @@ export const shipperRouter = createTRPCRouter({
         }));
         
         await db.insert(inquiryForwarder).values(forwarderData);
+
+        await db.insert(activityEvent).values(
+          input.selectedForwarderIds.map((forwarderId) => ({
+            organizationId: forwarderId,
+            actorUserId: session.user.id,
+            type: "inquiry.received",
+            entityType: "inquiry",
+            entityId: input.inquiryId,
+            payload: {
+              inquiryId: input.inquiryId,
+              referenceNumber: inquiryResult[0].referenceNumber,
+              shipperOrgId: membership.organization.id,
+              shipperOrgName: membership.organization.name,
+              serviceType: inquiryResult[0].serviceType,
+              originCity: inquiryResult[0].originCity,
+              originCountry: inquiryResult[0].originCountry,
+              destinationCity: inquiryResult[0].destinationCity,
+              destinationCountry: inquiryResult[0].destinationCountry,
+            },
+          }))
+        );
 
         return { success: true };
       } catch (error) {

@@ -1,10 +1,15 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { twoFactor } from "better-auth/plugins";
 import { localization } from "better-auth-localization";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { env } from "./env/env";
 import { sendEmail } from "./send-email";
+import { VerifyEmail } from "@/emails/auth-verify-email";
+import { ResetPassword } from "@/emails/auth-reset-password";
+import { OtpEmail } from "@/emails/auth-otp";
+import { createElement } from "react";
 
 export const auth = betterAuth({
   emailVerification: {
@@ -13,18 +18,18 @@ export const auth = betterAuth({
     enabled: true,
     sendVerificationEmail: async ({ user, url }) => {
       await sendEmail({
-          to: user.email,
-          subject: 'Bestätigen Sie Ihre E-Mail-Adresse',
-          text: `Klicken Sie auf den Link, um Ihre E-Mail-Adresse zu bestätigen: ${url}`
-      })
-  }
+        to: user.email,
+        subject: "Bestätigen Sie Ihre E-Mail-Adresse",
+        react: createElement(VerifyEmail, { userName: user.name, verifyUrl: url }),
+      });
+    }
 },
 appName: "Pivote",
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
   }),
-  trustedOrigins: ["https://pivote.vercel.app", "https://pivote.de"],  
+  trustedOrigins: ["https://pivote.vercel.app", "https://pivote.de", "http://localhost:3000"],  
   user: {
     deleteUser: { enabled: true },
     changeEmail: {enabled: true},
@@ -55,7 +60,7 @@ appName: "Pivote",
       await sendEmail({
         to: user.email,
         subject: "Passwort zurücksetzen",
-        text: `Klicken Sie auf den Link, um Ihr Passwort zurückzusetzen (10 Minuten gültig): ${url}`,
+        react: createElement(ResetPassword, { userName: user.name, resetUrl: url }),
       });
     }
   },
@@ -79,6 +84,19 @@ appName: "Pivote",
   hooks: {
     },
   plugins: [
+    twoFactor({
+      skipVerificationOnEnable: true,
+      otpOptions: {
+        expiresIn: 300,
+        async sendOTP({ user, otp }) {
+          await sendEmail({
+            to: user.email,
+            subject: "Ihr Sicherheitscode",
+            react: createElement(OtpEmail, { userName: user.name, otp }),
+          });
+        },
+      },
+    }),
     localization({
       defaultLocale: "de",
       fallbackLocale: "de",

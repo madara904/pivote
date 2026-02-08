@@ -1,9 +1,11 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { organization, organizationConnection, organizationMember } from "@/db/schema";
+import { organization, organizationConnection, organizationMember, activityEvent } from "@/db/schema";
 import { and, eq, notInArray, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { sendEmail } from "@/lib/send-email";
+import { ConnectionInvite } from "@/emails/connection-invite";
+import { createElement } from "react";
 import { env } from "@/lib/env/env";
 import { checkConnectionLimit } from "@/trpc/middleware/tier-limits";
 import { db } from "@/db";
@@ -256,11 +258,6 @@ export const shipperConnectionsRouter = createTRPCRouter({
         .returning();
 
       const inviteUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/forwarder/verbindungen`;
-      const emailBody = `
-        <p>Sie wurden von <strong>${shipperOrganization.name}</strong> eingeladen, eine Verbindung aufzubauen.</p>
-        <p>Bitte öffnen Sie den folgenden Link, um die Einladung anzunehmen:</p>
-        <p><a href="${inviteUrl}">${inviteUrl}</a></p>
-      `;
 
       const ownerMembers = await ctx.db.query.organizationMember.findMany({
         where: and(
@@ -277,16 +274,54 @@ export const shipperConnectionsRouter = createTRPCRouter({
         .map((member) => member.user?.email)
         .filter((email): email is string => Boolean(email));
 
-      const recipients = ownerEmails.length ? ownerEmails : [forwarder.email];
-      await Promise.all(
-        recipients.map((email) =>
-          sendEmail({
-            to: email,
-            subject: "Neue Verbindungsanfrage",
-            text: emailBody,
-          })
-        )
-      );
+      let recipients = ownerEmails;
+      if (!recipients.length) {
+        const activeMembers = await ctx.db.query.organizationMember.findMany({
+          where: and(
+            eq(organizationMember.organizationId, forwarder.id),
+            eq(organizationMember.isActive, true)
+          ),
+          with: {
+            user: {
+              columns: {
+                email: true,
+              },
+            },
+          },
+        });
+        recipients = activeMembers
+          .map((member) => member.user?.email)
+          .filter((email): email is string => Boolean(email));
+      }
+
+      recipients = Array.from(new Set(recipients));
+
+      if (recipients.length) {
+        await Promise.all(
+          recipients.map((email) =>
+            sendEmail({
+              to: email,
+              subject: "Neue Verbindungsanfrage",
+              react: createElement(ConnectionInvite, {
+                shipperName: shipperOrganization.name,
+                inviteUrl,
+              }),
+            })
+          )
+        );
+      }
+
+      await ctx.db.insert(activityEvent).values({
+        organizationId: input.forwarderOrganizationId,
+        actorUserId: ctx.session.user.id,
+        type: "connection.requested",
+        entityType: "connection",
+        entityId: created.id,
+        payload: {
+          shipperOrgId: shipperOrganization.id,
+          shipperOrgName: shipperOrganization.name,
+        },
+      });
 
       return {
         alreadyInvited: false,
@@ -328,6 +363,18 @@ export const shipperConnectionsRouter = createTRPCRouter({
       await ctx.db
         .delete(organizationConnection)
         .where(eq(organizationConnection.id, connection.id));
+
+      await ctx.db.insert(activityEvent).values({
+        organizationId: connection.forwarderOrganizationId,
+        actorUserId: ctx.session.user.id,
+        type: "connection.removed",
+        entityType: "connection",
+        entityId: connection.id,
+        payload: {
+          shipperOrgId: shipperOrganization.id,
+          shipperOrgName: shipperOrganization.name,
+        },
+      });
 
       return { success: true };
     }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { authClient, useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -17,11 +18,12 @@ export default function ChangeEmailCard() {
   const [mounted, setMounted] = useState(false);
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
+  const pathname = usePathname();
   const callbackURL = useMemo(() => {
     if (typeof window === "undefined") return undefined;
-    // Leitet den User nach der Bestätigung zurück zur Account-Seite
-    return `${window.location.origin}/dashboard/forwarder/einstellungen/account`;
-  }, []);
+    // Leitet den User nach der Bestätigung zurück zur aktuellen Konto-Seite
+    return `${window.location.origin}${pathname}`;
+  }, [pathname]);
 
   useEffect(() => {
     setMounted(true);

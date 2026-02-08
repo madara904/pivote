@@ -1,17 +1,16 @@
-import { requireForwarderAccess } from "@/lib/auth-utils";
-import OrganizationCreateForm from "./organization/organization-create-form";
+import { requireShipperAccess } from "@/lib/auth-utils";
+import OrganizationCreateForm from "../../../forwarder/einstellungen/organisation/organisation/organization-create-form";
 import { PageContainer } from "@/components/ui/page-layout";
-import { prefetch, trpc } from "@/trpc/server";
+import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Suspense } from "react";
-import { HydrateClient } from "@/trpc/server";
 import Loading from "./loading";
 
 export default async function OrganizationSettingsPage() {
-  await requireForwarderAccess();
+  await requireShipperAccess();
 
   await prefetch(trpc.organization.getMyOrganizations.queryOptions());
-  
+
   return (
     <HydrateClient>
       <ErrorBoundary

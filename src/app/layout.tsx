@@ -64,14 +64,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+import { cookies } from "next/headers";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const cookieString = cookieStore.toString();
+
   return (
 
-      <TRPCReactProvider>
+      <TRPCReactProvider cookies={cookieString}>
         <NuqsAdapter>
           <html lang="de" suppressHydrationWarning>
           <head>
@@ -81,14 +86,7 @@ export default function RootLayout({
             className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             suppressHydrationWarning
           >
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="root"
-              enableSystem
-              disableTransitionOnChange
-            >
               {children}
-            </ThemeProvider>
             <Toaster closeButton={true} theme="light" richColors/>
           </body>
         </html>

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, and, desc, ne } from "drizzle-orm";
-import { quotation, organizationMember, organization, inquiry, inquiryNote } from "@/db/schema";
+import { quotation, organizationMember, organization, inquiry, inquiryNote, activityEvent } from "@/db/schema";
 import { z } from "zod";
 import { inquiryIdSchema, quotationIdSchema } from "@/trpc/common/schemas";
 import { requireOrgAndType } from "@/trpc/common/membership";
@@ -186,9 +186,13 @@ export const shipperRouter = createTRPCRouter({
           inquiryId: quotation.inquiryId,
           status: quotation.status,
           inquiryStatus: inquiry.status,
+          forwarderOrganizationId: quotation.forwarderOrganizationId,
+          referenceNumber: inquiry.referenceNumber,
+          shipperOrgName: organization.name,
         })
         .from(quotation)
         .innerJoin(inquiry, eq(quotation.inquiryId, inquiry.id))
+        .innerJoin(organization, eq(inquiry.shipperOrganizationId, organization.id))
         .where(
           and(
             eq(quotation.id, input.quotationId),
@@ -241,6 +245,19 @@ export const shipperRouter = createTRPCRouter({
         })
         .where(eq(inquiry.id, quotationResult[0].inquiryId));
 
+      await db.insert(activityEvent).values({
+        organizationId: quotationResult[0].forwarderOrganizationId,
+        actorUserId: session.user.id,
+        type: "quotation.accepted",
+        entityType: "quotation",
+        entityId: quotationResult[0].id,
+        payload: {
+          inquiryId: quotationResult[0].inquiryId,
+          referenceNumber: quotationResult[0].referenceNumber,
+          shipperOrgName: quotationResult[0].shipperOrgName,
+        },
+      });
+
       return { success: true };
     }),
 
@@ -264,9 +281,13 @@ export const shipperRouter = createTRPCRouter({
           inquiryId: quotation.inquiryId,
           inquiryStatus: inquiry.status,
           quotationStatus: quotation.status,
+          forwarderOrganizationId: quotation.forwarderOrganizationId,
+          referenceNumber: inquiry.referenceNumber,
+          shipperOrgName: organization.name,
         })
         .from(quotation)
         .innerJoin(inquiry, eq(quotation.inquiryId, inquiry.id))
+        .innerJoin(organization, eq(inquiry.shipperOrganizationId, organization.id))
         .where(
           and(
             eq(quotation.id, input.quotationId),
@@ -317,6 +338,19 @@ export const shipperRouter = createTRPCRouter({
           })
           .where(eq(inquiry.id, quotationResult[0].inquiryId));
       }
+
+      await db.insert(activityEvent).values({
+        organizationId: quotationResult[0].forwarderOrganizationId,
+        actorUserId: session.user.id,
+        type: "quotation.rejected",
+        entityType: "quotation",
+        entityId: quotationResult[0].id,
+        payload: {
+          inquiryId: quotationResult[0].inquiryId,
+          referenceNumber: quotationResult[0].referenceNumber,
+          shipperOrgName: quotationResult[0].shipperOrgName,
+        },
+      });
 
       return { success: true };
     }),

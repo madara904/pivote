@@ -78,7 +78,7 @@ export default function LoginPage() {
               Willkommen zurück
             </h1>
             <p className="text-slate-500 font-medium text-sm">
-              Loggen Sie sich ein, um Ihre Fracht zu verwalten.
+              Loggen Sie sich ein um aufs Dashboard zuzugreifen.
             </p>
           </div>
 

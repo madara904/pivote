@@ -37,7 +37,6 @@ export default function OrganizationEditDialog({
           <p className="text-muted-foreground text-sm">
             Passen Sie die Stammdaten und Kontaktinformationen Ihrer Organisation an.
           </p>
-          {/* Basis Informationen */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -73,7 +72,6 @@ export default function OrganizationEditDialog({
 
           <div className="h-px bg-border/50" />
 
-          {/* Kontakt & Web */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefon</Label>
@@ -87,7 +85,6 @@ export default function OrganizationEditDialog({
 
           <div className="h-px bg-border/50" />
 
-          {/* Adresse */}
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="address">Straße & Hausnummer</Label>
@@ -113,7 +110,6 @@ export default function OrganizationEditDialog({
 
           <div className="h-px bg-border/50" />
 
-          {/* Rechtliches */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="vatNumber">USt-IdNr.</Label>

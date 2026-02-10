@@ -37,7 +37,7 @@ export default function OrganizationLogoCard({
   if (!selectedOrgId) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10 border-b border-border/50">
+    <div className="grid grid-cols-1 md:grid-cols-3 border-b border-border/50">
       <div>
         <h3 className="text-sm font-semibold text-foreground">Organisations-Logo</h3>
         <p className="text-sm text-muted-foreground mt-1">

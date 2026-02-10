@@ -12,6 +12,11 @@ import { OtpEmail } from "@/emails/auth-otp";
 import { createElement } from "react";
 
 export const auth = betterAuth({
+  rateLimit: {
+    enabled: true,
+    max: 5,
+    window: 10,
+  },
   emailVerification: {
     sendOnSignUp: true,
     expiresIn: 10 * 60,
@@ -32,7 +37,7 @@ appName: "Pivote",
   trustedOrigins: ["https://pivote.vercel.app", "https://pivote.de", "http://localhost:3000"],  
   user: {
     deleteUser: { enabled: true },
-    changeEmail: {enabled: true},
+    changeEmail: {enabled: true,},
     additionalFields: {
       orgType: {
         type: "string",
@@ -91,7 +96,7 @@ appName: "Pivote",
         async sendOTP({ user, otp }) {
           await sendEmail({
             to: user.email,
-            subject: "Ihr Sicherheitscode",
+            subject: "Ihr Einmal-Code",
             react: createElement(OtpEmail, { userName: user.name, otp }),
           });
         },
@@ -125,7 +130,7 @@ appName: "Pivote",
           SESSION_EXPIRED: "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an",
           FAILED_TO_UNLINK_LAST_ACCOUNT: "Das letzte verknüpfte Konto kann nicht getrennt werden",
           ACCOUNT_NOT_FOUND: "Konto nicht gefunden",
-          ORGANIZATION_ALREADY_EXISTS: "Diese Organisation existiert bereits."
+          ORGANIZATION_ALREADY_EXISTS: "Diese Organisation existiert bereits.",
         },
         "en": {
           USER_NOT_FOUND: "User not found",

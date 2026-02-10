@@ -146,7 +146,7 @@ export default function InquiryView() {
     <div className="w-full p-6 sm:p-10 space-y-8 min-h-screen bg-white">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2 text-slate-900">
+          <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-900">
             Frachtanfragen
           </h1>
           <div className="flex items-center gap-6 mt-6 overflow-x-auto pb-2 no-scrollbar">

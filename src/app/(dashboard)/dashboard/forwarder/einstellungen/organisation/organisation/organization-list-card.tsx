@@ -34,8 +34,7 @@ export default function OrganizationListCard({
   deletePending,
 }: OrganizationListCardProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10 border-b border-border/50">
-      {/* Linke Spalte: Info */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 border-b border-border/50">
       <div>
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           Meine Organisation
@@ -45,7 +44,7 @@ export default function OrganizationListCard({
         </p>
       </div>
 
-      {/* Rechte Spalte: Die Liste (nimmt 2 Spalten ein) */}
+
       <div className="md:col-span-2 space-y-4">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">

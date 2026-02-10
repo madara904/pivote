@@ -1,5 +1,5 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { eq, and, sql, desc, count } from "drizzle-orm";
+import { eq, and, or, sql, desc, count } from "drizzle-orm";
 import { inquiryDocument, inquiryForwarder, organizationMember, inquiry, organization, user, inquiryPackage, quotation, inquiryNote } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
 import { checkAndUpdateExpiredItems } from "@/lib/expiration-utils";
@@ -495,8 +495,17 @@ export const forwarderRouter = createTRPCRouter({
           },
         })
         .from(inquiryDocument)
+        .innerJoin(inquiry, eq(inquiryDocument.inquiryId, inquiry.id))
         .innerJoin(organization, eq(inquiryDocument.uploadedByOrganizationId, organization.id))
-        .where(eq(inquiryDocument.inquiryId, input.inquiryId))
+        .where(
+          and(
+            eq(inquiryDocument.inquiryId, input.inquiryId),
+            or(
+              eq(inquiryDocument.uploadedByOrganizationId, membership.organizationId),
+              eq(inquiryDocument.uploadedByOrganizationId, inquiry.shipperOrganizationId)
+            )
+          )
+        )
         .orderBy(desc(inquiryDocument.createdAt));
 
       return documents;
@@ -545,9 +554,18 @@ export const forwarderRouter = createTRPCRouter({
           },
         })
         .from(inquiryNote)
+        .innerJoin(inquiry, eq(inquiryNote.inquiryId, inquiry.id))
         .innerJoin(user, eq(inquiryNote.userId, user.id))
         .innerJoin(organization, eq(inquiryNote.organizationId, organization.id))
-        .where(eq(inquiryNote.inquiryId, input.inquiryId))
+        .where(
+          and(
+            eq(inquiryNote.inquiryId, input.inquiryId),
+            or(
+              eq(inquiryNote.organizationId, membership.organizationId),
+              eq(inquiryNote.organizationId, inquiry.shipperOrganizationId)
+            )
+          )
+        )
         .orderBy(desc(inquiryNote.createdAt));
 
       return notes;

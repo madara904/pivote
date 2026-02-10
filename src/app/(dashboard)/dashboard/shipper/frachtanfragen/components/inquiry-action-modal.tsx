@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ResponsiveModal } from "@/components/responsive-modal"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState } from "react"
 import { InquiryDocumentUploadDialog } from "./inquiry-document-upload";
 import { Textarea } from "@/components/ui/textarea"
+import { formatGermanDate } from "@/lib/date-utils"
 
 export default function InquiryActionModal({
   inquiryId,
@@ -92,27 +93,21 @@ export default function InquiryActionModal({
     (a, b) => Number(a.totalPrice) - Number(b.totalPrice)
   )[0]?.id;
 
-  const formatDate = (value?: Date | null) => {
-    if (!value) return "—"
-    return new Date(value).toLocaleDateString("de-DE")
-  }
+  const formatDate = (value?: Date | null) => formatGermanDate(value) || "—"
 
   if (!inquiryId) return null;
 
   return (
-    <Dialog open={Boolean(inquiryId)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent 
-        className="sm:max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden"
-      >
+    <ResponsiveModal
+      open={Boolean(inquiryId)}
+      onOpenChange={(open) => !open && onClose()}
+      title={data?.referenceNumber ? `Anfrage: ${data.referenceNumber}` : "Anfrage"}
+      contentClassName="max-w-4xl h-[90vh] overflow-hidden"
+      bodyClassName="p-0 min-h-0"
+    >
+      <div className="flex flex-col h-full">
         <div className="p-6 pb-4 border-b shrink-0">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="text-xl">Anfrage: {data?.referenceNumber}</DialogTitle>
-                <DialogDescription>Details und Angebote für Ihre Frachtanfrage</DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Details und Angebote für Ihre Frachtanfrage</p>
         </div>
 
         <div className="flex-1 overflow-y-scroll p-6">
@@ -183,12 +178,7 @@ export default function InquiryActionModal({
                                 {note.createdBy.name}
                               </p>
                               <p className="text-[10px] text-muted-foreground shrink-0">
-                                {new Intl.DateTimeFormat("de-DE", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }).format(note.createdAt)}
+                                {formatGermanDate(note.createdAt) || "—"}
                               </p>
                             </div>
                             <p className="text-xs text-foreground line-clamp-2">{note.content}</p>
@@ -392,7 +382,7 @@ export default function InquiryActionModal({
             inquiryId={inquiryId}
           />
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </ResponsiveModal>
   )
 }

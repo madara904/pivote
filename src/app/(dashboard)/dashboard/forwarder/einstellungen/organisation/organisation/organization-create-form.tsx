@@ -35,7 +35,7 @@ export type OrgForm = z.infer<typeof orgSchema>;
 export default function OrganizationCrudTest() {
   const trpcOptions = useTRPC();
   
-  // Use the organization actions hook
+
   const {
     createOrganization,
     editOrganization,
@@ -45,39 +45,31 @@ export default function OrganizationCrudTest() {
     removeMember,
   } = useOrganizationActions();
 
-  // State
+    
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
 
-  // Queries
+  
   const { data: orgsData } = useSuspenseQuery(trpcOptions.organization.getMyOrganizations.queryOptions()) as { data: OrganizationGetMyOrganizations };
   const membersQuery = useQuery({
     ...trpcOptions.organization.listMembers.queryOptions({ organizationId: selectedOrgId ?? "" }),
     enabled: !!selectedOrgId,
   });
 
-  // Get selected organization data
+  
   const selectedOrg = orgsData?.find((o) => o.id === selectedOrgId);
   const selectedOrgIsOwner = selectedOrg?.membershipRole === "owner";
 
-  // Auto-select organization if user has only one
+
   useEffect(() => {
     if (!selectedOrgId && orgsData && orgsData.length === 1) {
       setSelectedOrgId(orgsData[0].id);
     }
   }, [orgsData, selectedOrgId]);
 
-  // Debug: Log selected org data
-  useEffect(() => {
-    if (selectedOrg) {
-      console.log("Selected org:", selectedOrg);
-      console.log("Logo URL:", selectedOrg.logo);
-    }
-  }, [selectedOrg]);
 
-  // Forms
   const createForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
     defaultValues: {
@@ -113,7 +105,6 @@ export default function OrganizationCrudTest() {
     },
   });
 
-  // Set edit form values when org selected
   useEffect(() => {
     if (!editMode) return;
     const org = orgsData?.find((o) => o.id === selectedOrgId);
@@ -135,7 +126,6 @@ export default function OrganizationCrudTest() {
     }
   }, [selectedOrgId, editMode, orgsData, editForm]);
 
-  // Handlers
   const handleCreate = (data: OrgForm) => {
     createOrganization.mutate(data, {
       onSuccess: () => {
@@ -183,7 +173,6 @@ export default function OrganizationCrudTest() {
     );
   };
 
-  // Render
   return (
     <div className="w-full space-y-6">
       <OrganizationCreateCard

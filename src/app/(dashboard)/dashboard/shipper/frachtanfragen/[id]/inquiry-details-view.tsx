@@ -15,6 +15,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { formatGermanDate } from "@/lib/date-utils"
 
 export default function InquiryDetailsView({ inquiryId }: { inquiryId: string }) {
   const searchParams = useSearchParams();
@@ -93,10 +94,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
     (a, b) => Number(a.totalPrice) - Number(b.totalPrice)
   )[0]?.id;
 
-  const formatDate = (value?: Date | null) => {
-    if (!value) return "—"
-    return new Date(value).toLocaleDateString("de-DE")
-  }
+  const formatDate = (value?: Date | null) => formatGermanDate(value) || "—"
 
   // Build back link
   const backHref = tabParam 
@@ -185,12 +183,7 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                               {note.createdBy.name}
                             </p>
                             <p className="text-[10px] text-muted-foreground shrink-0">
-                              {new Intl.DateTimeFormat("de-DE", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }).format(note.createdAt)}
+                              {formatGermanDate(note.createdAt) || "—"}
                             </p>
                           </div>
                           <p className="text-xs text-foreground line-clamp-2">{note.content}</p>

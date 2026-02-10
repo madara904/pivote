@@ -10,6 +10,7 @@ import {
   ShipperStatusContext,
   ShipperInquiryStatus 
 } from "@/lib/shipper-status-utils"
+import { formatGermanDate } from "@/lib/date-utils"
 import Link from "next/link"
 
 const getInitials = (name: string) =>
@@ -176,11 +177,11 @@ export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTabl
                       <div className="text-xs text-muted-foreground">Timeline</div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        <span>Gesendet {inquiry.sentAt ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(inquiry.sentAt) : "—"}</span>
+                        <span>Gesendet {formatGermanDate(inquiry.sentAt) || "—"}</span>
                       </div>
                       {inquiry.responseDate && (
                         <div className="mt-1 text-xs text-muted-foreground">
-                          Antwort {new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(inquiry.responseDate)}
+                          Antwort {formatGermanDate(inquiry.responseDate) || "—"}
                         </div>
                       )}
                     </div>

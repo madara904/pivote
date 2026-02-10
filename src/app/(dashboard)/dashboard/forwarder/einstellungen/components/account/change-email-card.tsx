@@ -21,7 +21,7 @@ export default function ChangeEmailCard() {
   const pathname = usePathname();
   const callbackURL = useMemo(() => {
     if (typeof window === "undefined") return undefined;
-    // Leitet den User nach der Bestätigung zurück zur aktuellen Konto-Seite
+
     return `${window.location.origin}${pathname}`;
   }, [pathname]);
 

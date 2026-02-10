@@ -7,7 +7,7 @@ import Loading from "./loading";
 export default async function ForwarderDashboard() {
   await requireForwarderAccess();
 
-  void prefetch(trpc.dashboard.forwarder.getOverview.queryOptions());
+  void prefetch(trpc.dashboard.forwarder.getOverview.queryOptions({ period: "30d" }));
 
   return (
     <HydrateClient>

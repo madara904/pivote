@@ -5,18 +5,15 @@ export default async function ReportsPage() {
   await requireForwarderAccess();
 
   return (
-    <PageLayout>
-      <PageHeaderWithBorder>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Logs & Events</h1>
-          <p className="text-sm text-muted-foreground">
-            
-          </p>
+    <>
+        <div className="p-6 sm:p-10">
+          <h1 className="text-2xl font-bold tracking-tight">Logs & Events</h1>
+
+
+        <div className="mt-10">
+          <p>Dies ist der Inhalt der Berichte Seite.</p>
         </div>
-      </PageHeaderWithBorder>
-      <PageContainer className="pt-6 pb-8">
-        <p>Dies ist der Inhalt der Berichte Seite.</p>
-      </PageContainer>
-    </PageLayout>
+        </div>
+</>
   )
 } 

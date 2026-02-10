@@ -34,6 +34,7 @@ import { useTRPC } from "@/trpc/client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { PageLayout, PageContainer } from "@/components/ui/page-layout";
 import { cn } from "@/lib/utils";
+import { formatGermanDate } from "@/lib/date-utils";
 
 export default function InquiryDetailsView({ inquiryId }: { inquiryId: string }) {
   const searchParams = useSearchParams();
@@ -177,8 +178,8 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
             <div className="space-y-6">
               <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Status & Termine</h3>
               <div className="space-y-4">
-                <SidebarInfo label="Anfrage erstellt" value={new Date(detail.sentAt).toLocaleDateString()} icon={Calendar} />
-                <SidebarInfo label="Gültig bis" value={new Date(inquiry.validityDate!).toLocaleDateString()} icon={Clock} highlight />
+                <SidebarInfo label="Anfrage erstellt" value={formatGermanDate(detail.sentAt) || "—"} icon={Calendar} />
+                <SidebarInfo label="Gültig bis" value={formatGermanDate(inquiry.validityDate) || "—"} icon={Clock} highlight />
               </div>
             </div>
 

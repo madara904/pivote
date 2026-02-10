@@ -6,6 +6,7 @@ import { DotLoading } from "@/components/ui/dot-loading";
 import { Separator } from "@/components/ui/separator";
 import { useTRPC } from "@/trpc/client";
 import { useQuery } from "@tanstack/react-query";
+import { formatGermanDate } from "@/lib/date-utils";
 
 interface QuotationViewDialogProps {
   inquiryId: string;
@@ -121,11 +122,7 @@ export function QuotationViewDialog({ inquiryId, open, onOpenChange }: Quotation
             <div>
               <p className="text-sm text-muted-foreground">Gültig bis</p>
               <p className="text-base font-medium">
-                {new Date(quotation.validUntil).toLocaleDateString("de-DE", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
+                {formatGermanDate(quotation.validUntil) || "—"}
               </p>
             </div>
           </>
@@ -157,13 +154,7 @@ export function QuotationViewDialog({ inquiryId, open, onOpenChange }: Quotation
             <div>
               <p className="text-sm text-muted-foreground">Eingereicht am</p>
               <p className="text-sm font-medium">
-                {new Date(quotation.submittedAt).toLocaleDateString("de-DE", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatGermanDate(quotation.submittedAt) || "—"}
               </p>
             </div>
           </>

@@ -9,6 +9,8 @@ const NAV_ITEMS = [
   { key: "konto", label: "Konto", href: "/dashboard/forwarder/einstellungen/konto" },
   { key: "sicherheit", label: "Sicherheit", href: "/dashboard/forwarder/einstellungen/sicherheit" },
   { key: "organisation", label: "Organisation", href: "/dashboard/forwarder/einstellungen/organisation" },
+  { key: "Abrechnung", label: "Abrechnung", href: "/dashboard/forwarder/einstellungen/abrechnung" },
+  { key: "Logs & Events", label: "Logs", href: "/dashboard/forwarder/einstellungen/logs" },
 ] as const;
 
 export default function EinstellungenLayout({ children }: { children: React.ReactNode }) {
@@ -49,7 +51,7 @@ export default function EinstellungenLayout({ children }: { children: React.Reac
       </div>
 
 
-      <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full">
+      <main className="flex-1 p-6 md:p-10 mx-auto w-full">
         <div className="animate-in fade-in duration-500">
           {children}
         </div>

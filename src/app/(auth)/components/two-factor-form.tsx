@@ -111,9 +111,6 @@ export default function TwoFactorForm() {
                   <InputOTPSlot index={0} />
                   <InputOTPSlot index={1} />
                   <InputOTPSlot index={2} />
-                </InputOTPGroup>
-                <InputOTPSeparator />
-                <InputOTPGroup>
                   <InputOTPSlot index={3} />
                   <InputOTPSlot index={4} />
                   <InputOTPSlot index={5} />
@@ -130,9 +127,9 @@ export default function TwoFactorForm() {
               variant="outline"
               className="w-full h-11 font-bold tracking-tight"
               onClick={handleSendOtp}
-              disabled={isSending}
+              disabled={isSending || isSubmitting}
             >
-              {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSending || isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Code erneut senden
             </Button>
           </form>

@@ -9,6 +9,7 @@ import { de } from 'date-fns/locale';
  * Standard German date format used throughout the application
  */
 export const GERMAN_DATE_FORMAT = 'dd.MM.yyyy';
+export const GERMAN_DATE_TIME_FORMAT = 'dd.MM.yyyy HH:mm';
 
 /**
  * Format a date using German locale and format
@@ -21,6 +22,22 @@ export function formatGermanDate(date: Date | string | null | undefined): string
     if (!isValid(dateObj)) return '';
     
     return format(dateObj, GERMAN_DATE_FORMAT, { locale: de });
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Format a date and time using German locale and format
+ */
+export function formatGermanDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '';
+
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(dateObj)) return '';
+
+    return format(dateObj, GERMAN_DATE_TIME_FORMAT, { locale: de });
   } catch {
     return '';
   }

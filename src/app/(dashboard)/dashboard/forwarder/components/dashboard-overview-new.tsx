@@ -22,7 +22,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { TierFeaturesHoverContent } from "./tier-features";
-import { Analytics } from "@vercel/analytics/next"
+import { buildActivityEntry } from "./activity/activity-formatters";
 
 const tierLabels = {
   basic: "Basic",
@@ -31,15 +31,18 @@ const tierLabels = {
 };
 
 export default function DashboardOverviewNew() {
+
+  const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
+
   const trpcOptions = useTRPC();
-  const { data } = useSuspenseQuery(trpcOptions.dashboard.forwarder.getOverview.queryOptions());
+  const { data } = useSuspenseQuery(trpcOptions.dashboard.forwarder.getOverview.queryOptions({ period }));
 
   const { organization, tier, transportAnalysis } = data;
 
   const orbitRotation = useMotionValue(0);
   useEffect(() => {
     const controls = animate(orbitRotation, 360, {
-      duration: 60,
+      duration: 80,
       repeat: Infinity,
       ease: "linear",
     });
@@ -54,20 +57,15 @@ export default function DashboardOverviewNew() {
     return () => window.removeEventListener("resize", update);
   }, []);
   
-  const sortedTypes = Object.entries(transportAnalysis)
-    .sort(([, a], [, b]) => b.count - a.count)
-    .slice(0, 2)
-    .map(([type]) => type);
 
   return (
     <div className="flex flex-col mt-5">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-8 lg:gap-16 lg:mx-auto lg:w-[90%]">
       
-        {/* Linke Seite: Metriken */}
         <div className="flex flex-col min-h-0 lg:min-h-[460px] py-4">
-           <div className="flex flex-col w-full space-y-6 lg:space-y-10 lg:flex-1 lg:justify-center">
+           <div className="flex flex-col w-full space-y-6 lg:space-y-15 lg:flex-1 lg:justify-center">
               <div className="space-y-2 shrink-0">
-                <Select defaultValue="30d" >
+                <Select defaultValue="30d" value={period} onValueChange={(value) => setPeriod(value as "7d" | "30d" | "90d")} >
                   <SelectTrigger className="w-[160px] h-8 text-[11px] font-bold bg-background border-border/60">
                     <CalendarDays className="h-3.5 w-3.5 mr-2 text-muted-foreground"/>
                     <SelectValue placeholder="Zeitraum" />
@@ -80,7 +78,7 @@ export default function DashboardOverviewNew() {
                 </Select>
                </div>
               
-               <div className="grid grid-cols-2 gap-x-[3rem] gap-y-[2.5rem] ...">
+               <div className="grid grid-row md:grid-cols-2 gap-x-[3rem] gap-y-[2.5rem]">
   <MetricBlock 
     icon={<Activity className="text-emerald-500" strokeWidth={1.5} />} 
     label="Status" 
@@ -117,7 +115,6 @@ export default function DashboardOverviewNew() {
            </div>
         </div>
       
-        {/* Rechte Seite: Orbit System */}
         <div className="relative w-full border bg-slate-50/20 overflow-hidden flex flex-col min-h-[500px] md:min-h-[600px]">
         <DottedGlowBackground         
         opacity={0.2}
@@ -132,7 +129,7 @@ export default function DashboardOverviewNew() {
         speedMax={1.6}
         speedScale={2}/>
             <div className="relative z-10 p-5 mb-20 md:mb-16">
-               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Breakdown der Transportarten</span>
+               <span className="text-[10px] md:text-md font-black uppercase tracking-widest text-secondary-foreground">Breakdown der Transportarten</span>
             </div>
             <div className="flex-1 relative flex items-center justify-center">
                <div className="relative -translate-y-12 md:-translate-y-20 flex items-center justify-center">
@@ -226,8 +223,8 @@ function OrbitNode({ startAngle, icon, label, count, percentage, active, orbitRo
   return (
     <motion.div style={{ x, y }} className="absolute top-1/2 left-1/2 z-10">
       <div className={cn("flex flex-col items-center gap-2 transition-all duration-700 -translate-x-1/2 -translate-y-1/2", active ? "opacity-100 scale-100" : "opacity-30 grayscale")}>
-        <div className={cn("h-10 w-10 rounded-lg bg-background border-2 flex items-center justify-center text-primary shadow-lg", active ? "border-primary/40 shadow-primary/10" : "border-border")}>
-          {React.cloneElement(icon, { size: 16, strokeWidth: 1.5 })}
+        <div className={cn("h-10 w-10 rounded-lg bg-primary border-2 flex items-center justify-center text-primary-foreground shadow-lg", active ? "border-primary/40 shadow-primary/20" : "border-primary/20")}>
+          {React.cloneElement(icon, { size: 18, strokeWidth: 1.5, className: "text-primary-foreground" })}
         </div>
         <div className="bg-background border-2 border-border px-3 py-1.5 rounded-md shadow-sm text-center min-w-[72px]">
           <p className="text-[10px] font-black uppercase tracking-tighter leading-none mb-1 text-slate-900">{label}</p>
@@ -242,26 +239,22 @@ function OrbitNode({ startAngle, icon, label, count, percentage, active, orbitRo
   );
 }
 
-/**
- * FIX: MetricBlock nutzt Flexbox, um Icon und Textinhalt 
- * horizontal perfekt bündig zu halten.
- */
 function MetricBlock({ icon, label, value, sub }: any) {
+  const displayValue = value ?? 0;
   return (
     <div className="flex items-center gap-x-4">
-      {/* Icon Container mit fester Breite für vertikale Achse */}
+
       <div className="flex items-center justify-center p-5 rounded-lg bg-background border border-border min-w-[64px] min-h-[64px] shrink-0">
         {React.cloneElement(icon, { size: 24 })}
       </div>
       
-      {/* Textbereich */}
       <div className="flex flex-col justify-center">
         <span className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground/80 leading-none mb-1">
           {label}
         </span>
         <div className="flex items-baseline gap-2">
           <p className="text-2xl font-black tracking-tighter text-slate-900 leading-none">
-            {value}
+            {displayValue}
           </p>
           {sub && (
             <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
@@ -272,130 +265,6 @@ function MetricBlock({ icon, label, value, sub }: any) {
       </div>
     </div>
   );
-}
-
-type ActivityFeedItem = {
-  id: string;
-  type: string;
-  createdAt: Date;
-  payload: Record<string, unknown> | null;
-  actorName: string | null;
-};
-
-type ActivityEntry = {
-  id: string;
-  time: string;
-  message: string;
-  detailPrimary?: string;
-  detailSecondary?: string;
-};
-
-const serviceTypeLabels: Record<string, string> = {
-  air_freight: "Air",
-  sea_freight: "Sea",
-  road_freight: "Road",
-  rail_freight: "Rail",
-};
-
-function formatRelativeTime(date: Date) {
-  const diffMs = Date.now() - new Date(date).getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "Gerade eben";
-  if (diffMinutes < 60) return `Vor ${diffMinutes} Min`;
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `Vor ${diffHours} Std`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `Vor ${diffDays} Tg`;
-}
-
-function formatCurrency(value: unknown, currency: string | undefined) {
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return null;
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: currency || "EUR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function buildActivityEntry(item: ActivityFeedItem): ActivityEntry {
-  const payload = (item.payload ?? {}) as Record<string, unknown>;
-  const referenceNumber = payload.referenceNumber as string | undefined;
-  const shipperOrgName = payload.shipperOrgName as string | undefined;
-  const serviceType = payload.serviceType as string | undefined;
-  const originCity = payload.originCity as string | undefined;
-  const destinationCity = payload.destinationCity as string | undefined;
-  const currency = payload.currency as string | undefined;
-  const priceLabel = formatCurrency(payload.totalPrice, currency);
-  const actorName = item.actorName ?? "Jemand";
-
-  switch (item.type) {
-    case "inquiry.received":
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `Neue Anfrage${referenceNumber ? ` #${referenceNumber}` : ""} erhalten`,
-        detailPrimary: shipperOrgName || "Versender",
-        detailSecondary: serviceTypeLabels[serviceType ?? ""] || "Anfrage",
-      };
-    case "quotation.submitted":
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `${actorName} hat ein Angebot${referenceNumber ? ` #${referenceNumber}` : ""} eingereicht`,
-        detailPrimary: priceLabel || "Angebot",
-        detailSecondary: shipperOrgName ? "Versender" : "Angebot",
-      };
-    case "quotation.accepted":
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `Angebot${referenceNumber ? ` #${referenceNumber}` : ""} angenommen`,
-        detailPrimary: shipperOrgName || "Versender",
-        detailSecondary: "Akzeptiert",
-      };
-    case "quotation.rejected":
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `Angebot${referenceNumber ? ` #${referenceNumber}` : ""} abgelehnt`,
-        detailPrimary: shipperOrgName || "Versender",
-        detailSecondary: "Abgelehnt",
-      };
-    case "connection.requested":
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `Verbindungsanfrage von ${shipperOrgName || "Versender"}`,
-        detailPrimary: shipperOrgName || "Versender",
-        detailSecondary: actorName,
-      };
-    case "connection.accepted":
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `Verbindung mit ${shipperOrgName || "Versender"} angenommen`,
-        detailPrimary: shipperOrgName || "Versender",
-        detailSecondary: actorName,
-      };
-    case "connection.removed":
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `Verbindung mit ${shipperOrgName || "Versender"} entfernt`,
-        detailPrimary: shipperOrgName || "Versender",
-        detailSecondary: actorName,
-      };
-    default:
-      return {
-        id: item.id,
-        time: formatRelativeTime(item.createdAt),
-        message: `${actorName} hat eine Aktion ausgeführt`,
-      };
-  }
 }
 
 function ActivityAndQuickActions() {

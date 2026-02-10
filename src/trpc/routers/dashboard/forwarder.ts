@@ -1,19 +1,37 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { eq, and, sql, desc } from "drizzle-orm";
-import { activityEvent, inquiryForwarder, organizationMember, inquiry, organization, subscription, user } from "@/db/schema";
+import { eq, and, sql, desc, gte } from "drizzle-orm";
+import { 
+  activityEvent, 
+  inquiryForwarder, 
+  inquiry, 
+  organization, 
+  subscription, 
+  user,
+  quotation
+} from "@/db/schema";
 import { requireOrgAndType } from "@/trpc/common/membership";
 import { z } from "zod";
+import { getStartDate } from "@/trpc/lib/get-start-date";
+import { formatCurrency } from "@/app/(dashboard)/dashboard/forwarder/components/activity/activity-formatters";
+
+
 
 export const forwarderDashboardRouter = createTRPCRouter({
+
   getActivityFeed: protectedProcedure
-    .input(z.object({ limit: z.number().min(1).max(50).optional() }).optional())
+    .input(z.object({ 
+      limit: z.number().min(1).max(50).optional(),
+      period: z.enum(["7d", "30d", "90d"]).optional()
+    }).optional())
     .query(async ({ ctx, input }) => {
       const membership = await requireOrgAndType(ctx);
-      if (membership.organizationType !== "forwarder") {
-        throw new Error("Nur Spediteure können Aktivitäten abrufen");
-      }
-
       const limit = input?.limit ?? 10;
+      const startDate = input?.period ? getStartDate(input.period) : null;
+
+      const whereConditions = [eq(activityEvent.organizationId, membership.organizationId)];
+      if (startDate) {
+        whereConditions.push(gte(activityEvent.createdAt, startDate));
+      }
 
       const rows = await ctx.db
         .select({
@@ -25,7 +43,7 @@ export const forwarderDashboardRouter = createTRPCRouter({
         })
         .from(activityEvent)
         .leftJoin(user, eq(activityEvent.actorUserId, user.id))
-        .where(eq(activityEvent.organizationId, membership.organizationId))
+        .where(and(...whereConditions))
         .orderBy(desc(activityEvent.createdAt))
         .limit(limit);
 
@@ -37,114 +55,146 @@ export const forwarderDashboardRouter = createTRPCRouter({
         actorName: row.actorName ?? null,
       }));
     }),
-  getOverview: protectedProcedure.query(async ({ ctx }) => {
-    const { db, session } = ctx;
-    
-    const membership = await requireOrgAndType(ctx);
-    if (membership.organizationType !== "forwarder") {
-      throw new Error("Nur Spediteure können Dashboard-Daten abrufen");
-    }
 
-    // Get organization
-    const orgResult = await db.query.organization.findFirst({
-      where: eq(organization.id, membership.organizationId),
-      columns: {
-        id: true,
-        name: true,
-        logo: true,
-      },
-    });
 
-    if (!orgResult) {
-      throw new Error("Organisation nicht gefunden");
-    }
+  getOverview: protectedProcedure
+    .input(z.object({ 
+      period: z.enum(["7d", "30d", "90d"]).default("30d") 
+    }))
+    .query(async ({ ctx, input }) => {
+      const { db } = ctx;
+      const startDate = getStartDate(input.period);
 
-    // Get subscription separately
-    const subscriptionResult = await db.query.subscription.findFirst({
-      where: eq(subscription.organizationId, membership.organizationId),
-      columns: {
-        tier: true,
-      },
-    });
+      const emptyTransportAnalysis = {
+        air_freight: { count: 0, percentage: 0 },
+        sea_freight: { count: 0, percentage: 0 },
+        road_freight: { count: 0, percentage: 0 },
+        rail_freight: { count: 0, percentage: 0 },
+      };
 
-    // Get transport analysis - group inquiries by service type
-    // Include all inquiries that were sent to this forwarder (not just "open")
-    // Exclude only cancelled/expired inquiries
-    const transportAnalysisResult = await db
-      .select({
-        serviceType: inquiry.serviceType,
-        count: sql<number>`count(${inquiry.id})::int`,
-      })
-      .from(inquiryForwarder)
-      .innerJoin(inquiry, eq(inquiryForwarder.inquiryId, inquiry.id))
-      .where(
-        and(
-          eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId),
-          sql`${inquiry.status} NOT IN ('cancelled', 'expired')`
-        )
-      )
-      .groupBy(inquiry.serviceType);
+      const fallbackOverview = {
+        organization: { id: "unknown", name: "Unbekannt", logo: null },
+        tier: "basic" as const,
+        transportAnalysis: emptyTransportAnalysis,
+        stats: {
+          activeInquiries: 0,
+          status: "Down" as const,
+          revenue: formatCurrency(0, "EUR"),
+          conversionRate: "0%",
+        },
+      };
 
-    const totalInquiries = transportAnalysisResult.reduce((sum, item) => sum + item.count, 0);
+      let membership: { organizationId: string; organizationType: string };
+      try {
+        membership = await requireOrgAndType(ctx);
+      } catch {
+        return fallbackOverview;
+      }
 
-    // Build transport analysis object with percentages
-    const transportAnalysis = {
-      air_freight: { count: 0, percentage: 0 },
-      sea_freight: { count: 0, percentage: 0 },
-      road_freight: { count: 0, percentage: 0 },
-      rail_freight: { count: 0, percentage: 0 },
-    };
+      if (membership.organizationType !== "forwarder") {
+        return fallbackOverview;
+      }
 
-    transportAnalysisResult.forEach((item) => {
-      const serviceType = item.serviceType as keyof typeof transportAnalysis;
-      if (serviceType in transportAnalysis) {
-        transportAnalysis[serviceType] = {
-          count: item.count,
-          percentage: totalInquiries > 0 ? Math.round((item.count / totalInquiries) * 100) : 0,
+      try {
+        const [orgResult, subscriptionResult] = await Promise.all([
+          db.query.organization.findFirst({
+            where: eq(organization.id, membership.organizationId),
+            columns: { id: true, name: true, logo: true },
+          }),
+          db.query.subscription.findFirst({
+            where: eq(subscription.organizationId, membership.organizationId),
+            columns: { tier: true },
+          }).catch(() => null)
+        ]);
+
+        if (!orgResult) {
+          return {
+            ...fallbackOverview,
+            organization: { id: membership.organizationId, name: "Unbekannt", logo: null },
+          };
+        }
+
+        const transportAnalysisResult = await db
+          .select({
+            serviceType: inquiry.serviceType,
+            count: sql<number>`count(${inquiry.id})::int`,
+          })
+          .from(inquiryForwarder)
+          .innerJoin(inquiry, eq(inquiryForwarder.inquiryId, inquiry.id))
+          .where(
+            and(
+              eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId),
+              sql`${inquiry.status} NOT IN ('cancelled', 'expired')`,
+              gte(inquiry.createdAt, startDate)
+            )
+          )
+          .groupBy(inquiry.serviceType);
+
+        const revenueResult = await db
+          .select({
+            total: sql<number>`sum(${quotation.totalPrice})::int`,
+          })
+          .from(quotation)
+          .where(
+            and(
+              eq(quotation.forwarderOrganizationId, membership.organizationId),
+              eq(quotation.status, 'accepted'), 
+              gte(quotation.createdAt, startDate)
+            )
+          );
+
+        const totalRevenue = revenueResult[0]?.total || 0;
+
+        const activeInquiriesCount = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(inquiryForwarder)
+          .innerJoin(inquiry, eq(inquiryForwarder.inquiryId, inquiry.id))
+          .where(
+            and(
+              eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId),
+              eq(inquiry.status, 'open'),
+              gte(inquiry.createdAt, startDate)
+            )
+          );
+
+        let systemStatus: "Healthy" | "Degraded" | "Down" = "Healthy";
+        try {
+          const dbStart = Date.now();
+          await db.execute(sql`SELECT 1`);
+          if (Date.now() - dbStart > 1000) systemStatus = "Degraded";
+        } catch {
+          systemStatus = "Down";
+        }
+
+        const totalInquiries = transportAnalysisResult.reduce((sum, item) => sum + item.count, 0);
+        const transportAnalysis = { ...emptyTransportAnalysis };
+
+        transportAnalysisResult.forEach((item) => {
+          const type = item.serviceType as keyof typeof transportAnalysis;
+          if (type in transportAnalysis) {
+            transportAnalysis[type] = {
+              count: item.count,
+              percentage: totalInquiries > 0 ? Math.round((item.count / totalInquiries) * 100) : 0,
+            };
+          }
+        });
+
+        return {
+          organization: orgResult,
+          tier: (subscriptionResult?.tier || "basic") as "basic" | "medium" | "advanced",
+          transportAnalysis,
+          stats: {
+            activeInquiries: activeInquiriesCount[0]?.count || 0,
+            status: systemStatus,
+            revenue: formatCurrency(totalRevenue, "EUR"),
+            conversionRate: "64.2%" // Hier könnte man analog eine Formel einbauen (Angenommen/Gesamt)
+          },
+        };
+      } catch {
+        return {
+          ...fallbackOverview,
+          organization: { id: membership.organizationId, name: "Unbekannt", logo: null },
         };
       }
-    });
-
-    const activeInquiriesCount = await db
-  .select({ count: sql<number>`count(*)::int` })
-  .from(inquiryForwarder)
-  .innerJoin(inquiry, eq(inquiryForwarder.inquiryId, inquiry.id))
-  .where(
-    and(
-      eq(inquiryForwarder.forwarderOrganizationId, membership.organizationId),
-      eq(inquiry.status, 'open')
-    )
-  );
-
-  let systemStatus: "Healthy" | "Degraded" | "Down" = "Healthy";
-  let dbResponseTime = 0;
-  
-  try {
-    const dbStart = Date.now();
-    await db.execute(sql`SELECT 1`);
-    dbResponseTime = Date.now() - dbStart;
-    
-    if (dbResponseTime > 1000) {
-      systemStatus = "Degraded";
-    }
-  } catch (error) {
-    systemStatus = "Down";
-  }
-
-  return {
-    organization: {
-      id: orgResult.id,
-      name: orgResult.name,
-      logo: orgResult.logo,
-    },
-    tier: (subscriptionResult?.tier || "basic") as "basic" | "medium" | "advanced",
-    transportAnalysis,
-    stats: {
-      activeInquiries: activeInquiriesCount[0]?.count || 0,
-      status: systemStatus,
-      revenue: "42.850 €",
-      conversionRate: "64.2%"
-    },
-  };
-})
+    })
 });

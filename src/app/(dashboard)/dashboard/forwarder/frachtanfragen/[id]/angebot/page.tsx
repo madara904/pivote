@@ -13,7 +13,7 @@ export default async function CreateQuotationPage({
   const { id } = await params;
 
   // Prefetch the inquiry detail to get the reference number
-  await prefetch(trpc.inquiry.forwarder.getInquiryDetail.queryOptions({ inquiryId: id }));
+  void prefetch(trpc.inquiry.forwarder.getInquiryDetail.queryOptions({ inquiryId: id }));
 
   return (
     <HydrateClient>

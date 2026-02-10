@@ -13,7 +13,7 @@ export default async function InquiryDetailsPage({
   const { id } = await params;
 
   // Prefetch the inquiry detail data
-  await prefetch(trpc.inquiry.forwarder.getInquiryDetail.queryOptions({ inquiryId: id }));
+  void prefetch(trpc.inquiry.forwarder.getInquiryDetail.queryOptions({ inquiryId: id }));
 
   return (
     <HydrateClient>

@@ -116,7 +116,7 @@ export default function InquiryView() {
       
       if (isWon) buckets.won.push(inq);
       else if (isLost) {
-        // Verlorene Anfragen ins Archiv aufnehmen
+
         buckets.archived.push(inq);
       }
       else if (isArchived) buckets.archived.push(inq);
@@ -250,7 +250,6 @@ function ListItem({ inquiry, tab, onOpenDocumentsNotes }: { inquiry: FreightInqu
           ? "border-green-200 bg-green-50/50 hover:border-green-300 hover:shadow-lg hover:shadow-green-200/50" 
           : "border-slate-200 bg-white hover:border-primary/30 hover:shadow-lg hover:shadow-slate-200/50"
       )}>
-        {/* Status Indicator Line */}
         {isNew && <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-500 rounded-r" />}
         {isLostInArchive && <div className="absolute left-0 top-4 bottom-4 w-1 bg-red-500 rounded-r" />}
         {isNominated && <div className="absolute left-0 top-4 bottom-4 w-1 bg-green-500 rounded-r" />}
@@ -292,7 +291,6 @@ function ListItem({ inquiry, tab, onOpenDocumentsNotes }: { inquiry: FreightInqu
           </div>
         </div>
 
-        {/* Technical Details Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-1 my-4 md:my-0 md:px-8 border-l border-slate-100 ml-4">
           <div className="flex items-center gap-2">
             <Box className="w-3.5 h-3.5 text-slate-400" />
@@ -312,9 +310,7 @@ function ListItem({ inquiry, tab, onOpenDocumentsNotes }: { inquiry: FreightInqu
           </div>
         </div>
 
-        {/* Action / Price Area */}
         <div className="flex items-center gap-3 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 min-w-[200px] justify-end">
-          {/* Preis mit grünem Haken für nominierte Anfragen */}
           {inquiry.quotedPrice && (
             <div className="text-right mr-4">
               <div className="flex items-center gap-1.5 justify-end">
@@ -335,14 +331,14 @@ function ListItem({ inquiry, tab, onOpenDocumentsNotes }: { inquiry: FreightInqu
                 <Button size="sm" variant="outline" className="h-8 text-[10px] font-bold uppercase border-slate-200 hover:bg-slate-50 text-slate-600">
                   <XCircle className="w-3.5 h-3.5 mr-1.5" /> Ablehnen
                 </Button>
-                <Link href={`/dashboard/forwarder/frachtanfragen/${inquiry.id}/angebot`}>
+                <Link prefetch href={`/dashboard/forwarder/frachtanfragen/${inquiry.id}/angebot`}>
                   <Button size="sm" className="h-8 text-[10px] font-bold uppercase shadow-sm">
                     Anbieten
                   </Button>
                 </Link>
               </>
             ) : (
-              <Link href={`/dashboard/forwarder/frachtanfragen/${inquiry.id}`}>
+              <Link prefetch href={`/dashboard/forwarder/frachtanfragen/${inquiry.id}`}>
                 <Button size="sm" variant="secondary" className="h-8 text-[10px] font-bold uppercase">
                   Details <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
                 </Button>

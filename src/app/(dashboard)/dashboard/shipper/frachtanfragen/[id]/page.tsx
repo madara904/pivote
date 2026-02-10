@@ -13,7 +13,7 @@ const ShipperInquiryDetailPage = async ({ params }: ShipperInquiryDetailPageProp
   await requireShipperAccess();
   const { id } = await params;
 
-  await prefetch(trpc.inquiry.shipper.getInquiryDetail.queryOptions({ inquiryId: id }));
+  void prefetch(trpc.inquiry.shipper.getInquiryDetail.queryOptions({ inquiryId: id }));
 
   return (
     <HydrateClient>

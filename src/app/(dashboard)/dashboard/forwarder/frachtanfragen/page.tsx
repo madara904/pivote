@@ -8,7 +8,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 export default async function ForwarderInquiriesPage() {
 
   await requireForwarderAccess();
-  await prefetch(trpc.inquiry.forwarder.getMyInquiriesFast.queryOptions());
+  void prefetch(trpc.inquiry.forwarder.getMyInquiriesFast.queryOptions());
 
 
   return (

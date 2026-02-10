@@ -9,7 +9,7 @@ import Loading from "./loading";
 export default async function OrganizationSettingsPage() {
   await requireShipperAccess();
 
-  await prefetch(trpc.organization.getMyOrganizations.queryOptions());
+  void prefetch(trpc.organization.getMyOrganizations.queryOptions());
 
   return (
     <HydrateClient>

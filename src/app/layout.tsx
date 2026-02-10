@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cloakSSROnlySecret } from "ssr-only-secrets";
 import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
@@ -64,19 +66,16 @@ export const metadata: Metadata = {
   },
 };
 
-import { cookies } from "next/headers";
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const cookieString = cookieStore.toString();
+  const cookie = (await headers()).get("cookie");
+  const encryptedCookie = await cloakSSROnlySecret(cookie ?? "", "SECRET_CLIENT_COOKIE_VAR");
 
   return (
-
-      <TRPCReactProvider cookies={cookieString}>
+      <TRPCReactProvider ssrOnlySecret={encryptedCookie}>
         <NuqsAdapter>
           <html lang="de" suppressHydrationWarning>
           <head>

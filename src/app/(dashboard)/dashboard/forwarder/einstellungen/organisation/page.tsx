@@ -10,7 +10,7 @@ import Loading from "./loading";
 export default async function OrganizationSettingsPage() {
   await requireForwarderAccess();
 
-  await prefetch(trpc.organization.getMyOrganizations.queryOptions());
+  void prefetch(trpc.organization.getMyOrganizations.queryOptions());
   
   return (
     <HydrateClient>

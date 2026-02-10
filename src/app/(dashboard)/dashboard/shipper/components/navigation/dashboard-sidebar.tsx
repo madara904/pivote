@@ -73,7 +73,7 @@ const DashboardSidebar = ({
                       isActive={pathname === item.url}
                       tooltip={item.title}
                     >
-                      <Link href={item.url} onClick={() => setOpenMobile(false)}>
+                      <Link prefetch href={item.url} onClick={() => setOpenMobile(false)}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>

@@ -1,14 +1,31 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth } from "./lib/auth";
+import { headers } from "next/headers";
 
-export function proxy(request: NextRequest) {
-  // Set the pathname as a header so server components can access it
+export async function proxy(request: NextRequest) {
+  
   const pathname = request.nextUrl.pathname;
 
-  // Create a response
-  const response = NextResponse.next();
+  if (pathname === "/dashboard") {
+    const session = await auth.api.getSession({
+      headers: await headers()
+    });
+    if (!session) {
+      const signInUrl = new URL("/sign-in", request.url);
+      signInUrl.searchParams.set("returnTo", pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+    const path = session.user.orgType === "forwarder"
+      ? "/dashboard/forwarder"
+      : "/dashboard/shipper";
 
-  // Set the pathname header (only for non-auth pages to avoid loops)
+    return NextResponse.redirect(new URL(path, request.url));
+  }
+
+      
+  const response = NextResponse.next();
+  
   if (
     !pathname.startsWith("/sign-in") &&
     !pathname.startsWith("/sign-up") &&

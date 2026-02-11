@@ -37,22 +37,16 @@ export const DashboardUserButton = () => {
     });
   };
 
-  if (isPending) {
-    return (
-      <div className="flex items-center space-x-2">
-        <Skeleton className="h-8 w-8 rounded-full" />
-      </div>
-    );
-  }
-
-  if (!data) {
+  if (!data && !isPending) {
     return null;
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="border rounded-full p-1 hover:bg-secondary cursor-pointer">
-        {data.user.image ? (
+        {isPending || !data ? (
+          <Skeleton className="h-8 w-8 rounded-full" />
+        ) : data.user.image ? (
           <Avatar className="h-8 w-8">
             <AvatarImage src={data.user.image} />
           </Avatar>
@@ -65,9 +59,9 @@ export const DashboardUserButton = () => {
       <DropdownMenuContent className="w-56" align="center">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{data.user.name}</p>
+            <p className="text-sm font-medium">{data?.user?.name ?? ""}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {data.user.email}
+              {data?.user?.email ?? ""}
             </p>
           </div>
         </DropdownMenuLabel>

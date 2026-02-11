@@ -24,6 +24,7 @@ export const forwarderDashboardRouter = createTRPCRouter({
       period: z.enum(["7d", "30d", "90d"]).optional()
     }).optional())
     .query(async ({ ctx, input }) => {
+
       const membership = await requireOrgAndType(ctx);
       const limit = input?.limit ?? 10;
       const startDate = input?.period ? getStartDate(input.period) : null;
@@ -62,6 +63,7 @@ export const forwarderDashboardRouter = createTRPCRouter({
       period: z.enum(["7d", "30d", "90d"]).default("30d") 
     }))
     .query(async ({ ctx, input }) => {
+
       const { db } = ctx;
       const startDate = getStartDate(input.period);
 
@@ -157,15 +159,6 @@ export const forwarderDashboardRouter = createTRPCRouter({
             )
           );
 
-        let systemStatus: "Healthy" | "Degraded" | "Down" = "Healthy";
-        try {
-          const dbStart = Date.now();
-          await db.execute(sql`SELECT 1`);
-          if (Date.now() - dbStart > 1000) systemStatus = "Degraded";
-        } catch {
-          systemStatus = "Down";
-        }
-
         const totalInquiries = transportAnalysisResult.reduce((sum, item) => sum + item.count, 0);
         const transportAnalysis = { ...emptyTransportAnalysis };
 
@@ -185,7 +178,7 @@ export const forwarderDashboardRouter = createTRPCRouter({
           transportAnalysis,
           stats: {
             activeInquiries: activeInquiriesCount[0]?.count || 0,
-            status: systemStatus,
+            status: "Healthy",
             revenue: formatCurrency(totalRevenue, "EUR"),
             conversionRate: "64.2%" // Hier könnte man analog eine Formel einbauen (Angenommen/Gesamt)
           },

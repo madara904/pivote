@@ -4,26 +4,43 @@ import { auth } from "./lib/auth";
 import { headers } from "next/headers";
 
 export async function proxy(request: NextRequest) {
-  
   const pathname = request.nextUrl.pathname;
 
-  if (pathname === "/dashboard") {
+
+  if (pathname.startsWith("/dashboard")) {
+    const sessionCookie = request.cookies.get("better-auth.session_token");
+    
+    if (!sessionCookie) {
+      const signInUrl = new URL("/sign-in", request.url);
+      signInUrl.searchParams.set("returnTo", pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+
     const session = await auth.api.getSession({
       headers: await headers()
     });
+    
     if (!session) {
       const signInUrl = new URL("/sign-in", request.url);
       signInUrl.searchParams.set("returnTo", pathname);
       return NextResponse.redirect(signInUrl);
     }
-    const path = session.user.orgType === "forwarder"
-      ? "/dashboard/forwarder"
-      : "/dashboard/shipper";
 
-    return NextResponse.redirect(new URL(path, request.url));
+    const isForwarder = session.user.orgType === "forwarder";
+    const correctPath = isForwarder ? "/dashboard/forwarder" : "/dashboard/shipper";
+    const wrongPath = isForwarder ? "/dashboard/shipper" : "/dashboard/forwarder";
+
+
+    if (pathname === "/dashboard") {
+      return NextResponse.redirect(new URL(correctPath, request.url));
+    }
+
+
+    if (pathname.startsWith(wrongPath)) {
+      return NextResponse.redirect(new URL(correctPath, request.url));
+    }
   }
 
-      
   const response = NextResponse.next();
   
   if (
@@ -45,13 +62,6 @@ export default proxy;
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

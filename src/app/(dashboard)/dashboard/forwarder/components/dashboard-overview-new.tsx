@@ -202,10 +202,6 @@ export default function DashboardOverviewNew() {
             </div>
         </div>
       </div>
-
-      <div className="mt-12">
-        <ActivityAndQuickActions />
-      </div>
     </div>
   );
 }
@@ -267,10 +263,10 @@ function MetricBlock({ icon, label, value, sub }: any) {
   );
 }
 
-function ActivityAndQuickActions() {
+export function ActivityAndQuickActions() {
   const trpcOptions = useTRPC();
   const { data: activityItems } = useSuspenseQuery(
-    trpcOptions.dashboard.forwarder.getActivityFeed.queryOptions({ limit: 8 })
+    trpcOptions.dashboard.forwarder.getActivityFeed.queryOptions({ limit: 3 })
   );
 
   const entries = activityItems.map((item) => buildActivityEntry(item));

@@ -34,7 +34,7 @@ appName: "Pivote",
     provider: "pg",
     schema,
   }),
-  trustedOrigins: ["https://pivote.vercel.app", "https://pivote.de", "http://localhost:3000"],  
+  trustedOrigins: ["https://*.vercel.app", "https://pivote.de", "http://localhost:3000"],  
   user: {
     deleteUser: { enabled: true },
     changeEmail: {enabled: true,},

@@ -7,12 +7,12 @@ export async function GET() {
   const startTime = Date.now();
   
   try {
-    // Deine /dashboard Seite vorwärmen
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://deine-app.vercel.app';
+    // warm-up
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pivote.vercel.app';
     
-    // Warmup Request zu /dashboard
+
     const dashboardResponse = await fetch(`${baseUrl}/dashboard`, {
-      method: 'HEAD', // HEAD statt GET spart Bandbreite
+      method: 'HEAD', 
       headers: {
         'User-Agent': 'KeepAlive-Bot',
       },

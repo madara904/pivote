@@ -118,7 +118,7 @@ export const ForgotPasswordForm = () => {
 
             <div className="grid gap-3">
               <Link href={buildSignInUrl(returnTo)}>
-                <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold tracking-tight shadow-lg shadow-primary/20 transition-all">
+                <Button className="w-full h-11 bg-primary hover:opacity-90 text-white font-bold tracking-tight shadow-lg shadow-primary/20 transition-all">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Zurück zur Anmeldung
                 </Button>
@@ -201,7 +201,7 @@ export const ForgotPasswordForm = () => {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold tracking-tight shadow-lg shadow-primary/20 transition-all"
+                className="w-full h-11 bg-primary hover:opacity-90 text-white font-bold tracking-tight shadow-lg shadow-primary/20 transition-all"
                 disabled={loading}
               >
                 {loading ? "Wird gesendet..." : "Reset-Link senden"}

@@ -76,7 +76,7 @@ export function EmailVerificationSuccessForm() {
               </div>
               
               <Link href={targetHref} className="w-full group">
-                <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold tracking-tight shadow-lg shadow-primary/20 transition-all">
+                <Button className="w-full h-11 bg-primary hover:opacity-90 text-white font-bold tracking-tight shadow-lg shadow-primary/20 transition-all">
                   Zum Dashboard starten
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>

@@ -61,7 +61,7 @@ export default function TwoFactorForm() {
       return;
     }
 
-    router.push(returnTo ?? "/dashboard");
+    window.location.href = returnTo ?? "/dashboard";
     setIsSubmitting(false);
   };
 

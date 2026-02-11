@@ -69,7 +69,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(returnTo ?? "/dashboard");
+      // Full page redirect ensures the newly set cookie is sent with the request
+      window.location.href = returnTo ?? "/dashboard";
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unbekannter Fehler";

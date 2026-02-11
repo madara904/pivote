@@ -1,10 +1,9 @@
 import { requireForwarderAccess } from "@/lib/auth-utils";
-import DashboardOverviewNew, {
-  ActivityAndQuickActions,
-} from "../components/dashboard-overview-new";
+import DashboardOverviewNew from "../components/dashboard-overview-new";
 import { prefetch, trpc, HydrateClient } from "@/trpc/server";
 import { Suspense } from "react";
 import Loading, { ActivitySkeleton } from "./loading";
+import { ActivityAndQuickActions } from "../components/activity/activity";
 
 export default async function ForwarderDashboard() {
   await requireForwarderAccess();

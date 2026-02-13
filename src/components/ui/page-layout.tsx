@@ -3,12 +3,8 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-interface PageLayoutProps extends React.ComponentProps<"div"> {
-  children: React.ReactNode;
-}
-
-interface PageHeaderProps extends React.ComponentProps<"div"> {
-  children: React.ReactNode;
+interface PageHeaderProps {
+  title: string;
   className?: string;
 }
 
@@ -17,71 +13,21 @@ interface PageContainerProps extends React.ComponentProps<"div"> {
   className?: string;
 }
 
-/**
- * PageLayout - Wrapper für gesamte Seitenstruktur
- * Stellt einheitliches Padding und Spacing bereit
- */
-function PageLayout({ className, children, ...props }: PageLayoutProps) {
+
+function PageHeader({ title, className }: PageHeaderProps) {
   return (
-    <div
-      className={cn(
-        "flex-1 flex flex-col",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
+    <h1 className={cn("text-2xl font-bold text-foreground mb-6", className)}>
+      {title}
+    </h1>
   );
 }
 
-/**
- * PageHeader - Header-Bereich einer Seite
- * Einheitliches Padding: px-4 md:px-8 py-4
- * Optional: border-b für visuelle Trennung
- */
-function PageHeader({ className, children, ...props }: PageHeaderProps) {
-  return (
-    <div
-      className={cn(
-        "px-4 md:px-6 py-4",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-}
 
-/**
- * PageHeaderWithBorder - Header mit Border-Trennung
- */
-function PageHeaderWithBorder({ className, children, ...props }: PageHeaderProps) {
-  return (
-    <div
-      className={cn(
-        "border-b border-border bg-card",
-        className
-      )}
-    >
-      <PageHeader {...props}>
-        {children}
-      </PageHeader>
-    </div>
-  );
-}
-
-/**
- * PageContainer - Container-Bereich für Seiteninhalt
- * Einheitliches Padding: px-4 md:px-8 pb-4
- * Standard Gap: gap-y-4
- */
 function PageContainer({ className, children, ...props }: PageContainerProps) {
   return (
     <div
       className={cn(
-        "px-4 md:px-8 pb-4 flex flex-col gap-y-4 container mx-auto",
+        "flex flex-col w-full p-6 sm:p-10",
         className
       )}
       {...props}
@@ -91,9 +37,4 @@ function PageContainer({ className, children, ...props }: PageContainerProps) {
   );
 }
 
-export {
-  PageLayout,
-  PageHeader,
-  PageHeaderWithBorder,
-  PageContainer,
-};
+export { PageContainer, PageHeader };

@@ -4,15 +4,27 @@ import * as React from "react"
 import { useState } from "react"
 import {
   useReactTable,
-  type ColumnDef,
   getCoreRowModel,
-  getSortedRowModel,
   getPaginationRowModel,
+  type ColumnDef,
 } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Euro, Clock, CheckCircle2, XCircle, Eye, FileText, X, Edit, Trash2, MessageSquare, FolderOpen } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  Eye, 
+  FileText, 
+  X, 
+  Edit, 
+  Trash2, 
+  FolderOpen,
+  ArrowRight,
+  Package,
+  Calendar
+} from "lucide-react"
 import { ServiceIcon } from "@/components/ui/service-icon"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -23,28 +35,10 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { QuotationViewDialog } from "./quotation-view-dialog"
 import { EditQuotationDialog } from "./edit-quotation-dialog"
 import { DocumentsNotesDialog } from "./documents-notes-dialog"
+import { cn } from "@/lib/utils"
+import { formatGermanDate } from "@/lib/date-utils"
 
-const getInitials = (name: string) =>
-  name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "?"
-
-const getServiceLabel = (serviceType: string) => {
-  if (serviceType === "air_freight") return "Luftfracht";
-  if (serviceType === "sea_freight") return "Seefracht";
-  if (serviceType === "road_freight") return "Straßenfracht";
-  return serviceType;
-}
-
-const getDirectionLabel = (direction?: string) => {
-  if (direction === "import") return "Import";
-  if (direction === "export") return "Export";
-  return direction || "—";
-}
-
+// Types (identisch behalten für Type-Safety)
 export type FreightInquiry = {
   id: string
   referenceNumber: string
@@ -75,54 +69,33 @@ export type FreightInquiry = {
 
 interface InquiryDataTableProps<TData extends FreightInquiry> {
   data: TData[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ReadonlyArray<ColumnDef<TData, any>>
   className?: string
 }
+
+// --- Action Buttons (Refactored & Cleaned) ---
 
 function RejectInquiryButton({ inquiryId }: { inquiryId: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const rejectInquiry = useMutation(trpc.inquiry.forwarder.rejectInquiry.mutationOptions({
     onSuccess: async () => {
-      toast.info("Anfrage erfolgreich abgelehnt");
-      await queryClient.invalidateQueries(
-        trpc.inquiry.forwarder.getMyInquiriesFast.queryFilter()
-      );
+      toast.info("Anfrage abgelehnt");
+      await queryClient.invalidateQueries(trpc.inquiry.forwarder.getMyInquiriesFast.queryFilter());
     },
-    onError: (error: unknown) => {
-      if (error && typeof error === "object" && "message" in error) {
-        toast.error(`Fehler beim Ablehnen: ${(error as { message?: string }).message}`);
-      } else {
-        toast.error("Fehler beim Ablehnen: Unbekannter Fehler");
-      }
-    }
+    onError: (error: any) => toast.error(error?.message || "Fehler beim Ablehnen"),
   }));
-
-  const handleReject = () => {
-    rejectInquiry.mutate({ inquiryId });
-  };
 
   return (
     <ConfirmationDialog
-      title="Anfrage ablehnen"
-      description="Möchten Sie diese Anfrage wirklich ablehnen? Diese Aktion kann nicht rückgängig gemacht werden."
-      confirmText="Anfrage ablehnen"
-      cancelText="Abbrechen"
+      title="Ablehnen?"
+      description="Möchten Sie diese Anfrage wirklich ablehnen?"
+      confirmText="Ja, ablehnen"
       variant="destructive"
-      onConfirm={handleReject}
-      loading={rejectInquiry.isPending}
-      loadingText="Wird abgelehnt..."
-      disabled={rejectInquiry.isPending}
+      onConfirm={() => rejectInquiry.mutate({ inquiryId })}
     >
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-        disabled={rejectInquiry.isPending}
-      >
-        <X className="h-4 w-4 mr-2 shrink-0" />
-        <span className="truncate">Anfrage ablehnen</span>
+      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
+        <X className="h-4 w-4" />
       </Button>
     </ConfirmationDialog>
   );
@@ -133,44 +106,28 @@ function DeleteQuotationButton({ quotationId }: { quotationId: string }) {
   const queryClient = useQueryClient();
   const deleteQuotation = useMutation(trpc.quotation.forwarder.deleteQuotation.mutationOptions({
     onSuccess: async () => {
-      toast.success("Angebot erfolgreich gelöscht");
-      await queryClient.invalidateQueries(
-        trpc.inquiry.forwarder.getMyInquiriesFast.queryFilter()
-      );
+      toast.success("Angebot gelöscht");
+      await queryClient.invalidateQueries(trpc.inquiry.forwarder.getMyInquiriesFast.queryFilter());
     },
-    onError: (error: unknown) => {
-      if (error && typeof error === "object" && "message" in error) {
-        toast.error(`Fehler beim Löschen: ${(error as { message?: string }).message}`);
-      } else {
-        toast.error("Fehler beim Löschen: Unbekannter Fehler");
-      }
-    }
+    onError: (error: any) => toast.error(error?.message || "Fehler beim Löschen"),
   }));
 
   return (
     <ConfirmationDialog
-      title="Angebot löschen"
-      description="Möchten Sie dieses Angebot wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
-      confirmText="Angebot löschen"
-      cancelText="Abbrechen"
+      title="Angebot löschen?"
+      description="Diese Aktion kann nicht rückgängig gemacht werden."
+      confirmText="Löschen"
       variant="destructive"
       onConfirm={() => deleteQuotation.mutate({ quotationId })}
-      loading={deleteQuotation.isPending}
-      loadingText="Wird gelöscht..."
-      disabled={deleteQuotation.isPending}
     >
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-        disabled={deleteQuotation.isPending}
-      >
-        <Trash2 className="h-4 w-4 mr-2 shrink-0" />
-        <span className="truncate">Angebot löschen</span>
+      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
+        <Trash2 className="h-4 w-4" />
       </Button>
     </ConfirmationDialog>
   );
 }
+
+// --- Main Component ---
 
 export function InquiryDataTable<TData extends FreightInquiry>({
   data,
@@ -179,282 +136,183 @@ export function InquiryDataTable<TData extends FreightInquiry>({
 }: InquiryDataTableProps<TData>) {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
+  
+  // Dialog States
   const [selectedQuotationInquiryId, setSelectedQuotationInquiryId] = useState<string | null>(null);
   const [selectedEditQuotationId, setSelectedEditQuotationId] = useState<{ quotationId: string; inquiryId: string } | null>(null);
   const [selectedDocumentsNotesInquiryId, setSelectedDocumentsNotesInquiryId] = useState<string | null>(null);
 
-  // Helper to build href with preserved tab parameter
-  const buildHref = (path: string) => {
-    if (tabParam) {
-      return `${path}?tab=${tabParam}`;
-    }
-    return path;
-  };
-
-  const table = useReactTable<TData>({
+  const table = useReactTable({
     data,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    columns: [...columns] as ColumnDef<TData, any>[],
+    columns: columns as ColumnDef<TData, any>[],
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 10 } }
   })
 
+  const buildHref = (path: string) => tabParam ? `${path}?tab=${tabParam}` : path;
+
+  if (table.getRowModel().rows.length === 0) return null;
+
   return (
     <div className={className}>
-      <div className="space-y-4">
-        {table.getRowModel().rows.length === 0 ? null : (
-          table.getRowModel().rows.map(row => {
-            const r = row.original
-            const isWon = r.quotationStatus === "accepted"
-            const isArchived =
-              r.status === "expired" ||
-              r.status === "cancelled" ||
-              r.status === "rejected" ||
-              (r.status === "closed" && !isWon) ||
-              r.responseStatus === "rejected"
-            const isLost = r.quotationStatus === "rejected"
-            const canOffer =
-              r.status === "open" &&
-              r.responseStatus !== "quoted" &&
-              r.responseStatus !== "rejected"
-            const canViewQuotation =
-              r.responseStatus === "quoted" || isWon
-            const canEditQuotation =
-              r.quotationStatus === "submitted" || r.quotationStatus === "withdrawn"
-            return (
-              <Card key={row.id} className="overflow-hidden relative">
-                {r.quotationStatus === "accepted" && (
-                  <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-                    <Badge variant="secondary" className="gap-1 shrink-0 text-green-700 bg-green-600/10">
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span className="hidden sm:inline">Gewonnen</span>
-                      <span className="sm:hidden">Gew.</span>
-                    </Badge>
-                    <Button
+      <div className="flex flex-col gap-4">
+        {table.getRowModel().rows.map(row => {
+          const r = row.original;
+          
+          // Status Logic
+          const isWon = r.quotationStatus === "accepted";
+          const isLost = r.quotationStatus === "rejected";
+          const isQuoted = r.responseStatus === "quoted";
+          const isForwarderRejected = r.responseStatus === "rejected";
+          const isExpired = r.status === "expired";
+          const isCancelled = r.status === "cancelled";
+          const isOpen = r.status === "open" && !isQuoted && !isLost && !isWon && !isForwarderRejected;
+          
+          // Permissions
+          const canOffer = isOpen;
+          const canViewQuotation = isQuoted || isWon || isLost;
+          const canEditQuotation = r.quotationStatus === "submitted";
+
+          return (
+            <Card key={row.id} className="group relative overflow-hidden border-slate-200 transition-all hover:shadow-md hover:border-primary/20 bg-white">
+              
+              {/* Status Stripe (Left Border Color) */}
+              <div className={cn(
+                "absolute left-0 top-0 bottom-0 w-1",
+                isWon ? "bg-emerald-500" :
+                isLost || isExpired || isCancelled ? "bg-slate-300" :
+                isQuoted ? "bg-blue-500" : "bg-primary"
+              )} />
+
+              <div className="flex flex-col lg:flex-row p-5 gap-6 items-start lg:items-center">
+                
+                {/* 1. Mini Route Visual (Aligned with Detail Page) */}
+                <div className="w-full lg:w-48 shrink-0 flex flex-col justify-center">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-bold text-slate-900">{r.origin.code}</span>
+                    <ServiceIcon serviceType={r.serviceType} className="h-3 w-3 text-slate-400" />
+                    <span className="text-sm font-bold text-slate-900">{r.destination.code}</span>
+                  </div>
+                  <div className="w-full flex items-center gap-1 opacity-60 mb-2">
+                    <div className="h-1 w-1 rounded-full bg-slate-300" />
+                    <div className="h-[1px] flex-1 bg-gradient-to-r from-slate-200 via-primary/40 to-slate-200" />
+                    <div className="h-1 w-1 rounded-full bg-slate-300" />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-500 uppercase font-medium">
+                    <span className="truncate max-w-[45%]">{r.origin.country}</span>
+                    <span className="truncate max-w-[45%] text-right">{r.destination.country}</span>
+                  </div>
+                </div>
+
+                {/* 2. Main Info Area */}
+                <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-slate-500">{r.referenceNumber}</span>
+                      {isWon && <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50 text-[10px] px-1.5 py-0">Gewonnen</Badge>}
+                      {isLost && <Badge variant="outline" className="text-slate-500 text-[10px] px-1.5 py-0">Abgelehnt</Badge>}
+                      {isQuoted && !isWon && !isLost && <Badge className="bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-50 text-[10px] px-1.5 py-0">Angeboten</Badge>}
+                      {isExpired && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Abgelaufen</Badge>}
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 truncate">{r.shipperName}</h3>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                      <span className="flex items-center gap-1">
+                        <Package className="h-3 w-3" /> {r.pieces} colli
+                      </span>
+                      <span className="w-1 h-1 rounded-full bg-slate-300" />
+                      <span className="font-medium text-slate-700">{r.weight} {r.unit}</span>
+                      <span className="w-1 h-1 rounded-full bg-slate-300" />
+                      <span>{r.cargoType}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col justify-center md:items-end gap-1">
+                     {/* Validity or Date Info */}
+                     <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Calendar className="h-3 w-3" />
+                        <span>Eingang: {r.sentAt ? formatGermanDate(r.sentAt) : "—"}</span>
+                     </div>
+                     {r.validityDate && (
+                       <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
+                          <Clock className="h-3 w-3" />
+                          <span>Gültig bis: {formatGermanDate(r.validityDate)}</span>
+                       </div>
+                     )}
+                     
+                     {/* Price Display if Quoted */}
+                     {r.quotedPrice && (isQuoted || isWon || isLost) && (
+                        <div className="mt-1 text-sm font-bold text-primary">
+                          {new Intl.NumberFormat("de-DE", { style: "currency", currency: r.currency || "EUR" }).format(r.quotedPrice)}
+                        </div>
+                     )}
+                  </div>
+                </div>
+
+                {/* 3. Actions Area (Clean Icons & Buttons) */}
+                <div className="flex items-center gap-2 border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6 w-full lg:w-auto justify-end">
+                  
+                  {/* Dokumente Button (Nur wenn relevant) */}
+                  {((r.documentCount || 0) > 0 || (r.noteCount || 0) > 0) && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
                       onClick={() => setSelectedDocumentsNotesInquiryId(r.id)}
-                      size="sm"
-                      variant="ghost"
-                      title={`Dokumente & Notizen${(r.documentCount && r.documentCount > 0) || (r.noteCount && r.noteCount > 0) ? ` (${(r.documentCount || 0) + (r.noteCount || 0)})` : ''}`}
+                      className={cn("h-8 w-8", (r.documentCount || 0) > 0 ? "text-primary bg-primary/5" : "text-slate-400")}
+                      title="Dokumente & Notizen"
                     >
-                      <FolderOpen className={`h-4 w-4 ${((r.documentCount && r.documentCount > 0) || (r.noteCount && r.noteCount > 0)) ? 'text-primary' : 'text-muted-foreground'}`} />
-                      {((r.documentCount && r.documentCount > 0) || (r.noteCount && r.noteCount > 0)) && (
-                        <span className="text-xs font-medium text-primary">
-                          {(r.documentCount || 0) + (r.noteCount || 0)}
-                        </span>
-                      )}
+                      <FolderOpen className="h-4 w-4" />
                     </Button>
-                  </div>
-                )}
-                <CardContent className="p-6">
-                  <div className="flex flex-col xl:flex-row gap-6">
-                    <div className="w-full xl:w-48 flex-shrink-0">
-                      <div className="h-28 w-full flex items-center justify-center">
-                        <div className="flex flex-col items-center gap-1 text-center">
-                          <div className="text-xs text-muted-foreground uppercase tracking-wide">Route</div>
-                          <div className="text-base font-semibold text-foreground">
-                            {r.origin.code} → {r.destination.code}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {r.origin.country} → {r.destination.country}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  )}
 
-                    <div className="flex-1 min-w-0 space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-foreground break-words">{r.referenceNumber}</h3>
-                        <Badge variant="outline" className="text-xs font-medium flex items-center gap-1">
-                          <ServiceIcon serviceType={r.serviceType} className="h-3.5 w-3.5" />
-                          <span>{getServiceLabel(r.serviceType)}</span>
-                          <span className="text-muted-foreground">•</span>
-                          <span>{getDirectionLabel(r.serviceDirection)}</span>
-                        </Badge>
-                        {r.quotationStatus === "accepted" ? null : (r.status === "expired" || r.status === "cancelled" || r.status === "closed") ? (
-                          <Badge variant="destructive" className="gap-1 shrink-0">
-                            <XCircle className="h-3 w-3" />
-                            <span className="hidden sm:inline">{r.status === "expired" ? "Abgelaufen" : r.status === "cancelled" ? "Abgebrochen" : "Geschlossen"}</span>
-                            <span className="sm:hidden">{r.status === "expired" ? "Abg." : r.status === "cancelled" ? "Abb." : "Geschl."}</span>
-                          </Badge>
-                        ) : r.responseStatus === "quoted" ? (
-                          <Badge variant="default" className="gap-1 shrink-0">
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span className="hidden sm:inline">Angebot abgegeben</span>
-                            <span className="sm:hidden">Abgegeben</span>
-                          </Badge>
-                        ) : r.responseStatus === "rejected" ? (
-                          <Badge variant="outline" className="gap-1 text-muted-foreground shrink-0">
-                            <XCircle className="h-3 w-3" />
-                            Abgelehnt
-                          </Badge>
-                        ) : r.status === "open" ? (
-                          <Badge variant="secondary" className="gap-1 shrink-0">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Offen
-                          </Badge>
-                        ) : null}
-                      </div>
+ 
+                  {canOffer && (
+                    <>
+                      <RejectInquiryButton inquiryId={r.id} />
+                      <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}/angebot`)}>
+                        <Button size="sm" className="h-8 text-xs font-semibold shadow-sm">
+                          Angebot erstellen
+                        </Button>
+                      </Link>
+                    </>
+                  )}
 
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
-                          {getInitials(r.shipperName)}
-                        </div>
-                        <span className="font-medium text-foreground">{r.shipperName}</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Fracht</div>
-                          <div className="font-semibold">{r.weight} {r.unit || "kg"}</div>
-                          <div className="text-xs text-muted-foreground">{r.pieces || 1} PKG</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Service</div>
-                          <div className="font-semibold">
-                            {r.serviceType === "air_freight" ? "Luftfracht" : r.serviceType === "sea_freight" ? "Seefracht" : r.serviceType}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{r.serviceDirection === "import" ? "Import" : "Export"}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Ware</div>
-                          <div className="font-semibold">{r.cargoType === "general" ? "Allgemein" : r.cargoType}</div>
-                          <div className="text-xs text-muted-foreground line-clamp-2">{r.cargoDescription || "Keine Beschreibung"}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Timeline</div>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>Gesendet {r.sentAt ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(r.sentAt) : "—"}</span>
-                          </div>
-                          {r.responseDate && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              Antwort {new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(r.responseDate)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="w-full xl:w-64 flex flex-col gap-4">
-                      {r.quotedPrice && (r.responseStatus === "quoted" || r.quotationStatus === "accepted" || r.status === "expired") && (
-                        <div className="flex items-center justify-end gap-1 text-base sm:text-lg font-bold text-primary">
-                          <Euro className="h-4 w-4 shrink-0" />
-                          <span className="whitespace-nowrap">{new Intl.NumberFormat("de-DE", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }).format(r.quotedPrice)} {r.currency || "EUR"}</span>
-                        </div>
+                  {canViewQuotation && (
+                    <>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedQuotationInquiryId(r.id)} title="Angebot ansehen">
+                        <FileText className="h-4 w-4 text-slate-500" />
+                      </Button>
+                      {canEditQuotation && (
+                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => r.quotationId && setSelectedEditQuotationId({ quotationId: r.quotationId, inquiryId: r.id })} title="Angebot korrigieren">
+                          <Edit className="h-4 w-4 text-slate-500" />
+                        </Button>
                       )}
+                    </>
+                  )}
 
-                      <div className="space-y-2">
-                        {!isArchived && canOffer && (
-                          <>
-                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}/angebot`)} className="block">
-                              <Button size="sm" className="w-full">
-                                <FileText className="h-4 w-4 mr-2 shrink-0" />
-                                <span className="truncate">Angebot abgeben</span>
-                              </Button>
-                            </Link>
-                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
-                              <Button size="sm" className="w-full" variant="outline">
-                                <Eye className="h-4 w-4 mr-2 shrink-0" />
-                                <span className="truncate">Anfrage anzeigen</span>
-                              </Button>
-                            </Link>
-                            <RejectInquiryButton inquiryId={r.id} />
-                          </>
-                        )}
-
-                        {!isArchived && !canOffer && canViewQuotation && (
-                          <>
-                            <Button
-                              size="sm"
-                              className="w-full"
-                              variant="default"
-                              onClick={() => setSelectedQuotationInquiryId(r.id)}
-                            >
-                              <FileText className="h-4 w-4 mr-2 shrink-0" />
-                              <span className="truncate">Angebot anzeigen</span>
-                            </Button>
-                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
-                              <Button size="sm" className="w-full" variant="outline">
-                                <Eye className="h-4 w-4 mr-2 shrink-0" />
-                                <span className="truncate">Anfrage anzeigen</span>
-                              </Button>
-                            </Link>
-                            {canEditQuotation && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  className="w-full"
-                                  variant="outline"
-                                  onClick={() => r.quotationId && setSelectedEditQuotationId({ quotationId: r.quotationId, inquiryId: r.id })}
-                                >
-                                  <Edit className="h-4 w-4 mr-2 shrink-0" />
-                                  <span className="truncate">Angebot korrigieren</span>
-                                </Button>
-                                {r.quotationId && (
-                                  <DeleteQuotationButton quotationId={r.quotationId} />
-                                )}
-                              </>
-                            )}
-                          </>
-                        )}
-
-                        {isArchived && (
-                          <>
-                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
-                              <Button size="sm" className="w-full">
-                                <Eye className="h-4 w-4 mr-2 shrink-0" />
-                                <span className="truncate">Anfrage anzeigen</span>
-                              </Button>
-                            </Link>
-                            {canViewQuotation && (
-                              <Button
-                                size="sm"
-                                className="w-full"
-                                variant="outline"
-                                onClick={() => setSelectedQuotationInquiryId(r.id)}
-                              >
-                                <FileText className="h-4 w-4 mr-2 shrink-0" />
-                                <span className="truncate">Angebot anzeigen</span>
-                              </Button>
-                            )}
-                          </>
-                        )}
-
-                        {isLost && !isArchived && (
-                          <>
-                            <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)} className="block">
-                              <Button size="sm" className="w-full">
-                                <Eye className="h-4 w-4 mr-2 shrink-0" />
-                                <span className="truncate">Anfrage anzeigen</span>
-                              </Button>
-                            </Link>
-                            {canViewQuotation && (
-                              <Button
-                                size="sm"
-                                className="w-full"
-                                variant="outline"
-                                onClick={() => setSelectedQuotationInquiryId(r.id)}
-                              >
-                                <FileText className="h-4 w-4 mr-2 shrink-0" />
-                                <span className="truncate">Angebot anzeigen</span>
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })
-        )}
+                  <Link prefetch href={buildHref(`/dashboard/forwarder/frachtanfragen/${r.id}`)}>
+                    <Button variant="outline" size="sm" className="h-8 gap-2 text-xs border-slate-200">
+                      Details <ArrowRight className="h-3 w-3 opacity-50" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          )
+        })}
       </div>
+
+ 
+      <div className="flex items-center justify-between py-4">
+        <div className="text-xs text-muted-foreground">
+          Seite {table.getState().pagination.pageIndex + 1} von {table.getPageCount() || 1}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="h-8 text-xs">Zurück</Button>
+          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="h-8 text-xs">Weiter</Button>
+        </div>
+      </div>
+
       {selectedQuotationInquiryId && (
         <QuotationViewDialog
           inquiryId={selectedQuotationInquiryId}
@@ -479,16 +337,6 @@ export function InquiryDataTable<TData extends FreightInquiry>({
           noteCount={data.find(r => r.id === selectedDocumentsNotesInquiryId)?.noteCount}
         />
       )}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-2 py-3">
-        <div className="text-xs text-muted-foreground order-2 sm:order-1">
-          Seite {table.getState().pagination.pageIndex + 1} von {table.getPageCount() || 1}
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto order-1 sm:order-2">
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-initial" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Zurück</Button>
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-initial" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Weiter</Button>
-        </div>
-      </div>
     </div>
   )
 }
-

@@ -8,7 +8,6 @@ export type ShipperInquiryStatus =
   | "open" 
   | "quoted"  // Special status for shipper when quotations exist
   | "awarded" 
-  | "closed" 
   | "cancelled" 
   | "expired";
 
@@ -27,7 +26,7 @@ export interface ShipperStatusContext {
 
 /**
  * Determines the display status for shipper UI
- * Shippers care about: draft, open, quoted, awarded, closed, cancelled, expired
+ * Shippers care about: draft, open, quoted, awarded, cancelled, expired
  */
 export function getShipperDisplayStatus(context: ShipperStatusContext): ShipperInquiryStatus {
   const { inquiryStatus, quotationCount, hasAcceptedQuotation, forwarderResponseSummary } = context;
@@ -37,8 +36,8 @@ export function getShipperDisplayStatus(context: ShipperStatusContext): ShipperI
     return "awarded";
   }
   
-  // If inquiry is closed, cancelled, or expired, show as is
-  if (inquiryStatus === "closed" || inquiryStatus === "cancelled" || inquiryStatus === "expired") {
+  // If inquiry is in a final state, show as is
+  if (inquiryStatus === "cancelled" || inquiryStatus === "expired") {
     return inquiryStatus;
   }
   
@@ -56,10 +55,6 @@ export function getShipperDisplayStatus(context: ShipperStatusContext): ShipperI
     if (forwarderResponseSummary) {
       if (forwarderResponseSummary.quoted > 0) {
         return "quoted"; // Has quotations from forwarders
-      }
-      
-      if (forwarderResponseSummary.rejected === forwarderResponseSummary.total) {
-        return "closed"; // All forwarders rejected
       }
       
       if (forwarderResponseSummary.pending > 0) {
@@ -95,7 +90,6 @@ export function isShipperInquiryFinal(context: ShipperStatusContext): boolean {
   const { inquiryStatus, hasAcceptedQuotation } = context;
   return hasAcceptedQuotation ||
          inquiryStatus === "awarded" || 
-         inquiryStatus === "closed" || 
          inquiryStatus === "cancelled" || 
          inquiryStatus === "expired";
 }
@@ -109,7 +103,6 @@ export function getShipperStatusLabel(status: ShipperInquiryStatus): string {
     open: "Offen",
     quoted: "Angebote erhalten",
     awarded: "Beauftragt", 
-    closed: "Abgeschlossen",
     cancelled: "Storniert",
     expired: "Abgelaufen"
   };
@@ -126,7 +119,6 @@ export function getShipperStatusVariant(status: ShipperInquiryStatus): "default"
     open: "default" as const,
     quoted: "outline" as const,
     awarded: "default" as const,
-    closed: "secondary" as const,
     cancelled: "destructive" as const,
     expired: "destructive" as const
   };

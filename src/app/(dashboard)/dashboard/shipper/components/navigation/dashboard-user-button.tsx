@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { signOut, useSession } from "@/lib/auth-client";
-import { LogOut } from "lucide-react";
+import { BadgeCheckIcon, BellIcon, CreditCardIcon, LogOut, LogOutIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 function getInitials(name?: string) {
@@ -47,37 +48,37 @@ export const DashboardUserButton = () => {
   if (!data) {
     return null;
   }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="border rounded-full p-1 hover:bg-secondary cursor-pointer">
-        {data.user.image ? (
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={data.user.image} />
-          </Avatar>
-        ) : (
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="text-sm">{getInitials(data.user.name)}</AvatarFallback>
-          </Avatar>
-        )}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="center">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{data.user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {data.user.email}
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="rounded-full">
+            <Avatar>
+              <AvatarImage src="https://github.com/shadcn.png" alt="shadcn" />
+              <AvatarFallback>LR</AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuGroup>
+            <DropdownMenuItem>
+              <BadgeCheckIcon />
+              Account
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <CreditCardIcon />
+              Billing
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <BellIcon />
+              Notifications
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Abmelden</span>
+            <LogOutIcon />
+            Sign Out
           </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }

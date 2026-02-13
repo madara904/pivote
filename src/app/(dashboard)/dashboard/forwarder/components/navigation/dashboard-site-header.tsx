@@ -108,30 +108,19 @@ export function SiteHeader() {
         </Breadcrumb>
         
 
-        <div className="hidden md:flex items-center gap-2 ml-auto">
+        <div className="lg:flex items-center gap-2 ml-auto">
           <Button 
             variant="ghost" 
             size="icon" 
             className="h-8 w-8"
-            onClick={() => setCommandOpen(true)}
+            onClick={() => setCommandOpen(true)
+            }
           >
             <Search className="h-4 w-4 opacity-70" />
           </Button>
           <DashboardUserButton />
         </div>
         
-
-        <div className="flex items-center gap-2 ml-auto md:hidden">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={() => setCommandOpen(true)}
-          >
-            <Search className="h-4 w-4 opacity-70" />
-          </Button>
-          <DashboardUserButton />
-        </div>
       </div>
       <div className="flex min-h-[40px] w-full items-center border-t px-4 md:hidden">
         <Breadcrumb>

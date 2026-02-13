@@ -1,6 +1,6 @@
 import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
@@ -10,8 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          /*"bg-primary text-primary-foreground shadow-xs hover:bg-primary/90", ----> use opacity-90 because "/opacity" doesnt work with OKCH color values and leads to unexpected behaviour with loading states*/
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary hover:opacity-90",
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary",
         destructive:
           "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
@@ -22,8 +21,6 @@ const buttonVariants = cva(
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
         edit: "border text-accent-foreground shadow-xs hover:bg-accent/70 focus-visible:ring-accent/20 dark:focus-visible:ring-accent/40",
-        pink:
-          "bg-pink-accent text-pink-foreground shadow-xs hover:bg-pink-accent hover:opacity-90 focus-visible:ring-pink-accent/20 dark:focus-visible:ring-pink-accent/40",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
@@ -41,25 +38,23 @@ const buttonVariants = cva(
 
 function Button({
   className,
-  variant,
-  size,
+  variant = "default",
+  size = "default",
   asChild = false,
-  disabled,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
-  const Comp = asChild ? Slot : "button"
-
+  const Comp = asChild ? Slot.Root : "button"
   return (
     <Comp
       data-slot="button"
+      data-variant={variant}
+      data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
-      disabled={disabled || undefined}
       {...props}
     />
   )
 }
-
 export { Button, buttonVariants }

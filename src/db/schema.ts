@@ -29,17 +29,14 @@ export const inquiryStatusEnum = pgEnum("inquiry_status", [
   "draft",        // Shipper creating inquiry
   "open",         // Sent to forwarders, open for quotations
   "awarded",      // Shipper accepted a quotation
-  "closed",       // All quotations rejected or inquiry manually closed
   "cancelled",    // Inquiry cancelled by shipper
   "expired",      // Inquiry expired by validity date
-  "rejected",     // Rejected by forwarder (set by forwarder)
 ]);
 export const quotationStatusEnum = pgEnum("quotation_status", [
   "draft",        // Forwarder creating quotation
   "submitted",    // Forwarder submitted quotation (angeboten/ausstehend)
   "accepted",     // Shipper accepted quotation
   "rejected",     // Shipper rejected quotation
-  "withdrawn",    // Forwarder withdrew quotation
   "expired",      // Quotation expired by validUntil date
 ]);
 
@@ -376,65 +373,76 @@ export const inquiryPackage = pgTable("inquiry_package", {
     .notNull(),
 });
 
-export const inquiryForwarder = pgTable("inquiry_forwarder", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => randomUUID()),
-  inquiryId: text("inquiry_id")
-    .notNull()
-    .references(() => inquiry.id, { onDelete: "cascade" }),
-  forwarderOrganizationId: text("forwarder_organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  sentAt: timestamp("sent_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-  viewedAt: timestamp("viewed_at"),
-  rejectedAt: timestamp("rejected_at"),
-   responseStatus: forwarderResponseStatusEnum("response_status")
-    .default("pending")
-    .notNull(),
-  createdAt: timestamp("created_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-});
+export const inquiryForwarder = pgTable(
+  "inquiry_forwarder",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    inquiryId: text("inquiry_id")
+      .notNull()
+      .references(() => inquiry.id, { onDelete: "cascade" }),
+    forwarderOrganizationId: text("forwarder_organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    sentAt: timestamp("sent_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    viewedAt: timestamp("viewed_at"),
+    rejectedAt: timestamp("rejected_at"),
+    responseStatus: forwarderResponseStatusEnum("response_status")
+      .default("pending")
+      .notNull(),
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    inquiryForwarderUnique: unique().on(table.inquiryId, table.forwarderOrganizationId),
+  })
+);
 
-export const quotation = pgTable("quotation", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => randomUUID()),
-  quotationNumber: text("quotation_number").notNull().unique(),
-  inquiryId: text("inquiry_id")
-    .notNull()
-    .references(() => inquiry.id, { onDelete: "cascade" }),
-  forwarderOrganizationId: text("forwarder_organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
-  currency: text("currency").notNull().default("EUR"),
-  airlineFlight: text("airline_flight"), // Combined airline code and flight number
-  transitTime: integer("transit_time"),
-  validUntil: timestamp("valid_until").notNull(),
-  notes: text("notes"),
-  terms: text("terms"),
-  preCarriage: decimal("pre_carriage", { precision: 12, scale: 2 }).default("0"), // Pre-carriage cost
-  mainCarriage: decimal("main_carriage", { precision: 12, scale: 2 }).default("0"), // Main carriage cost
-  onCarriage: decimal("on_carriage", { precision: 12, scale: 2 }).default("0"), // On-carriage cost
-  additionalCharges: decimal("additional_charges", { precision: 12, scale: 2 }).default("0"), // Additional charges
-  status: quotationStatusEnum("status").notNull().default("draft"),
-  submittedAt: timestamp("submitted_at"), // When quotation was submitted (not default)
-  respondedAt: timestamp("responded_at"), // When shipper responded (accepted/rejected)
-  withdrawnAt: timestamp("withdrawn_at"), // When forwarder withdrew quotation
-  createdById: text("created_by_id")
-    .notNull()
-    .references(() => user.id),
-  createdAt: timestamp("created_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-  updatedAt: timestamp("updated_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-});
+export const quotation = pgTable(
+  "quotation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    quotationNumber: text("quotation_number").notNull().unique(),
+    inquiryId: text("inquiry_id")
+      .notNull()
+      .references(() => inquiry.id, { onDelete: "cascade" }),
+    forwarderOrganizationId: text("forwarder_organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
+    currency: text("currency").notNull().default("EUR"),
+    airlineFlight: text("airline_flight"), // Combined airline code and flight number
+    transitTime: integer("transit_time"),
+    validUntil: timestamp("valid_until").notNull(),
+    notes: text("notes"),
+    terms: text("terms"),
+    preCarriage: decimal("pre_carriage", { precision: 12, scale: 2 }).default("0"), // Pre-carriage cost
+    mainCarriage: decimal("main_carriage", { precision: 12, scale: 2 }).default("0"), // Main carriage cost
+    onCarriage: decimal("on_carriage", { precision: 12, scale: 2 }).default("0"), // On-carriage cost
+    additionalCharges: decimal("additional_charges", { precision: 12, scale: 2 }).default("0"), // Additional charges
+    status: quotationStatusEnum("status").notNull().default("draft"),
+    submittedAt: timestamp("submitted_at"), // When quotation was submitted (not default)
+    respondedAt: timestamp("responded_at"), // When shipper responded (accepted/rejected)
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    inquiryForwarderQuotationUnique: unique().on(table.inquiryId, table.forwarderOrganizationId),
+  })
+);
 
 // Removed quotationCharge table - charges are now columns in quotation table
 

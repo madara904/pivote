@@ -1,7 +1,8 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Icon, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, ChevronRight, Icon, Zap } from "lucide-react";
 import Link from "next/link";
 
 export const TIER_FEATURES = {
@@ -15,7 +16,7 @@ export function TierFeaturesHoverContent({ tier }: { tier: keyof typeof TIER_FEA
 
   return (
     <div className="w-[240px] bg-background border border-border shadow-xl">
-      {/* SEKTION 1: Die harten Fakten (2x2 Grid für bessere Lesbarkeit) */}
+        {/* SEKTION 1: Die harten Fakten (2x2 Grid für bessere Lesbarkeit) */}
       <div className="p-4 bg-slate-50/50 border-b border-border">
         <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col">
@@ -37,10 +38,10 @@ export function TierFeaturesHoverContent({ tier }: { tier: keyof typeof TIER_FEA
         </div>
       </div>
 
-      {/* SEKTION 2: Navigation & Action */}
+      
       <div className="p-3 space-y-3">
         <Link
-          href="/dashboard/forwarder/einstellungen/pläne"
+          href="/dashboard/forwarder/einstellungen/abrechnung"
           className="group flex items-center justify-between"
         >
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Plan Details</span>
@@ -48,12 +49,9 @@ export function TierFeaturesHoverContent({ tier }: { tier: keyof typeof TIER_FEA
         </Link>
 
         {tier !== "advanced" && (
-          <Link
-            href="/dashboard/forwarder/einstellungen/pläne"
-            className="block w-full py-2.5 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] text-center hover:bg-primary transition-colors"
-          >
-            Upgrade Plan
-          </Link>
+          <Button variant="default" size="sm" className="w-full">
+            Jetzt upgraden!
+          </Button>
         )}
       </div>
     </div>

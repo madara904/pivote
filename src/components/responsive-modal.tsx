@@ -52,7 +52,7 @@ export const ResponsiveModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("w-[75vw] max-h-[90vh] flex flex-col p-0 sm:!max-w-none", contentClassName)}>
+      <DialogContent className={cn("max-h-[90vh] flex flex-col p-0 sm:max-w-4xl", contentClassName)}>
         <DialogHeader className={cn("flex-shrink-0 px-6 pt-6 pb-2", headerClassName)}>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

@@ -12,7 +12,7 @@ import { useTRPC } from "@/trpc/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { sanitizeMoneyInput, sanitizeIntegerInput } from "@/lib/form-sanitization";
-import { DotLoading } from "@/components/ui/dot-loading";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface EditQuotationDialogProps {
   quotationId: string;
@@ -156,8 +156,17 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
   if (isLoadingQuotation) {
     return (
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Angebot korrigieren">
-        <div className="flex items-center justify-center py-8">
-          <DotLoading size="lg" />
+        <div className="space-y-6 py-2">
+          <Skeleton className="h-6 w-56" />
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-10 w-full sm:w-48" />
         </div>
       </ResponsiveModal>
     );
@@ -167,11 +176,11 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
     <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Angebot korrigieren">
       <div className="space-y-6">
         {/* Cost Breakdown */}
-        <Card className="p-4 sm:p-6">
+        <Card className="p-6 rounded-xl border border-slate-100 bg-slate-50/30">
           <div className="space-y-6">
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold">Kostenaufschlüsselung</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Kostenaufschlüsselung</h2>
+              <p className="text-sm text-slate-500">
                 Geben Sie die einzelnen Kostenpunkte ein. Mindestens ein Wert muss größer als 0 sein.
               </p>
             </div>
@@ -179,7 +188,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
             <div className="grid gap-6 md:grid-cols-2">
               {/* Pre-carriage */}
               <div className="space-y-2">
-                <Label htmlFor="preCarriage" className="text-sm font-medium">
+                <Label htmlFor="preCarriage" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Vorlauf (Pre-carriage)
                 </Label>
                 <div className="relative">
@@ -202,7 +211,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
               {/* Main carriage */}
               <div className="space-y-2">
-                <Label htmlFor="mainCarriage" className="text-sm font-medium">
+                <Label htmlFor="mainCarriage" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Hauptlauf (Main carriage)
                 </Label>
                 <div className="relative">
@@ -225,7 +234,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
               {/* On-carriage */}
               <div className="space-y-2">
-                <Label htmlFor="onCarriage" className="text-sm font-medium">
+                <Label htmlFor="onCarriage" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Nachlauf (On-carriage)
                 </Label>
                 <div className="relative">
@@ -248,7 +257,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
               {/* Additional charges */}
               <div className="space-y-2">
-                <Label htmlFor="additionalCharges" className="text-sm font-medium">
+                <Label htmlFor="additionalCharges" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Zusatzkosten
                 </Label>
                 <div className="relative">
@@ -273,16 +282,16 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
             {errors.preCarriage && <p className="text-sm text-red-600">{errors.preCarriage}</p>}
 
             {/* Total Price Display */}
-            <div className="border-t pt-6">
+            <div className="border-t border-slate-100 pt-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1 min-w-0 flex-1">
-                  <p className="text-sm text-muted-foreground">Gesamtpreis</p>
-                  <p className="text-2xl sm:text-3xl font-semibold break-words">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gesamtpreis</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">
                     {calculatedTotal.toLocaleString("de-DE", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{" "}
-                    <span className="text-lg sm:text-xl text-muted-foreground">{formData.currency}</span>
+                    <span className="text-lg sm:text-xl text-slate-500">{formData.currency}</span>
                   </p>
                 </div>
               </div>
@@ -292,16 +301,16 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
         </Card>
 
         {/* Shipment Details */}
-        <Card className="p-4 sm:p-6">
+        <Card className="p-6 rounded-xl border border-slate-100 bg-slate-50/30">
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Versanddetails</h2>
+            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Versanddetails</h2>
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Airline/Flight */}
               <div className="space-y-2">
-                <Label htmlFor="airlineFlight" className="text-sm font-medium">
+                <Label htmlFor="airlineFlight" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Fluggesellschaft / Flugnummer
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
+                  <span className="ml-1 text-slate-400 font-normal">(optional)</span>
                 </Label>
                 <Input
                   id="airlineFlight"
@@ -315,9 +324,9 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
               {/* Transit Time */}
               <div className="space-y-2">
-                <Label htmlFor="transitTime" className="text-sm font-medium">
+                <Label htmlFor="transitTime" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Transitzeit (Tage)
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
+                  <span className="ml-1 text-slate-400 font-normal">(optional)</span>
                 </Label>
                 <Input
                   id="transitTime"
@@ -337,7 +346,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
               {/* Valid Until */}
               <div className="space-y-2">
-                <Label htmlFor="validUntil" className="text-sm font-medium">
+                <Label htmlFor="validUntil" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Gültig bis
                   <span className="ml-1 text-red-600">*</span>
                 </Label>
@@ -357,7 +366,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
               {/* Currency */}
               <div className="space-y-2">
-                <Label htmlFor="currency" className="text-sm font-medium">
+                <Label htmlFor="currency" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Währung
                 </Label>
                 <Input
@@ -374,16 +383,16 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
         </Card>
 
         {/* Additional Information */}
-        <Card className="p-4 sm:p-6">
+        <Card className="p-6 rounded-xl border border-slate-100 bg-slate-50/30">
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Zusätzliche Informationen</h2>
+            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Zusätzliche Informationen</h2>
 
             <div className="space-y-6">
               {/* Notes */}
               <div className="space-y-2">
-                <Label htmlFor="notes" className="text-sm font-medium">
+                <Label htmlFor="notes" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Notizen
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
+                  <span className="ml-1 text-slate-400 font-normal">(optional)</span>
                 </Label>
                 <Textarea
                   id="notes"
@@ -398,9 +407,9 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
 
               {/* Terms */}
               <div className="space-y-2">
-                <Label htmlFor="terms" className="text-sm font-medium">
+                <Label htmlFor="terms" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Geschäftsbedingungen
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
+                  <span className="ml-1 text-slate-400 font-normal">(optional)</span>
                 </Label>
                 <Textarea
                   id="terms"
@@ -417,7 +426,7 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
         </Card>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 border-t pt-6">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 border-t border-slate-100 pt-6">
           <Button
             variant="outline"
             size="lg"

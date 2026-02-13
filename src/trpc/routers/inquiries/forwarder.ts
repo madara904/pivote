@@ -435,6 +435,17 @@ export const forwarderRouter = createTRPCRouter({
           throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
         }
 
+        const inquiryRecord = await db.query.inquiry.findFirst({
+          where: eq(inquiry.id, input.inquiryId),
+          columns: {
+            status: true,
+          },
+        });
+
+        if (!inquiryRecord || inquiryRecord.status !== "open") {
+          throw new Error("Frachtanfrage ist nicht mehr verfügbar");
+        }
+
         // Mark the inquiry as rejected for this forwarder
         await db
           .update(inquiryForwarder)

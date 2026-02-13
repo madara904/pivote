@@ -1,6 +1,6 @@
 import { requireShipperAccess } from "@/lib/auth-utils";
 import QuotationView from "../../../components/quotation-view";
-import { PageContainer, PageHeaderWithBorder, PageLayout } from "@/components/ui/page-layout";
+import { PageContainer } from "@/components/ui/page-layout";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -14,24 +14,20 @@ const ShipperInquiryOffersPage = async ({ params }: ShipperInquiryOffersPageProp
   const resolvedParams = await params;
 
   return (
-    <PageLayout>
-      <PageHeaderWithBorder>
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon">
-            <Link href={`/dashboard/shipper/frachtanfragen/${resolvedParams.id}`}>
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Angebote</h1>
-            <p className="text-sm text-muted-foreground">Alle Angebote im Detail.</p>
-          </div>
+    <PageContainer>
+      <div className="flex items-center gap-3 mb-6">
+        <Button asChild variant="ghost" size="icon">
+          <Link href={`/dashboard/shipper/frachtanfragen/${resolvedParams.id}`}>
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Angebote</h1>
+          <p className="text-sm text-muted-foreground">Alle Angebote im Detail.</p>
         </div>
-      </PageHeaderWithBorder>
-      <PageContainer className="pt-4 pb-6">
-        <QuotationView inquiryId={resolvedParams.id} />
-      </PageContainer>
-    </PageLayout>
+      </div>
+      <QuotationView inquiryId={resolvedParams.id} />
+    </PageContainer>
   );
 };
 

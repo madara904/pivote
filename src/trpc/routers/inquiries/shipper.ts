@@ -319,16 +319,18 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Organisation ist kein Versender");
         }
 
+        const uniqueForwarderIds = [...new Set(input.selectedForwarderIds)];
+
         const connectedForwarders = await db
           .select({ forwarderOrganizationId: organizationConnection.forwarderOrganizationId })
           .from(organizationConnection)
           .where(and(
             eq(organizationConnection.shipperOrganizationId, membership.organization.id),
             eq(organizationConnection.status, "connected"),
-            inArray(organizationConnection.forwarderOrganizationId, input.selectedForwarderIds)
+            inArray(organizationConnection.forwarderOrganizationId, uniqueForwarderIds)
           ));
 
-        if (connectedForwarders.length !== input.selectedForwarderIds.length) {
+        if (connectedForwarders.length !== uniqueForwarderIds.length) {
           throw new Error("Bitte wähle nur verbundene Spediteure aus");
         }
 
@@ -398,8 +400,8 @@ export const shipperRouter = createTRPCRouter({
         }
 
         // Send to selected forwarders
-        if (input.selectedForwarderIds.length > 0) {
-          const forwarderData = input.selectedForwarderIds.map(forwarderId => ({
+        if (uniqueForwarderIds.length > 0) {
+          const forwarderData = uniqueForwarderIds.map(forwarderId => ({
             inquiryId,
             forwarderOrganizationId: forwarderId,
             sentAt: new Date()
@@ -408,7 +410,7 @@ export const shipperRouter = createTRPCRouter({
           await db.insert(inquiryForwarder).values(forwarderData);
 
           await db.insert(activityEvent).values(
-            input.selectedForwarderIds.map((forwarderId) => ({
+            uniqueForwarderIds.map((forwarderId) => ({
               organizationId: forwarderId,
               actorUserId: session.user.id,
               type: "inquiry.received",
@@ -610,16 +612,18 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Frachtanfrage kann nur im Entwurfsstatus gesendet werden");
         }
 
+        const uniqueForwarderIds = [...new Set(input.selectedForwarderIds)];
+
         const connectedForwarders = await db
           .select({ forwarderOrganizationId: organizationConnection.forwarderOrganizationId })
           .from(organizationConnection)
           .where(and(
             eq(organizationConnection.shipperOrganizationId, membership.organization.id),
             eq(organizationConnection.status, "connected"),
-            inArray(organizationConnection.forwarderOrganizationId, input.selectedForwarderIds)
+            inArray(organizationConnection.forwarderOrganizationId, uniqueForwarderIds)
           ));
 
-        if (connectedForwarders.length !== input.selectedForwarderIds.length) {
+        if (connectedForwarders.length !== uniqueForwarderIds.length) {
           throw new Error("Bitte wähle nur verbundene Spediteure aus");
         }
 
@@ -633,7 +637,7 @@ export const shipperRouter = createTRPCRouter({
           .where(eq(inquiry.id, input.inquiryId));
 
         // Send to selected forwarders
-        const forwarderData = input.selectedForwarderIds.map(forwarderId => ({
+        const forwarderData = uniqueForwarderIds.map(forwarderId => ({
           inquiryId: input.inquiryId,
           forwarderOrganizationId: forwarderId,
           sentAt: new Date()
@@ -642,7 +646,7 @@ export const shipperRouter = createTRPCRouter({
         await db.insert(inquiryForwarder).values(forwarderData);
 
         await db.insert(activityEvent).values(
-          input.selectedForwarderIds.map((forwarderId) => ({
+          uniqueForwarderIds.map((forwarderId) => ({
             organizationId: forwarderId,
             actorUserId: session.user.id,
             type: "inquiry.received",
@@ -702,20 +706,8 @@ export const shipperRouter = createTRPCRouter({
           throw new Error("Frachtanfrage nicht gefunden oder nicht zugänglich");
         }
 
-        // Check if any submitted quotations exist for this inquiry
-        const hasQuotations = await db
-          .select({ id: quotation.id })
-          .from(quotation)
-          .where(
-            and(
-              eq(quotation.inquiryId, input.inquiryId),
-              ne(quotation.status, "draft")
-            )
-          )
-          .limit(1);
-
-        if (hasQuotations.length > 0) {
-          throw new Error("Frachtanfrage kann nicht storniert werden, da bereits Angebote eingegangen sind");
+        if (inquiryResult[0].status === "cancelled" || inquiryResult[0].status === "expired" || inquiryResult[0].status === "awarded") {
+          throw new Error("Frachtanfrage ist bereits beendet");
         }
 
         // Update inquiry status to cancelled

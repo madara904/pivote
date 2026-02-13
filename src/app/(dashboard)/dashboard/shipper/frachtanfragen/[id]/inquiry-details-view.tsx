@@ -13,7 +13,7 @@ import { InquiryDocumentUploadDialog } from "../components/inquiry-document-uplo
 import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout"
+import { PageContainer } from "@/components/ui/page-layout"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { formatGermanDate } from "@/lib/date-utils"
 
@@ -102,30 +102,24 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
     : "/dashboard/shipper/frachtanfragen";
 
   return (
-    <PageLayout>
-      <PageHeaderWithBorder>
-        <div className="max-w-4xl mx-auto w-full">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Link href={backHref}>
-              <Button variant="ghost" size="icon" className="shrink-0">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl font-semibold text-foreground break-words">
-                Anfrage: {detail.referenceNumber}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Details und Angebote für Ihre Frachtanfrage
-              </p>
-            </div>
+    <PageContainer>
+      <div className="max-w-4xl mx-auto w-full">
+        <div className="flex items-center gap-3 sm:gap-4 mb-6">
+          <Link href={backHref}>
+            <Button variant="ghost" size="icon" className="shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-semibold text-foreground break-words">
+              Anfrage: {detail.referenceNumber}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Details und Angebote für Ihre Frachtanfrage
+            </p>
           </div>
         </div>
-      </PageHeaderWithBorder>
-
-      <PageContainer>
-        <div className="max-w-4xl mx-auto w-full">
-          <div className="space-y-6">
+        <div className="space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 mt-3 bg-muted/30 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs uppercase">Route</p>
@@ -404,9 +398,8 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
                 </div>
               </TabsContent>
             </Tabs>
-          </div>
         </div>
-      </PageContainer>
+      </div>
 
       {uploadOpen && (
         <InquiryDocumentUploadDialog
@@ -415,6 +408,6 @@ export default function InquiryDetailsView({ inquiryId }: { inquiryId: string })
           inquiryId={inquiryId}
         />
       )}
-    </PageLayout>
+    </PageContainer>
   )
 }

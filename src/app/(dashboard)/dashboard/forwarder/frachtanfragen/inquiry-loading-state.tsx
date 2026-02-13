@@ -1,17 +1,25 @@
-import { DotLoading } from "@/components/ui/dot-loading"
+import { Card } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
-interface InquiryLoadingStateProps {
-  text?: string
-}
 
-export function InquiryLoadingState({ text = "Lade..." }: InquiryLoadingStateProps) {
+export function InquiryLoadingState() {
   return (
     <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <DotLoading />
-          <p className="mt-4 text-muted-foreground">{text}</p>
-        </div>
+      <div className="py-6 space-y-6">
+        <Card className="p-6">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </Card>
       </div>
     </div>
   )

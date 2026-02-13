@@ -4,6 +4,7 @@ import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { PageContainer, PageHeader } from "@/components/ui/page-layout";
 
 const NAV_ITEMS = [
   { key: "konto", label: "Konto", href: "/dashboard/forwarder/einstellungen/konto" },
@@ -23,8 +24,7 @@ export default function EinstellungenLayout({ children }: { children: React.Reac
   return (
     <div className="flex flex-col min-h-screen">
       <div className="pt-8 pb-0 px-6 md:px-10 border-b bg-background/50 backdrop-blur-md">
-        <h1 className="text-2xl font-bold tracking-tight mb-6">Einstellungen</h1>
-        
+        <PageHeader title="Einstellungen" />
         <nav className="flex items-center gap-6 overflow-x-auto no-scrollbar">
           {NAV_ITEMS.map(({ key, label, href }) => {
             const isActive = normalizedPathname === href;
@@ -51,11 +51,11 @@ export default function EinstellungenLayout({ children }: { children: React.Reac
       </div>
 
 
-      <main className="flex-1 p-6 md:p-10 mx-auto w-full">
+      <PageContainer>
         <div className="animate-in fade-in duration-500">
           {children}
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

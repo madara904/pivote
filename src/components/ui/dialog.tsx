@@ -15,7 +15,7 @@ function Dialog({
 function DialogTrigger({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} suppressHydrationWarning />
 }
 
 function DialogPortal({
@@ -27,7 +27,7 @@ function DialogPortal({
 function DialogClose({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+  return <DialogPrimitive.Close data-slot="dialog-close" {...props} suppressHydrationWarning />
 }
 
 function DialogOverlay({
@@ -42,6 +42,7 @@ function DialogOverlay({
         className
       )}
       {...props}
+      suppressHydrationWarning
     />
   )
 }
@@ -86,6 +87,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="dialog-header"
       className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
       {...props}
+      suppressHydrationWarning
     />
   )
 }
@@ -99,6 +101,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
         className
       )}
       {...props}
+      suppressHydrationWarning
     />
   )
 }
@@ -111,6 +114,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn("text-lg leading-none font-semibold", className)}
+      suppressHydrationWarning
       {...props}
     />
   )
@@ -125,6 +129,7 @@ function DialogDescription({
       data-slot="dialog-description"
       className={cn("text-muted-foreground text-sm", className)}
       {...props}
+      suppressHydrationWarning
     />
   )
 }

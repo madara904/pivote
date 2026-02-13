@@ -1,22 +1,17 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout";
+import { PageContainer } from "@/components/ui/page-layout";
 
 export function InquiryDetailsLoadingState() {
   return (
-    <PageLayout>
-      <PageHeaderWithBorder>
-        <div className="max-w-4xl mx-auto w-full">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Skeleton className="h-10 w-10 shrink-0" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </div>
+    <PageContainer>
+      <div className="max-w-4xl mx-auto w-full">
+        <div className="flex items-center gap-3 sm:gap-4 mb-6">
+          <Skeleton className="h-10 w-10 shrink-0" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
           </div>
         </div>
-      </PageHeaderWithBorder>
-
-      <PageContainer>
         <div className="max-w-4xl mx-auto w-full">
           <div className="space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-xl border border-border/50">
@@ -35,7 +30,7 @@ export function InquiryDetailsLoadingState() {
             </div>
           </div>
         </div>
-      </PageContainer>
-    </PageLayout>
+      </div>
+    </PageContainer>
   );
 }

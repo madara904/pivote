@@ -12,6 +12,7 @@ import { authClient } from "@/lib/auth-client";
 import { getReturnToFromSearchParams } from "@/lib/redirect-utils";
 
 const OTP_LENGTH = 6;
+const OTP_VALID_SECONDS = 300; // 5 Minuten
 
 export default function TwoFactorForm() {
   const router = useRouter();
@@ -22,12 +23,26 @@ export default function TwoFactorForm() {
   const hasAutoSubmitted = useRef(false);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   const canSubmit = useMemo(() => code.trim().length === OTP_LENGTH, [code]);
 
   useEffect(() => {
     void handleSendOtp();
   }, []);
+
+  useEffect(() => {
+    if (secondsLeft === null || secondsLeft <= 0) return;
+    const id = setInterval(
+      () =>
+        setSecondsLeft((s) => {
+          if (s === null || s <= 1) return null;
+          return s - 1;
+        }),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, [secondsLeft]);
 
   const handleSendOtp = async () => {
     setIsSending(true);
@@ -41,7 +56,14 @@ export default function TwoFactorForm() {
       setIsSending(false);
       return;
     }
+    setSecondsLeft(OTP_VALID_SECONDS);
     setIsSending(false);
+  };
+
+  const formatTime = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   const handleVerify = async () => {
@@ -106,6 +128,7 @@ export default function TwoFactorForm() {
                 value={code}
                 onChange={setCode}
                 containerClassName="justify-start"
+                disabled={isSending || isSubmitting}
               >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />
@@ -122,6 +145,12 @@ export default function TwoFactorForm() {
               Wir haben einen Sicherheitscode an Ihre E-Mail-Adresse gesendet.
             </p>
 
+            {secondsLeft !== null && secondsLeft > 0 && (
+              <p className="text-slate-600 font-semibold text-sm">
+                Code gültig für: <span className="tabular-nums">{formatTime(secondsLeft)}</span>
+              </p>
+            )}
+
             <Button
               type="button"
               variant="outline"
@@ -129,7 +158,7 @@ export default function TwoFactorForm() {
               onClick={handleSendOtp}
               disabled={isSending || isSubmitting}
             >
-              {isSending || isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {(isSending || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Code erneut senden
             </Button>
           </form>
@@ -149,13 +178,9 @@ export default function TwoFactorForm() {
 
         <div className="relative z-10 max-w-md">
           <h2 className="text-4xl font-black tracking-tighter mb-4 leading-tight uppercase">
-            Mehr Sicherheit <br /> fuer Ihr Konto.
+            Mehr Sicherheit <br /> für Ihr Konto.
           </h2>
           <Separator className="my-4" />
-          <div className="flex items-center gap-2 text-sm">
-            <Mail className="h-4 w-4" />
-            <span>Einmal-Code per E-Mail</span>
-          </div>
         </div>
       </div>
     </div>

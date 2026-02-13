@@ -35,7 +35,6 @@ const statusColors = {
   submitted: "bg-yellow-100 text-yellow-800",
   accepted: "bg-green-100 text-green-800", 
   rejected: "bg-red-100 text-red-800",
-  withdrawn: "bg-orange-100 text-orange-800",
   expired: "bg-red-100 text-red-800",
 }
 
@@ -164,7 +163,6 @@ export default function QuotationView({ inquiryId }: QuotationViewProps) {
                         {quotation.status === "submitted" && "Eingereicht"}
                         {quotation.status === "accepted" && "Angenommen"}
                         {quotation.status === "rejected" && "Abgelehnt"}
-                        {quotation.status === "withdrawn" && "Zurückgezogen"}
                         {quotation.status === "expired" && "Abgelaufen"}
                       </Badge>
                     </div>

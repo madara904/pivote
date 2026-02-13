@@ -1,12 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageLayout, PageContainer } from "@/components/ui/page-layout";
+import { PageContainer } from "@/components/ui/page-layout";
 import DashboardOverviewHead from "../components/dashboard-overview-head";
 
 export default function Loading() {
   return (
-    <PageLayout>
+    <PageContainer className="space-y-8">
       <DashboardOverviewHead />
-      <PageContainer className="space-y-8">
         <div className="w-full max-w-2xl">
           <Skeleton className="h-48 w-full rounded-3xl" />
         </div>
@@ -30,7 +29,6 @@ export default function Loading() {
 
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-96 w-full" />
-      </PageContainer>
-    </PageLayout>
+    </PageContainer>
   );
 }

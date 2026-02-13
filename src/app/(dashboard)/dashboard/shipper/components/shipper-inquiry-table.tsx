@@ -68,6 +68,21 @@ interface ShipperInquiryTableProps {
 }
 
 export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTableProps) {
+  if (inquiries.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed p-8 text-center">
+        <p className="text-sm text-muted-foreground">
+          Es sind noch keine Frachtanfragen vorhanden.
+        </p>
+        <Link
+          href="/dashboard/shipper/frachtanfragen/neu"
+          className="mt-4 inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
+        >
+          Neue Frachtanfrage erstellen
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div className="grid gap-4 grid-cols-1">
@@ -80,7 +95,7 @@ export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTabl
           forwarderResponseSummary: inquiry.forwarderResponseSummary
         };
 
-        const isArchived = inquiry.status === "expired" || inquiry.status === "cancelled" || inquiry.status === "closed"
+        const isArchived = inquiry.status === "expired" || inquiry.status === "cancelled"
 
         return (
           <Link prefetch key={inquiry.id} href={`/dashboard/shipper/frachtanfragen/${inquiry.id}`}>
@@ -129,8 +144,8 @@ export function ShipperInquiryTable({ inquiries, className }: ShipperInquiryTabl
                     {inquiry.hasAcceptedQuotation ? null : isArchived ? (
                       <Badge variant="destructive" className="gap-1 shrink-0">
                         <XCircle className="h-3 w-3" />
-                        <span className="hidden sm:inline">{inquiry.status === "expired" ? "Abgelaufen" : inquiry.status === "cancelled" ? "Abgebrochen" : "Geschlossen"}</span>
-                        <span className="sm:hidden">{inquiry.status === "expired" ? "Abg." : inquiry.status === "cancelled" ? "Abb." : "Geschl."}</span>
+                        <span className="hidden sm:inline">{inquiry.status === "expired" ? "Abgelaufen" : "Abgebrochen"}</span>
+                        <span className="sm:hidden">{inquiry.status === "expired" ? "Abg." : "Abb."}</span>
                       </Badge>
                     ) : inquiry.quotationCount > 0 ? (
                       <Badge variant="default" className="gap-1 shrink-0">

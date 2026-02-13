@@ -1,12 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageLayout, PageContainer } from "@/components/ui/page-layout";
+import { PageContainer } from "@/components/ui/page-layout";
 import DashboardOverviewHead from "../../components/dashboard-overview-head";
 
 export default function Loading() {
   return (
-    <PageLayout>
+    <PageContainer>
       <DashboardOverviewHead />
-      <PageContainer>
         <div className="space-y-6">
           {/* Freight Inquiry Card Skeleton */}
           <div className="w-full max-w-2xl mb-6">
@@ -59,7 +58,6 @@ export default function Loading() {
             </div>
           </div>
         </div>
-      </PageContainer>
-    </PageLayout>
+    </PageContainer>
   );
 }

@@ -4,6 +4,7 @@ import { prefetch, trpc, HydrateClient } from "@/trpc/server";
 import { Suspense } from "react";
 import Loading, { ActivitySkeleton } from "./loading";
 import { ActivityAndQuickActions } from "../components/activity/activity";
+import { PageContainer } from "@/components/ui/page-layout";
 
 export default async function ForwarderDashboard() {
   await requireForwarderAccess();
@@ -13,21 +14,13 @@ export default async function ForwarderDashboard() {
     prefetch(trpc.dashboard.forwarder.getActivityFeed.queryOptions({ limit: 8 })),
   ]);
 
-
   return (
-    <>
+    <PageContainer>
       <HydrateClient>
         <Suspense fallback={<Loading />}>
           <DashboardOverviewNew />
         </Suspense>
       </HydrateClient>
-      <HydrateClient>
-        <Suspense fallback={<ActivitySkeleton />}>
-      <div className="mt-12">
-        <ActivityAndQuickActions />
-      </div>
-      </Suspense>
-      </HydrateClient>
-    </>
+    </PageContainer>
   );
 }

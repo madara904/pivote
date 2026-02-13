@@ -209,8 +209,8 @@ export const shipperRouter = createTRPCRouter({
         throw new Error("Nur eingereichte Angebote können angenommen werden");
       }
 
-      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled' || quotationResult[0].inquiryStatus === 'expired') {
-        throw new Error("Frachtanfrage ist bereits geschlossen oder nicht mehr verfügbar");
+      if (quotationResult[0].inquiryStatus !== "open") {
+        throw new Error("Frachtanfrage ist nicht mehr verfügbar");
       }
 
       // Update the accepted quotation
@@ -236,11 +236,11 @@ export const shipperRouter = createTRPCRouter({
           )
         );
 
-      // Update inquiry status to closed (won -> inquiry closed)
+      // Update inquiry status to awarded (won)
       await db
         .update(inquiry)
         .set({
-          status: "closed",
+          status: "awarded",
           closedAt: new Date(),
         })
         .where(eq(inquiry.id, quotationResult[0].inquiryId));
@@ -300,12 +300,12 @@ export const shipperRouter = createTRPCRouter({
         throw new Error("Angebot nicht gefunden oder nicht zugänglich");
       }
 
-      if (quotationResult[0].inquiryStatus === 'closed' || quotationResult[0].inquiryStatus === 'awarded' || quotationResult[0].inquiryStatus === 'cancelled' || quotationResult[0].inquiryStatus === 'expired') {
-        throw new Error("Frachtanfrage ist bereits geschlossen oder nicht mehr verfügbar");
+      if (quotationResult[0].inquiryStatus !== "open") {
+        throw new Error("Frachtanfrage ist nicht mehr verfügbar");
       }
 
-      if (quotationResult[0].quotationStatus === 'accepted' || quotationResult[0].quotationStatus === 'withdrawn') {
-        throw new Error("Angebot kann nicht abgelehnt werden, da es bereits angenommen oder zurückgezogen wurde");
+      if (quotationResult[0].quotationStatus !== "submitted") {
+        throw new Error("Nur eingereichte Angebote können abgelehnt werden");
       }
 
       // Update quotation status to rejected
@@ -316,28 +316,6 @@ export const shipperRouter = createTRPCRouter({
           respondedAt: new Date(),
         })
         .where(eq(quotation.id, input.quotationId));
-
-      // Check if all quotations for this inquiry are now rejected
-      const remainingQuotations = await db
-        .select({ id: quotation.id })
-        .from(quotation)
-        .where(
-          and(
-            eq(quotation.inquiryId, quotationResult[0].inquiryId),
-            ne(quotation.status, "rejected")
-          )
-        );
-
-      // If all quotations are rejected, close the inquiry
-      if (remainingQuotations.length === 0) {
-        await db
-          .update(inquiry)
-          .set({
-            status: "closed",
-            closedAt: new Date(),
-          })
-          .where(eq(inquiry.id, quotationResult[0].inquiryId));
-      }
 
       await db.insert(activityEvent).values({
         organizationId: quotationResult[0].forwarderOrganizationId,

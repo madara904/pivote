@@ -39,6 +39,12 @@ const correctQuotationSchema = baseQuotationSchema.extend({
   path: ["preCarriage"],
 });
 
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const dbError = error as { code?: string; cause?: { code?: string } };
+  return dbError.code === "23505" || dbError.cause?.code === "23505";
+}
+
 export const forwarderRouter = createTRPCRouter({
   // Save quotation as draft (create new or update existing)
   saveDraftQuotation: protectedProcedure
@@ -64,8 +70,8 @@ export const forwarderRouter = createTRPCRouter({
         throw new Error("Frachtanfrage nicht gefunden");
       }
 
-      if (inquiryResult[0].status === 'closed') {
-        throw new Error("Diese Frachtanfrage ist bereits geschlossen");
+      if (inquiryResult[0].status !== "open") {
+        throw new Error("Diese Frachtanfrage ist nicht mehr verfügbar");
       }
 
       const forwarderInquiry = await db.query.inquiryForwarder.findFirst({
@@ -143,34 +149,42 @@ export const forwarderRouter = createTRPCRouter({
             isUpdate: true
           };
         } else {
-          // Already has a quotation (submitted, withdrawn, accepted, rejected, expired) - cannot create another draft
+          // Already has a quotation (submitted, accepted, rejected, expired) - cannot create another draft
           throw new Error("Sie haben bereits ein Angebot für diese Anfrage abgegeben. Bitte verwenden Sie 'Angebot korrigieren' um Änderungen vorzunehmen.");
         }
       } else {
         // Create new quotation as draft
         const quotationNumber = `QUO-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
-        const quotationResult = await db
-          .insert(quotation)
-          .values({
-            quotationNumber,
-            inquiryId: input.inquiryId,
-            forwarderOrganizationId: organizationId,
-            totalPrice: input.totalPrice.toString(),
-            currency: input.currency,
-            airlineFlight: input.airlineFlight,
-            transitTime: input.transitTime,
-            validUntil: input.validUntil,
-            notes: input.notes,
-            terms: input.terms,
-            preCarriage: input.preCarriage.toString(),
-            mainCarriage: input.mainCarriage.toString(),
-            onCarriage: input.onCarriage.toString(),
-            additionalCharges: input.additionalCharges.toString(),
-            status: 'draft', // Start as draft
-            createdById: session.user.id,
-          })
-          .returning({ id: quotation.id });
+        let quotationResult;
+        try {
+          quotationResult = await db
+            .insert(quotation)
+            .values({
+              quotationNumber,
+              inquiryId: input.inquiryId,
+              forwarderOrganizationId: organizationId,
+              totalPrice: input.totalPrice.toString(),
+              currency: input.currency,
+              airlineFlight: input.airlineFlight,
+              transitTime: input.transitTime,
+              validUntil: input.validUntil,
+              notes: input.notes,
+              terms: input.terms,
+              preCarriage: input.preCarriage.toString(),
+              mainCarriage: input.mainCarriage.toString(),
+              onCarriage: input.onCarriage.toString(),
+              additionalCharges: input.additionalCharges.toString(),
+              status: "draft", // Start as draft
+              createdById: session.user.id,
+            })
+            .returning({ id: quotation.id });
+        } catch (error) {
+          if (isUniqueViolation(error)) {
+            throw new Error("Sie haben bereits ein Angebot für diese Anfrage abgegeben. Bitte verwenden Sie 'Angebot korrigieren' um Änderungen vorzunehmen.");
+          }
+          throw error;
+        }
 
         const quotationId = quotationResult[0].id;
 
@@ -207,8 +221,8 @@ export const forwarderRouter = createTRPCRouter({
         throw new Error("Frachtanfrage nicht gefunden");
       }
 
-      if (inquiryResult[0].status === 'closed') {
-        throw new Error("Diese Frachtanfrage ist bereits geschlossen");
+      if (inquiryResult[0].status !== "open") {
+        throw new Error("Diese Frachtanfrage ist nicht mehr verfügbar");
       }
 
       const forwarderInquiry = await db.query.inquiryForwarder.findFirst({
@@ -312,35 +326,43 @@ export const forwarderRouter = createTRPCRouter({
             isUpdate: true
           };
         } else {
-          // Already has a quotation (submitted, withdrawn, accepted, rejected, expired) - cannot create another
+          // Already has a quotation (submitted, accepted, rejected, expired) - cannot create another
           throw new Error("Sie haben bereits ein Angebot für diese Anfrage abgegeben. Bitte verwenden Sie 'Angebot korrigieren' um Änderungen vorzunehmen.");
         }
       } else {
         // Create new quotation and submit it immediately
         const quotationNumber = `QUO-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
-        const quotationResult = await db
-          .insert(quotation)
-          .values({
-            quotationNumber,
-            inquiryId: input.inquiryId,
-            forwarderOrganizationId: organizationId,
-            totalPrice: input.totalPrice.toString(),
-            currency: input.currency,
-            airlineFlight: input.airlineFlight,
-            transitTime: input.transitTime,
-            validUntil: input.validUntil,
-            notes: input.notes,
-            terms: input.terms,
-            preCarriage: input.preCarriage.toString(),
-            mainCarriage: input.mainCarriage.toString(),
-            onCarriage: input.onCarriage.toString(),
-            additionalCharges: input.additionalCharges.toString(),
-            status: 'submitted', // Submit immediately
-            submittedAt: new Date(),
-            createdById: session.user.id,
-          })
-          .returning({ id: quotation.id });
+        let quotationResult;
+        try {
+          quotationResult = await db
+            .insert(quotation)
+            .values({
+              quotationNumber,
+              inquiryId: input.inquiryId,
+              forwarderOrganizationId: organizationId,
+              totalPrice: input.totalPrice.toString(),
+              currency: input.currency,
+              airlineFlight: input.airlineFlight,
+              transitTime: input.transitTime,
+              validUntil: input.validUntil,
+              notes: input.notes,
+              terms: input.terms,
+              preCarriage: input.preCarriage.toString(),
+              mainCarriage: input.mainCarriage.toString(),
+              onCarriage: input.onCarriage.toString(),
+              additionalCharges: input.additionalCharges.toString(),
+              status: "submitted", // Submit immediately
+              submittedAt: new Date(),
+              createdById: session.user.id,
+            })
+            .returning({ id: quotation.id });
+        } catch (error) {
+          if (isUniqueViolation(error)) {
+            throw new Error("Sie haben bereits ein Angebot für diese Anfrage abgegeben. Bitte verwenden Sie 'Angebot korrigieren' um Änderungen vorzunehmen.");
+          }
+          throw error;
+        }
 
         const quotationId = quotationResult[0].id;
 
@@ -440,7 +462,6 @@ export const forwarderRouter = createTRPCRouter({
           status: quotation.status,
           submittedAt: quotation.submittedAt,
           respondedAt: quotation.respondedAt,
-          withdrawnAt: quotation.withdrawnAt,
           createdAt: quotation.createdAt,
           updatedAt: quotation.updatedAt,
         })
@@ -493,7 +514,7 @@ export const forwarderRouter = createTRPCRouter({
 
       const quotationStatus = existingQuotation[0].status;
 
-      // Business rules: Only allow deletion of submitted, withdrawn, or draft quotations
+      // Business rules: Only allow deletion of submitted or draft quotations
       if (quotationStatus === 'accepted') {
         throw new Error("Angebot kann nicht gelöscht werden, da es bereits angenommen wurde");
       }
@@ -572,7 +593,7 @@ export const forwarderRouter = createTRPCRouter({
 
       const originalStatus = originalQuotation[0].status;
 
-      // Business rules: Only allow correction of submitted or withdrawn quotations
+      // Business rules: Only allow correction while quotation is still active
       if (originalStatus === 'accepted') {
         throw new Error("Angebot kann nicht korrigiert werden, da es bereits angenommen wurde");
       }
@@ -600,8 +621,8 @@ export const forwarderRouter = createTRPCRouter({
         throw new Error("Frachtanfrage nicht gefunden");
       }
 
-      if (inquiryResult[0].status === 'closed') {
-        throw new Error("Diese Frachtanfrage ist bereits geschlossen");
+      if (inquiryResult[0].status !== "open") {
+        throw new Error("Diese Frachtanfrage ist nicht mehr verfügbar");
       }
 
       // Update the existing quotation with corrected data
@@ -617,10 +638,8 @@ export const forwarderRouter = createTRPCRouter({
         mainCarriage: string;
         onCarriage: string;
         additionalCharges: string;
-        status: 'submitted';
-        withdrawnAt: null;
+        status: "submitted";
         updatedAt: Date;
-        submittedAt?: Date;
       } = {
         totalPrice: input.totalPrice.toString(),
         currency: input.currency,
@@ -633,10 +652,8 @@ export const forwarderRouter = createTRPCRouter({
         mainCarriage: input.mainCarriage.toString(),
         onCarriage: input.onCarriage.toString(),
         additionalCharges: input.additionalCharges.toString(),
-        status: 'submitted',
-        withdrawnAt: null,
+        status: "submitted",
         updatedAt: new Date(),
-        ...(originalStatus === 'withdrawn' ? { submittedAt: new Date() } : {}),
       };
 
       await db

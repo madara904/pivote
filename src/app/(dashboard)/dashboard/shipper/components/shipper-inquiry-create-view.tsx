@@ -7,7 +7,7 @@ import InquiryForm from "./inquiry-form";
 import { DotLoading } from "@/components/ui/dot-loading";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { PageLayout, PageHeaderWithBorder, PageContainer } from "@/components/ui/page-layout";
+import { PageContainer } from "@/components/ui/page-layout";
 
 const ShipperInquiryCreateView = () => {
   const trpcOptions = useTRPC();
@@ -24,28 +24,24 @@ const ShipperInquiryCreateView = () => {
 
   if (forwardersError) {
     return (
-      <PageLayout>
-        <PageContainer>
-          <Alert variant="destructive">
+      <PageContainer>
+        <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Fehler beim Laden der Spediteure: {errorMessage}
             </AlertDescription>
           </Alert>
-        </PageContainer>
-      </PageLayout>
+      </PageContainer>
     );
   }
 
   if (forwardersLoading) {
     return (
-      <PageLayout>
-        <PageContainer>
-          <div className="flex items-center justify-center py-8">
+      <PageContainer>
+        <div className="flex items-center justify-center py-8">
             <DotLoading size="md" />
           </div>
-        </PageContainer>
-      </PageLayout>
+      </PageContainer>
     );
   }
 
@@ -57,21 +53,17 @@ const ShipperInquiryCreateView = () => {
   }));
 
   return (
-    <PageLayout>
-      <PageHeaderWithBorder>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Neue Frachtanfrage
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Erstellen Sie eine neue Anfrage und wählen Sie verbundene Spediteure aus.
-          </p>
-        </div>
-      </PageHeaderWithBorder>
-      <PageContainer className="pt-6 pb-8">
-        <InquiryForm forwarders={forwarders} />
-      </PageContainer>
-    </PageLayout>
+    <PageContainer>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">
+          Neue Frachtanfrage
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Erstellen Sie eine neue Anfrage und wählen Sie verbundene Spediteure aus.
+        </p>
+      </div>
+      <InquiryForm forwarders={forwarders} />
+    </PageContainer>
   );
 };
 

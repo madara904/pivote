@@ -1,17 +1,16 @@
 "use client";
 
-import { useTRPC } from "@/trpc/client";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { buildActivityEntry } from "./activity-formatters";
+import { type ActivityFeedItem, buildActivityEntry } from "./activity-formatters";
 import { Zap } from "lucide-react";
 
-export function ActivityAndQuickActions() {
-    const trpcOptions = useTRPC();
-    const { data: activityItems } = useSuspenseQuery(
-      trpcOptions.dashboard.forwarder.getActivityFeed.queryOptions({ limit: 3 })
-    );
-  
-    const entries = activityItems.map((item) => buildActivityEntry(item));
+type ActivityAndQuickActionsProps = {
+  activityItems: ActivityFeedItem[];
+  generatedAt: string | Date;
+};
+
+export function ActivityAndQuickActions({ activityItems, generatedAt }: ActivityAndQuickActionsProps) {
+    const referenceNowMs = new Date(generatedAt).getTime();
+    const entries = activityItems.map((item) => buildActivityEntry(item, referenceNowMs));
   
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 lg:mx-auto lg:w-full mt-12 pb-20">

@@ -49,10 +49,11 @@ export default function DashboardOverviewNew() {
 
   const trpcOptions = useTRPC();
   const { data } = useSuspenseQuery(
-    trpcOptions.dashboard.forwarder.getOverview.queryOptions({ period }),
+    trpcOptions.dashboard.forwarder.getHomeData.queryOptions({ period, activityLimit: 3 }),
   );
 
-  const { organization, tier, transportAnalysis } = data;
+  const { overview, activity, generatedAt } = data;
+  const { organization, tier, transportAnalysis } = overview;
 
   const orbitRotation = useMotionValue(0);
   useEffect(() => {
@@ -103,25 +104,25 @@ export default function DashboardOverviewNew() {
                   <Activity className="text-emerald-500" strokeWidth={1.5} />
                 }
                 label="Status"
-                value={data.stats.status}
+                value={overview.stats.status}
               />
               <MetricBlock
                 icon={
                   <NotepadText className="text-slate-400" strokeWidth={1.5} />
                 }
                 label="Anfragen"
-                value={data.stats.activeInquiries}
+                value={overview.stats.activeInquiries}
                 sub="aktiv"
               />
               <MetricBlock
                 icon={<DollarSign className="text-primary" strokeWidth={1.5} />}
                 label="Umsatz"
-                value={data.stats.revenue}
+                value={overview.stats.revenue}
               />
               <MetricBlock
                 icon={<Zap className="text-orange-400" strokeWidth={1.5} />}
                 label="Quote"
-                value={data.stats.conversionRate}
+                value={overview.stats.conversionRate}
               />
             </div>
 
@@ -258,7 +259,7 @@ export default function DashboardOverviewNew() {
         </div>
       </div>
       <div className="mt-12">
-        <ActivityAndQuickActions />
+        <ActivityAndQuickActions activityItems={activity} generatedAt={generatedAt} />
       </div>
     </div>
   );

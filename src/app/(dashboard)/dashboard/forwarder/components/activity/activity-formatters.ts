@@ -21,8 +21,8 @@ const serviceTypeLabels: Record<string, string> = {
   rail_freight: "Rail",
 };
 
-function formatRelativeTime(date: Date) {
-  const diffMs = Date.now() - new Date(date).getTime();
+function formatRelativeTime(date: Date, nowMs: number) {
+  const diffMs = nowMs - new Date(date).getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
 
   if (diffMinutes < 1) return "Gerade eben";
@@ -96,7 +96,7 @@ const activityConfig: Record<
   }),
 };
 
-export function buildActivityEntry(item: ActivityFeedItem): ActivityEntry {
+export function buildActivityEntry(item: ActivityFeedItem, nowMs = Date.now()): ActivityEntry {
   const payload = (item.payload ?? {}) as Record<string, unknown>;
   const referenceNumber = payload.referenceNumber as string | undefined;
   const shipperOrgName = payload.shipperOrgName as string | undefined;
@@ -111,7 +111,7 @@ export function buildActivityEntry(item: ActivityFeedItem): ActivityEntry {
   if (config) {
     return {
       id: item.id,
-      time: formatRelativeTime(item.createdAt),
+      time: formatRelativeTime(item.createdAt, nowMs),
       ...config({
         referenceNumber,
         shipperOrgName,
@@ -126,7 +126,7 @@ export function buildActivityEntry(item: ActivityFeedItem): ActivityEntry {
 
   return {
     id: item.id,
-    time: formatRelativeTime(item.createdAt),
+    time: formatRelativeTime(item.createdAt, nowMs),
     message: `${actorName} hat eine Aktion ausgeführt`,
   };
 }

@@ -5,11 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "@/components/ui/input-otp";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Logo from "@/components/logo";
 import { authClient } from "@/lib/auth-client";
 import { getReturnToFromSearchParams } from "@/lib/redirect-utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 const OTP_LENGTH = 6;
 const OTP_VALID_SECONDS = 300; // 5 Minuten
@@ -24,6 +31,7 @@ export default function TwoFactorForm() {
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [trustDevice, setTrustDevice] = useState(false);
 
   const canSubmit = useMemo(() => code.trim().length === OTP_LENGTH, [code]);
 
@@ -49,7 +57,9 @@ export default function TwoFactorForm() {
     setErrorMessage(null);
     const result = await authClient.twoFactor.sendOtp();
     if (result.error) {
-      setErrorMessage(result.error.message || "Code konnte nicht gesendet werden.");
+      setErrorMessage(
+        result.error.message || "Code konnte nicht gesendet werden.",
+      );
       if (result.error.status === 401 || result.error.status === 403) {
         router.push("/sign-in");
       }
@@ -69,6 +79,7 @@ export default function TwoFactorForm() {
   const handleVerify = async () => {
     if (!canSubmit) {
       setErrorMessage("Bitte geben Sie den 6-stelligen Code ein.");
+      setCode("");
       return;
     }
 
@@ -76,15 +87,20 @@ export default function TwoFactorForm() {
     setErrorMessage(null);
     const result = await authClient.twoFactor.verifyOtp({
       code: code.trim(),
+      trustDevice: trustDevice,
     });
     if (result.error) {
-      setErrorMessage(result.error.message || "Code konnte nicht verifiziert werden.");
+      setErrorMessage(
+        result.error.message || "Code konnte nicht verifiziert werden.",
+      );
+      setCode("");
       setIsSubmitting(false);
       return;
     }
 
     router.push(returnTo ?? "/dashboard");
     setIsSubmitting(false);
+    setCode("");
   };
 
   useEffect(() => {
@@ -118,7 +134,10 @@ export default function TwoFactorForm() {
             </Alert>
           )}
 
-          <form onSubmit={(event) => event.preventDefault()} className="grid gap-5">
+          <form
+            onSubmit={(event) => event.preventDefault()}
+            className="grid gap-5"
+          >
             <div className="flex flex-col gap-3">
               <label className="text-[10px] uppercase font-black tracking-widest text-slate-500">
                 Sicherheitscode
@@ -141,13 +160,33 @@ export default function TwoFactorForm() {
               </InputOTP>
             </div>
 
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="trustDevice"
+                checked={trustDevice}
+                onCheckedChange={(checked) => {
+                  if (typeof checked === "boolean") {
+                    setTrustDevice(checked);
+                  }
+                }}
+                disabled={isSending || isSubmitting}
+              />
+              <Label
+                htmlFor="trustDevice"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Dieses Gerät merken
+              </Label>
+            </div>
+
             <p className="text-slate-500 font-medium text-sm">
               Wir haben einen Sicherheitscode an Ihre E-Mail-Adresse gesendet.
             </p>
 
             {secondsLeft !== null && secondsLeft > 0 && (
               <p className="text-slate-600 font-semibold text-sm">
-                Code gültig für: <span className="tabular-nums">{formatTime(secondsLeft)}</span>
+                Code gültig für:{" "}
+                <span className="tabular-nums">{formatTime(secondsLeft)}</span>
               </p>
             )}
 
@@ -158,7 +197,9 @@ export default function TwoFactorForm() {
               onClick={handleSendOtp}
               disabled={isSending || isSubmitting}
             >
-              {(isSending || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {(isSending || isSubmitting) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Code erneut senden
             </Button>
           </form>

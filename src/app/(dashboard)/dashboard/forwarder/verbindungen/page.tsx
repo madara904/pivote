@@ -7,7 +7,6 @@ import { PageContainer, PageHeader } from "@/components/ui/page-layout";
 
 export default async function VerbindungenPage() {
   await requireForwarderAccess();
-  void prefetch(trpc.connections.forwarder.listPendingInvites.queryOptions());
 
   return (
     <PageContainer>

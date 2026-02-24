@@ -5,7 +5,7 @@ const Home = () => {
   return (
     <div>
       <h1>Page</h1>
-      <Link href="/dashboard">
+      <Link prefetch href="/dashboard">
         <Button variant={"default"}>
           <span> {"-->"} Dashboard (unprotected)</span>
         </Button>

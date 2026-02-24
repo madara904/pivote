@@ -1,59 +1,106 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, ChevronRight, Icon, Zap } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import Link from "next/link";
 
-export const TIER_FEATURES = {
-  basic: { label: "Basic", inquiries: "5", connections: "1", users: "1" },
-  medium: { label: "Premium", inquiries: "20", connections: "5", users: "1" },
-  advanced: { label: "Advanced", inquiries: "∞", connections: "∞", users: "5" },
+export type UsageItem = {
+  label: string;
+  used: number;
+  limit: number | null;
+};
+
+type TierFeaturesProps = {
+  orgName: string;
+  orgLogo?: string | null;
+  tier?: "basic" | "medium" | "advanced";
+  usage: UsageItem[];
+};
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "OR";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
+}
+
+const tierMeta = {
+  basic: { label: "Basic" },
+  medium: { label: "Medium" },
+  advanced: { label: "Advanced" },
 } as const;
 
-export function TierFeaturesHoverContent({ tier }: { tier: keyof typeof TIER_FEATURES }) {
-  const data = TIER_FEATURES[tier];
+export function TierFeatures({ orgName, orgLogo, tier = "basic", usage }: TierFeaturesProps) {
+  const currentTier = tierMeta[tier];
 
   return (
-    <div className="w-[240px] bg-background border border-border shadow-xl">
-        {/* SEKTION 1: Die harten Fakten (2x2 Grid für bessere Lesbarkeit) */}
-      <div className="p-4 bg-slate-50/50 border-b border-border">
-        <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">Plan</span>
-            <Badge variant="secondary">{data.label}</Badge>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">Anfragen</span>
-            <span className="text-2xl font-black text-slate-900 leading-none">{data.inquiries}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">Partner</span>
-            <span className="text-2xl font-black text-slate-900 leading-none">{data.connections}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 mb-1">User</span>
-            <span className="text-2xl font-black text-slate-900 leading-none">{data.users}</span>
+    <HoverCard openDelay={120} closeDelay={150}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          className="mt-2 inline-flex items-center gap-2 bg-card px-2.5 py-1.5 text-xl font-semibold uppercase tracking-[0.2em] transition-colors hover:text-muted-foreground"
+        >
+          <Avatar className="size-9 border border-border/80">
+            <AvatarImage src={orgLogo ?? undefined} alt={orgName} />
+            <AvatarFallback className="bg-muted text-[9px] font-bold text-foreground">
+              {getInitials(orgName)}
+            </AvatarFallback>
+          </Avatar>
+          <span className="max-w-[210px] truncate">{orgName}</span>
+        </button>
+      </HoverCardTrigger>
+
+      <HoverCardContent
+        align="start"
+        sideOffset={8}
+        className="w-[300px] rounded-none border-border p-0 shadow-xl"
+      >
+        <div className="border-b border-border px-4 py-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-muted-foreground">Plan & Limits</p>
+            <span className="shrink-0 border border-border bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-foreground">
+              {currentTier.label}
+            </span>
           </div>
         </div>
-      </div>
 
-      
-      <div className="p-3 space-y-3">
-        <Link
-          href="/dashboard/forwarder/einstellungen/abrechnung"
-          className="group flex items-center justify-between"
-        >
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Plan Details</span>
-          <ChevronRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
-        </Link>
+        <div className="space-y-3 px-4 py-3.5">
+          {usage.map((item) => {
+            const ratio = item.limit === null || item.limit <= 0 ? 0 : Math.min(item.used / item.limit, 1);
+            const limitValue = item.limit ?? 0;
+            const isLimited = limitValue > 0;
+            const isLimitReached = isLimited && item.used >= limitValue;
 
-        {tier !== "advanced" && (
-          <Button variant="default" size="sm" className="w-full">
-            Jetzt upgraden!
-          </Button>
-        )}
-      </div>
-    </div>
+            return (
+              <div key={item.label}>
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{item.label}</span>
+                  <span className={`text-sm font-semibold tracking-tight ${isLimitReached ? "text-destructive" : "text-foreground"}`}>
+                    {item.used}/{item.limit ?? "∞"}
+                  </span>
+                </div>
+                {isLimited ? (
+                  <div className="h-1.5 w-full bg-muted/80">
+                    <div
+                      className={`h-full transition-all ${isLimitReached ? "bg-destructive" : "bg-primary"}`}
+                      style={{ width: `${ratio * 100}%` }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-border px-4 py-3">
+          <Link
+            href="/dashboard/forwarder/einstellungen/abrechnung"
+            className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary transition-opacity hover:opacity-80"
+          >
+            Plan verwalten
+          </Link>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 }

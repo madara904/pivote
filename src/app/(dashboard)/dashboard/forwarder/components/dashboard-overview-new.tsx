@@ -1,352 +1,153 @@
 "use client";
 
-import {
-  Activity,
-  Zap,
-  Users,
-  CalendarDays,
-  LogInIcon as LogsIcon,
-  DollarSign,
-  Plane,
-  Ship,
-  Train,
-  Truck,
-  NotepadText,
-  ChevronRight,
-  Building2,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { animate, motion, useMotionValue, useTransform } from "framer-motion";
-import React, { useEffect, useState } from "react";
-import { DottedGlowBackground } from "@/components/ui/dotted-glow-background";
+import React, { useState, useTransition } from "react";
+import { Zap, TrendingUp, ArrowRight, Plus } from "lucide-react";
+import { Bar, BarChart, ResponsiveContainer, XAxis, Tooltip, Cell, LabelList } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TierFeatures } from "@/app/(dashboard)/dashboard/forwarder/components/tier-features";
 import { useTRPC } from "@/trpc/client";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { TierFeaturesHoverContent } from "./tier-features";
-import { ActivityAndQuickActions } from "./activity/activity";
-
-const tierLabels = {
-  basic: "Basic",
-  medium: "Premium",
-  advanced: "Advanced",
-};
 
 export default function DashboardOverviewNew() {
   const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
+  const [isPending, startTransition] = useTransition();
 
-  const trpcOptions = useTRPC();
+  const trpc = useTRPC();
   const { data } = useSuspenseQuery(
-    trpcOptions.dashboard.forwarder.getHomeData.queryOptions({ period, activityLimit: 3 }),
+    trpc.dashboard.forwarder.getHomeData.queryOptions({ period, activityLimit: 3 })
   );
 
-  const { overview, activity, generatedAt } = data;
-  const { organization, tier, transportAnalysis } = overview;
+  const { overview, activity } = data;
 
-  const orbitRotation = useMotionValue(0);
-  useEffect(() => {
-    const controls = animate(orbitRotation, 360, {
-      duration: 80,
-      repeat: Infinity,
-      ease: "linear",
+  const chartData = [
+    { name: "AIR", total: overview.transportAnalysis.air_freight.count, color: "var(--primary)" },
+    { name: "SEA", total: overview.transportAnalysis.sea_freight.count, color: "var(--chart-2)" },
+    { name: "ROAD", total: overview.transportAnalysis.road_freight.count, color: "var(--chart-3)" },
+    { name: "RAIL", total: overview.transportAnalysis.rail_freight.count, color: "var(--chart-4)" },
+  ];
+
+  const usageItems = [
+    {
+      label: "Angebote diesen Monat",
+      used: overview.usage.offersThisMonth,
+      limit: overview.limits.offersPerMonth,
+    },
+    {
+      label: "Shipper-Verbindungen",
+      used: overview.usage.activeConnections,
+      limit: overview.limits.connections,
+    },
+  ];
+
+  const handlePeriodChange = (v: "7d" | "30d" | "90d") => {
+    startTransition(() => {
+      setPeriod(v);
     });
-    return () => controls.stop();
-  }, [orbitRotation]);
-
-  const [orbitRadius, setOrbitRadius] = useState(150);
-  useEffect(() => {
-    const update = () => setOrbitRadius(window.innerWidth >= 768 ? 190 : 150);
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
+  };
 
   return (
-    <div className="flex flex-col mt-5">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-8 lg:gap-16 lg:mx-auto lg:w-[90%]">
-        <div className="flex flex-col min-h-0 lg:min-h-[460px] py-4">
-          <div className="flex flex-col w-full space-y-6 lg:space-y-15 lg:flex-1 lg:justify-center">
-            <div className="space-y-2 shrink-0">
-              <Select
-                defaultValue="30d"
-                value={period}
-                onValueChange={(value) =>
-                  setPeriod(value as "7d" | "30d" | "90d")
-                }
-              >
-                <SelectTrigger className="w-[160px] h-8 text-[11px] font-bold bg-background border-border/60">
-                  <CalendarDays className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Zeitraum" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Letzte 7 Tage</SelectItem>
-                  <SelectItem value="30d">Letzte 30 Tage</SelectItem>
-                  <SelectItem value="90d">Letzte 90 Tage</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-row md:grid-cols-2 gap-x-[3rem] gap-y-[2.5rem]">
-              <MetricBlock
-                icon={
-                  <Activity className="text-emerald-500" strokeWidth={1.5} />
-                }
-                label="Status"
-                value={overview.stats.status}
-              />
-              <MetricBlock
-                icon={
-                  <NotepadText className="text-slate-400" strokeWidth={1.5} />
-                }
-                label="Anfragen"
-                value={overview.stats.activeInquiries}
-                sub="aktiv"
-              />
-              <MetricBlock
-                icon={<DollarSign className="text-primary" strokeWidth={1.5} />}
-                label="Umsatz"
-                value={overview.stats.revenue}
-              />
-              <MetricBlock
-                icon={<Zap className="text-orange-400" strokeWidth={1.5} />}
-                label="Quote"
-                value={overview.stats.conversionRate}
-              />
-            </div>
-
-            <div className="flex flex-row gap-6 shrink-0 pt-6">
-              <Link
-                href="/dashboard/forwarder/logs"
-                className="group text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all flex items-start"
-              >
-                <span className="flex items-center gap-2">
-                  <LogsIcon className="h-3.5 w-3.5" /> Ereignis-Logs
-                </span>
-                <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-              </Link>
-              <Link
-                href="/dashboard/forwarder/verbindungen"
-                className="group text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all flex items-start"
-              >
-                <span className="flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5" /> Partner
-                </span>
-                <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-              </Link>
-            </div>
+    <div className={`w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 transition-opacity duration-300 ${isPending ? "opacity-50" : "opacity-100"}`}>
+      
+      <div className="flex flex-col space-y-8">
+        <div className="flex flex-row gap-4 sm:flex-row sm:justify-between sm:items-end">
+          <div className="flex flex-row gap-4 items-center mb-4">
+            <h1 className="text-3xl tracking-tight font-extralight text-muted-foreground">/</h1>
+            <TierFeatures
+              orgName={overview.organization.name}
+              orgLogo={overview.organization.logo}
+              tier={overview.tier}
+              usage={usageItems}
+            />
           </div>
         </div>
 
-        <div className="relative w-full border bg-slate-50/20 overflow-hidden flex flex-col min-h-[500px] md:min-h-[600px]">
-          <DottedGlowBackground
-            opacity={0.2}
-            gap={12}
-            radius={1.2}
-            colorLightVar="--color-neutral-500"
-            glowColorLightVar="--color-neutral-600"
-            colorDarkVar="--color-neutral-500"
-            glowColorDarkVar="--color-neutral-600"
-            backgroundOpacity={0}
-            speedMin={0.3}
-            speedMax={1.6}
-            speedScale={2}
-          />
-          <div className="relative z-10 p-5 mb-20 md:mb-16">
-            <span className="text-[10px] md:text-md font-black uppercase tracking-widest text-secondary-foreground">
-              Breakdown der Transportarten
-            </span>
-          </div>
-          <div className="flex-1 relative flex items-center justify-center">
-            <div className="relative -translate-y-12 md:-translate-y-20 flex items-center justify-center">
-              <div className="absolute border-2 border-border/40 rounded-full w-[300px] h-[300px] md:w-[380px] md:h-[380px]" />
-
-              <OrbitNode
-                startAngle={-90}
-                icon={<Plane />}
-                label="Air"
-                orbitRotation={orbitRotation}
-                radius={orbitRadius}
-                count={transportAnalysis.air_freight.count}
-                percentage={transportAnalysis.air_freight.percentage}
-                active={transportAnalysis.air_freight.count > 0}
-              />
-
-              <OrbitNode
-                startAngle={0}
-                icon={<Ship />}
-                label="Ocean"
-                orbitRotation={orbitRotation}
-                radius={orbitRadius}
-                count={transportAnalysis.sea_freight.count}
-                percentage={transportAnalysis.sea_freight.percentage}
-                active={transportAnalysis.sea_freight.count > 0}
-              />
-
-              <OrbitNode
-                startAngle={90}
-                icon={<Truck />}
-                label="Road"
-                orbitRotation={orbitRotation}
-                radius={orbitRadius}
-                count={transportAnalysis.road_freight.count}
-                percentage={transportAnalysis.road_freight.percentage}
-                active={transportAnalysis.road_freight.count > 0}
-              />
-
-              <OrbitNode
-                startAngle={180}
-                icon={<Train />}
-                label="Rail"
-                orbitRotation={orbitRotation}
-                radius={orbitRadius}
-                count={transportAnalysis.rail_freight.count}
-                percentage={transportAnalysis.rail_freight.percentage}
-                active={transportAnalysis.rail_freight.count > 0}
-              />
-              <div className="relative z-20">
-                <HoverCard openDelay={200} closeDelay={100}>
-                  <HoverCardTrigger asChild>
-                    <div className="w-[200px] sm:w-[240px] bg-background border overflow-hidden cursor-pointer hover:border-primary/40 transition-colors shadow-xl">
-                      <div className="p-3 flex items-center gap-3 bg-muted/10">
-                        <div className="h-8 w-8 rounded-lg bg-background border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                          {organization.logo ? (
-                            <img
-                              src={organization.logo || "/placeholder.svg"}
-                              className="h-full w-full object-cover"
-                              alt=""
-                            />
-                          ) : (
-                            <Building2 className="h-4 w-4 text-primary" />
-                          )}
-                        </div>
-                        <div className="flex-1 overflow-hidden min-w-0">
-                          <h4 className="text-[11px] sm:text-[12px] font-black truncate text-slate-900">
-                            {organization.name}
-                          </h4>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className="text-xs tracking-tight px-1.5 py-0"
-                        >
-                          {tierLabels[tier as keyof typeof tierLabels]}
-                        </Badge>
-                      </div>
-                    </div>
-                  </HoverCardTrigger>
-                  <HoverCardContent
-                    side="top"
-                    align="center"
-                    className="w-auto p-0 border-border bg-background shadow-lg"
-                  >
-                    <TierFeaturesHoverContent tier={tier} />
-                  </HoverCardContent>
-                </HoverCard>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 border border-border divide-y md:divide-y-0 md:divide-x divide-border bg-card shadow-sm">
+          <StatusField label="Umsatz" value={overview.stats.revenue} />
+          <StatusField label="Anfragen" value={overview.stats.activeInquiries} />
+          <StatusField label="Aktive Verbindungen" value={overview.usage.activeConnections}/>
+          <StatusField label="Zeitraum" value={period.toUpperCase()} />
         </div>
       </div>
-      <div className="mt-12">
-        <ActivityAndQuickActions activityItems={activity} generatedAt={generatedAt} />
+
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <Card className="lg:col-span-3 rounded-none border-border bg-card shadow-none">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-6 mb-6">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Transport-Volumen</CardTitle>
+            <Select value={period} onValueChange={handlePeriodChange}>
+              <SelectTrigger className="w-[110px] h-8 text-[9px] font-bold uppercase tracking-widest border-border rounded-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-none">
+                <SelectItem value="7d">7 TAGE</SelectItem>
+                <SelectItem value="30d">30 TAGE</SelectItem>
+                <SelectItem value="90d">90 TAGE</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent className="h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={9} tick={{fill: 'var(--muted-foreground)', fontWeight: 600}} />
+                <Tooltip cursor={{fill: 'var(--muted)', opacity: 0.4}} contentStyle={{ borderRadius: '0px', border: '1px solid var(--border)', fontSize: '12px' }} />
+                <Bar dataKey="total" barSize={32}>
+                  <LabelList
+                    dataKey="total"
+                    position="top"
+                    fill="var(--foreground)"
+                    fontSize={10}
+                    fontWeight={700}
+                  />
+                  {chartData.map((entry) => (
+                    <Cell key={`cell-${entry.name}`} fill={entry.color} fillOpacity={1} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="col-span-2 md:col-span-1 bg-primary p-6 flex flex-col justify-between">
+             <Zap className="h-5 w-5 text-lime-200 fill-current" />
+             <div className="mt-8">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white mb-1">Quote</p>
+                <h3 className="text-3xl font-bold tracking-tighter text-lime-200">{overview.stats.conversionRate}</h3>
+             </div>
+          </div>
+
+          <div className="col-span-2 md:col-span-1 bg-card p-6 border border-border flex flex-col justify-between group cursor-pointer hover:bg-muted transition-colors">
+             <TrendingUp className="h-5 w-5 text-muted-foreground" />
+             <div className="mt-8">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">Tendenz</p>
+                <h3 className="text-3xl font-bold tracking-tighter">+8.2%</h3>
+             </div>
+          </div>
+
+          <div className="col-span-2 bg-card border border-border p-6 flex items-center justify-between group cursor-pointer hover:border-primary transition-all">
+             <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-2">Netzwerk</p>
+                <h3 className="text-xl font-bold tracking-tight uppercase">12 Aktive Partner</h3>
+             </div>
+             <div className="h-10 w-10 rounded-full border border-border flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                <ArrowRight size={18} />
+             </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function OrbitNode({
-  startAngle,
-  icon,
-  label,
-  count,
-  percentage,
-  active,
-  orbitRotation,
-  radius,
-}: any) {
-  const x = useTransform(orbitRotation, (v: number) => {
-    const angle = ((v + startAngle) * Math.PI) / 180;
-    return Math.cos(angle) * radius;
-  });
-  const y = useTransform(orbitRotation, (v: number) => {
-    const angle = ((v + startAngle) * Math.PI) / 180;
-    return Math.sin(angle) * radius;
-  });
-
+function StatusField({ label, value, statusColor, trend }: any) {
   return (
-    <motion.div style={{ x, y }} className="absolute top-1/2 left-1/2 z-10">
-      <div
-        className={cn(
-          "flex flex-col items-center gap-2 transition-all duration-700 -translate-x-1/2 -translate-y-1/2",
-          active ? "opacity-100 scale-100" : "opacity-30 grayscale",
-        )}
-      >
-        <div
-          className={cn(
-            "h-10 w-10 rounded-lg bg-primary border-2 flex items-center justify-center text-primary-foreground shadow-lg",
-            active
-              ? "border-primary/40 shadow-primary/20"
-              : "border-primary/20",
-          )}
-        >
-          {React.cloneElement(icon, {
-            size: 18,
-            strokeWidth: 1.5,
-            className: "text-primary-foreground",
-          })}
-        </div>
-        <div className="bg-background border-2 border-border px-3 py-1.5 rounded-md shadow-sm text-center min-w-[72px]">
-          <p className="text-[10px] font-black uppercase tracking-tighter leading-none mb-1 text-slate-900">
-            {label}
-          </p>
-          <div className="flex items-baseline justify-center gap-1.5">
-            <span className="text-xs font-mono font-bold text-primary">
-              {count}
-            </span>
-            <span className="w-px h-2.5 bg-border shrink-0 self-stretch" />
-            <span className="text-xs font-bold text-muted-foreground">
-              {percentage}%
-            </span>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function MetricBlock({ icon, label, value, sub }: any) {
-  const displayValue = value ?? 0;
-  return (
-    <div className="flex items-center gap-x-4">
-      <div className="flex items-center justify-center p-5 rounded-lg bg-background border border-border min-w-[64px] min-h-[64px] shrink-0">
-        {React.cloneElement(icon, { size: 24 })}
-      </div>
-
-      <div className="flex flex-col justify-center">
-        <span className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground/80 leading-none mb-1">
-          {label}
-        </span>
-        <div className="flex items-baseline gap-2">
-          <p className="text-2xl font-bold tracking-tighter text-slate-900 leading-none">
-            {displayValue}
-          </p>
-          {sub && (
-            <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-              {sub}
-            </span>
-          )}
-        </div>
+    <div className="p-6 flex flex-col gap-1">
+      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2">
+        {statusColor && <span className={`h-1.5 w-1.5 rounded-full ${statusColor}`} />}
+        <span className={`text-sm font-bold uppercase tracking-tight ${trend === 'up' ? 'text-emerald-600' : ''}`}>{value}</span>
       </div>
     </div>
   );

@@ -9,12 +9,12 @@ export default async function AccountSettingsPage() {
   await requireForwarderAccess();
 
   return (
-      <Suspense fallback={<Loading />}>
-        <div className="divide-y divide-border/50">
-          <UpdateNameCard />
-          <ChangeEmailCard />
-          <DeleteAccountCard />
-        </div>
-      </Suspense>
+    <Suspense fallback={<Loading />}>
+      <div className="w-full space-y-4">
+        <UpdateNameCard />
+        <ChangeEmailCard />
+        <DeleteAccountCard />
+      </div>
+    </Suspense>
   );
 }

@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { sanitizeMoneyInput, sanitizeIntegerInput } from "@/lib/form-sanitization";
+import { sanitizeMoneyInput, sanitizeIntegerInput, roundToTwoDecimals } from "@/lib/form-sanitization";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface EditQuotationDialogProps {
@@ -84,12 +84,13 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
     }
   }));
 
-  // Calculate total price from cost breakdown
-  const calculatedTotal =
+  // Calculate total price from cost breakdown (cent precision)
+  const calculatedTotal = roundToTwoDecimals(
     Number(formData.preCarriage || 0) +
-    Number(formData.mainCarriage || 0) +
-    Number(formData.onCarriage || 0) +
-    Number(formData.additionalCharges || 0);
+      Number(formData.mainCarriage || 0) +
+      Number(formData.onCarriage || 0) +
+      Number(formData.additionalCharges || 0)
+  );
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -139,10 +140,10 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
         validUntil: new Date(formData.validUntil),
         notes: formData.notes || undefined,
         terms: formData.terms || undefined,
-        preCarriage: Number(formData.preCarriage || 0) || 0,
-        mainCarriage: Number(formData.mainCarriage || 0) || 0,
-        onCarriage: Number(formData.onCarriage || 0) || 0,
-        additionalCharges: Number(formData.additionalCharges || 0) || 0,
+        preCarriage: roundToTwoDecimals(Number(formData.preCarriage || 0) || 0),
+        mainCarriage: roundToTwoDecimals(Number(formData.mainCarriage || 0) || 0),
+        onCarriage: roundToTwoDecimals(Number(formData.onCarriage || 0) || 0),
+        additionalCharges: roundToTwoDecimals(Number(formData.additionalCharges || 0) || 0),
       });
     }
   };
@@ -350,17 +351,19 @@ export function EditQuotationDialog({ quotationId, inquiryId, open, onOpenChange
                   Gültig bis
                   <span className="ml-1 text-red-600">*</span>
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="validUntil"
-                    type="date"
-                    value={formData.validUntil}
-                    onChange={(e) => handleInputChange("validUntil", e.target.value)}
-                    className="pr-10"
-                    disabled={isLoading}
-                  />
-                  <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                </div>
+                <DatePicker
+                  id="validUntil"
+                  value={formData.validUntil || undefined}
+                  onChange={(d) =>
+                    handleInputChange(
+                      "validUntil",
+                      d ? d.toISOString().split("T")[0] ?? "" : ""
+                    )
+                  }
+                  placeholder="Datum wählen"
+                  disabled={isLoading}
+                  minDate={new Date()}
+                />
                 {errors.validUntil && <p className="text-sm text-red-600">{errors.validUntil}</p>}
               </div>
 

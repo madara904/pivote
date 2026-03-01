@@ -5,6 +5,7 @@ import { and, eq, or, ne } from "drizzle-orm";
 import { organization, organizationMember, user } from "@/db/schema";
 import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { utapi } from "@/app/api/uploadthing/core";
+import { logAudit } from "@/lib/audit-log";
 
 
 const createOrgSchema = z.object({
@@ -21,7 +22,13 @@ const createOrgSchema = z.object({
   vatNumber: z
     .string()
     .regex(/^DE[0-9]{9}$/, "Die UST-ID muss mit 'DE' beginnen und 9 Ziffern enthalten"),
-  registrationNumber: z.string().optional(),
+  registrationNumber: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || /^HRB[0-9]+$/.test(value),
+      "Die Handelsregisternummer muss mit 'HRB' beginnen und nur Ziffern enthalten"
+    ),
   logo: z.string().optional(),
   settings: z.string().optional(),
   isActive: z.boolean().optional(),
@@ -44,7 +51,13 @@ const editOrgSchema = z.object({
     .string()
     .regex(/^DE[0-9]{9}$/, "Die UST-ID muss mit 'DE' beginnen und 9 Ziffern enthalten")
     .optional(),
-  registrationNumber: z.string().optional(),
+  registrationNumber: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || /^HRB[0-9]+$/.test(value),
+      "Die Handelsregisternummer muss mit 'HRB' beginnen und nur Ziffern enthalten"
+    ),
   logo: z.string().url().optional(),
 });
 type EditOrgInput = z.infer<typeof editOrgSchema>;
@@ -190,6 +203,32 @@ export const crudRouter = createTRPCRouter({
             message: "Nur der Besitzer kann die Organisation bearbeiten.",
           });
         }
+
+        const currentOrg = await db.query.organization.findFirst({
+          where: eq(organization.id, input.organizationId),
+          columns: {
+            name: true,
+            email: true,
+            type: true,
+            description: true,
+            phone: true,
+            website: true,
+            address: true,
+            city: true,
+            postalCode: true,
+            country: true,
+            vatNumber: true,
+            registrationNumber: true,
+            logo: true,
+          },
+        });
+        if (!currentOrg) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Organisation nicht gefunden.",
+          });
+        }
+
         // Check for name or vatNumber conflicts if being changed
         if (input.name || input.vatNumber) {
           const conflictOrg = await db.query.organization.findFirst({
@@ -244,7 +283,32 @@ export const crudRouter = createTRPCRouter({
             message: "Organisation nicht gefunden.",
           });
         }
-        
+
+        const editableKeys = [
+          "name", "email", "type", "description", "phone", "website",
+          "address", "city", "postalCode", "country", "vatNumber", "registrationNumber", "logo",
+        ] as const;
+        const changedFields = editableKeys.filter((key) => {
+          const inputVal = (input as Record<string, unknown>)[key];
+          const currentVal = currentOrg[key];
+          if (inputVal === undefined) return false;
+          const a = String(inputVal ?? "").trim();
+          const b = String(currentVal ?? "").trim();
+          return a !== b;
+        });
+
+        if (changedFields.length > 0) {
+          await logAudit({
+            organizationId: input.organizationId,
+            actorUserId: session.user.id,
+            action: "update",
+            entityType: "organization",
+            entityId: input.organizationId,
+            metadata: { changedFields },
+            ipAddress: ctx.ipAddress ?? undefined,
+          });
+        }
+
         return updated;
       } catch (err: unknown) {
         if (typeof err === "object" && err !== null && "code" in err) {
@@ -393,6 +457,16 @@ export const crudRouter = createTRPCRouter({
         } else if (currentOrg.logo) {
           console.warn("Could not extract file key from logo URL:", currentOrg.logo);
         }
+
+        await logAudit({
+          organizationId,
+          actorUserId: session.user.id,
+          action: "update",
+          entityType: "organization",
+          entityId: organizationId,
+          metadata: { changedFields: ["logo"] },
+          ipAddress: ctx.ipAddress ?? undefined,
+        });
 
         return { success: true };
       } catch (err: unknown) {

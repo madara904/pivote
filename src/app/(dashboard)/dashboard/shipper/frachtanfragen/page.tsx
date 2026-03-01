@@ -1,14 +1,11 @@
-
 import { requireShipperAccess } from "@/lib/auth-utils";
-import {  HydrateClient, prefetch, trpc } from "@/trpc/server";
+import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 import { Suspense } from "react";
 import ShipperInquiryOverview from "../components/shipper-inquiry-overview";
 import { DotLoading } from "@/components/ui/dot-loading";
 import { ErrorBoundary } from "@/components/error-boundary";
 
-
-
-const ShipperInquiriesPage = async () => {
+export default async function ShipperInquiriesPage() {
   await requireShipperAccess();
   void prefetch(trpc.inquiry.shipper.getMyInquiries.queryOptions());
 
@@ -26,6 +23,4 @@ const ShipperInquiriesPage = async () => {
       </HydrateClient>
     </div>
   );
-};
-
-export default ShipperInquiriesPage;  
+}  

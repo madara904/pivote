@@ -2,6 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { eq, and, sql, desc, gte } from "drizzle-orm";
 import { 
   activityEvent, 
+  auditLog,
   inquiryForwarder, 
   inquiry, 
   organization, 
@@ -168,5 +169,105 @@ export const forwarderDashboardRouter = createTRPCRouter({
         console.error("Dashboard Error:", error);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       }
+    }),
+
+  getSubscription: protectedProcedure.query(async ({ ctx }) => {
+    const { db } = ctx;
+    const membership = await requireOrgAndType(ctx);
+    if (membership.organizationType !== "forwarder") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Nur Spediteure haben Zugriff." });
+    }
+    const orgId = membership.organizationId;
+    const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+    const [sub, quotationsThisMonthResult] = await Promise.all([
+      db.query.subscription.findFirst({
+        where: eq(subscription.organizationId, orgId),
+        columns: {
+          tier: true,
+          maxQuotationsPerMonth: true,
+          currentPeriodStart: true,
+          currentPeriodEnd: true,
+        },
+      }),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(quotation)
+        .where(
+          and(
+            eq(quotation.forwarderOrganizationId, orgId),
+            gte(quotation.createdAt, firstDayOfMonth)
+          )
+        ),
+    ]);
+
+    const tier = sub?.tier ?? "basic";
+    const maxOffers =
+      tier === "basic" ? (sub?.maxQuotationsPerMonth ?? 5) : null;
+    const quotationsThisMonth = quotationsThisMonthResult[0]?.count ?? 0;
+
+    return {
+      tier,
+      maxQuotationsPerMonth: maxOffers,
+      quotationsThisMonth,
+      currentPeriodStart: sub?.currentPeriodStart ?? null,
+      currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+    };
+  }),
+
+  getAuditLogs: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(20),
+        action: z.enum(["create", "update", "read", "delete"]).optional(),
+        entityType: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { db } = ctx;
+      const membership = await requireOrgAndType(ctx);
+      if (membership.organizationType !== "forwarder") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Nur Spediteure haben Zugriff." });
+      }
+      const orgId = membership.organizationId;
+      const offset = (input.page - 1) * input.limit;
+
+      const conditions = [eq(auditLog.organizationId, orgId)];
+      if (input.action) conditions.push(eq(auditLog.action, input.action));
+      if (input.entityType) conditions.push(eq(auditLog.entityType, input.entityType));
+
+      const [logs, totalResult] = await Promise.all([
+        db
+          .select({
+            id: auditLog.id,
+            action: auditLog.action,
+            entityType: auditLog.entityType,
+            entityId: auditLog.entityId,
+            metadata: auditLog.metadata,
+            createdAt: auditLog.createdAt,
+            actorName: user.name,
+          })
+          .from(auditLog)
+          .leftJoin(user, eq(auditLog.actorUserId, user.id))
+          .where(and(...conditions))
+          .orderBy(desc(auditLog.createdAt))
+          .limit(input.limit)
+          .offset(offset),
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(auditLog)
+          .where(and(...conditions)),
+      ]);
+
+      const total = totalResult[0]?.count ?? 0;
+
+      return {
+        items: logs,
+        total,
+        page: input.page,
+        limit: input.limit,
+        totalPages: Math.ceil(total / input.limit),
+      };
     }),
 });

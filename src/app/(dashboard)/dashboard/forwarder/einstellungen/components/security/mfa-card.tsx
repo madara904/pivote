@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { authClient, useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldOff } from "lucide-react";
+import { SettingsCard } from "../settings-card";
 
 export default function MfaCard() {
   const { data, refetch, isPending } = useSession();
@@ -67,34 +68,33 @@ export default function MfaCard() {
   if (!mounted) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">Multi-Faktor-Authentifizierung</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Schützen Sie Ihr Konto mit einem zusätzlichen Sicherheitsfaktor.
-        </p>
-      </div>
-      <div className="md:col-span-2 max-w-md space-y-4">
-        <div className="flex items-center gap-2 text-sm">
+    <SettingsCard
+      title="Multi-Faktor-Authentifizierung"
+      description="Schützen Sie Ihr Konto mit einem zusätzlichen Sicherheitsfaktor."
+      icon={Shield}
+    >
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
           {twoFactorEnabled ? (
             <>
-              <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              <span className="text-foreground font-medium">Aktiv</span>
+              <ShieldCheck className="size-4 text-emerald-600" />
+              <span className="text-[12px] font-medium text-foreground">Aktiv</span>
             </>
           ) : (
             <>
-              <ShieldOff className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Inaktiv</span>
+              <ShieldOff className="size-4 text-muted-foreground" />
+              <span className="text-[12px] text-muted-foreground">Inaktiv</span>
             </>
           )}
         </div>
 
         {!twoFactorEnabled && (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               Bei jeder Anmeldung senden wir einen Einmal-Code an Ihre E-Mail-Adresse.
             </p>
             <Input
+              className="text-[13px] h-10"
               type="password"
               placeholder="Passwort"
               value={password}
@@ -105,6 +105,7 @@ export default function MfaCard() {
               onClick={handleEnable}
               disabled={isPending || isEnabling || !password.trim()}
               size="sm"
+              className="font-bold text-[11px]"
             >
               {isEnabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               2FA aktivieren
@@ -114,10 +115,11 @@ export default function MfaCard() {
 
         {twoFactorEnabled && (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               2FA ist aktiv. Einmal-Codes werden an Ihre E-Mail-Adresse gesendet.
             </p>
             <Input
+              className="text-[13px] h-10"
               type="password"
               placeholder="Passwort zur Deaktivierung"
               value={password}
@@ -129,6 +131,7 @@ export default function MfaCard() {
               disabled={isPending || isDisabling || !password.trim()}
               variant="outline"
               size="sm"
+              className="font-bold text-[11px]"
             >
               {isDisabling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               2FA deaktivieren
@@ -136,6 +139,6 @@ export default function MfaCard() {
           </>
         )}
       </div>
-    </div>
+    </SettingsCard>
   );
 }

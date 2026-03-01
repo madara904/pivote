@@ -189,6 +189,27 @@ export const activityEvent = pgTable("activity_event", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+/**
+ * Audit Log – DSGVO-konforme Protokollierung, getrennt von Aktivität.
+ * Aktivität = Dashboard-Feed (user-facing).
+ * Audit Log = Compliance-Trail (admin-only).
+ */
+export const auditLog = pgTable("audit_log", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "set null" }),
+  action: text("action").notNull(), // create | update | read | delete
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id"),
+  metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const organization = pgTable("organization", {
   id: text("id")
     .primaryKey()
@@ -570,6 +591,17 @@ export const activityEventRelations = relations(activityEvent, ({ one }) => ({
   }),
 }));
 
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+  organization: one(organization, {
+    fields: [auditLog.organizationId],
+    references: [organization.id],
+  }),
+  actor: one(user, {
+    fields: [auditLog.actorUserId],
+    references: [user.id],
+  }),
+}));
+
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(organizationMember),
   connectionsAsShipper: many(organizationConnection, {
@@ -724,3 +756,5 @@ export type InsertChargeTemplate = typeof chargeTemplate.$inferInsert;
 export type SelectChargeTemplate = typeof chargeTemplate.$inferSelect;
 export type InsertActivityEvent = typeof activityEvent.$inferInsert;
 export type SelectActivityEvent = typeof activityEvent.$inferSelect;
+export type InsertAuditLog = typeof auditLog.$inferInsert;
+export type SelectAuditLog = typeof auditLog.$inferSelect;

@@ -10,8 +10,8 @@ const NAV_ITEMS = [
   { key: "konto", label: "Konto", href: "/dashboard/forwarder/einstellungen/konto" },
   { key: "sicherheit", label: "Sicherheit", href: "/dashboard/forwarder/einstellungen/sicherheit" },
   { key: "organisation", label: "Organisation", href: "/dashboard/forwarder/einstellungen/organisation" },
-  { key: "Abrechnung", label: "Abrechnung", href: "/dashboard/forwarder/einstellungen/abrechnung" },
-  { key: "Logs & Events", label: "Logs", href: "/dashboard/forwarder/einstellungen/logs" },
+  { key: "abrechnung", label: "Abrechnung", href: "/dashboard/forwarder/einstellungen/abrechnung" },
+  { key: "audit-logs", label: "Audit Logs", href: "/dashboard/forwarder/einstellungen/audit-logs" },
 ] as const;
 
 export default function EinstellungenLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ export default function EinstellungenLayout({ children }: { children: React.Reac
     <div className="flex flex-col min-h-screen">
       <div className="pt-8 pb-0 px-6 md:px-10 border-b bg-background/50 backdrop-blur-md">
         <PageHeader title="Einstellungen" />
-        <nav className="flex items-center gap-6 overflow-x-auto no-scrollbar">
+        <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar min-h-[44px]">
           {NAV_ITEMS.map(({ key, label, href }) => {
             const isActive = normalizedPathname === href;
             return (
@@ -34,16 +34,13 @@ export default function EinstellungenLayout({ children }: { children: React.Reac
                 href={href}
                 prefetch
                 className={cn(
-                  "relative pb-3 text-sm transition-all duration-200 ease-in-out whitespace-nowrap",
-                  isActive 
-                    ? "text-foreground font-medium" 
-                    : "text-muted-foreground hover:text-foreground"
+                  "relative -mb-px px-4 py-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-colors duration-200 whitespace-nowrap border-b-2 border-transparent",
+                  isActive
+                    ? "text-foreground border-primary"
+                    : "text-muted-foreground hover:text-foreground hover:border-foreground/20"
                 )}
               >
                 {label}
-                {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-foreground" />
-                )}
               </Link>
             );
           })}
@@ -52,7 +49,7 @@ export default function EinstellungenLayout({ children }: { children: React.Reac
 
 
       <PageContainer>
-        <div className="animate-in fade-in duration-500">
+        <div className="w-full animate-in fade-in duration-500">
           {children}
         </div>
       </PageContainer>

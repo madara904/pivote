@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { TRPCError } from '@trpc/server';
 import { headers } from 'next/headers';
 import superjson from 'superjson';
+import { ZodError } from 'zod';
 import { requireOrgId } from '@/trpc/common/membership';
 import { cache } from 'react';
 
@@ -16,9 +17,14 @@ export const createTRPCContext = cache(async () => {
   const session = await auth.api.getSession({
     headers: hdrs
   });
+  const ipAddress =
+    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    hdrs.get("x-real-ip") ??
+    null;
   return {
     db,
-    session
+    session,
+    ipAddress,
   };
 });
 
@@ -29,9 +35,15 @@ type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 // For instance, the use of a t variable
 // is common in i18n libraries.
 const t = initTRPC.context<Context>().create({
-  /**
-   */
-   transformer: superjson,
+  transformer: superjson,
+  errorFormatter({ shape, error }) {
+    if (error.code === 'BAD_REQUEST' && error.cause instanceof ZodError) {
+      const firstError = error.cause.errors[0];
+      const message = firstError?.message ?? shape.message;
+      return { ...shape, message };
+    }
+    return shape;
+  },
 });
 
 export const createTRPCRouter = t.router;
@@ -51,7 +63,8 @@ export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
   return next({ 
     ctx: {
       db: ctx.db,
-      session: ctx.session as NonNullable<typeof ctx.session> & { user: { id: string } }
+      session: ctx.session as NonNullable<typeof ctx.session> & { user: { id: string } },
+      ipAddress: ctx.ipAddress,
     }
   });
 });
@@ -70,7 +83,8 @@ export const forwarderQuotationLimitMiddleware = t.middleware(async ({ ctx, next
   // Type assertion: after the check above, we know session is non-null and has user
   const typedCtx = {
     db: ctx.db,
-    session: ctx.session as NonNullable<typeof ctx.session> & { user: { id: string } }
+    session: ctx.session as NonNullable<typeof ctx.session> & { user: { id: string } },
+    ipAddress: ctx.ipAddress,
   };
 
   const organizationId = await requireOrgId(typedCtx);

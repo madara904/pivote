@@ -32,7 +32,8 @@ export function removeLeadingZeros(value: string): string {
       return `0.${decimalPart}`;
     }
     
-    return decimalPart ? `${cleanedInteger}.${decimalPart}` : cleanedInteger;
+    // Dezimalpunkt immer behalten, damit "650." → "650." bleibt (User tippt Cents)
+    return `${cleanedInteger}.${decimalPart}`;
   }
   
   // For non-decimal numbers, remove all leading zeros
@@ -55,6 +56,7 @@ export function sanitizeNumberInput(
     maxValue?: number;
     minValue?: number;
     maxDigits?: number;
+    maxDecimalPlaces?: number;
   } = {}
 ): string {
   if (!value) return "";
@@ -64,18 +66,30 @@ export function sanitizeNumberInput(
     maxValue = MAX_VALUE,
     minValue = 0,
     maxDigits = MAX_DIGITS,
+    maxDecimalPlaces,
   } = options;
+
+  // Normalize: Komma als Dezimaltrennzeichen (DE) zu Punkt konvertieren
+  let normalized = allowDecimals ? value.replace(',', '.') : value;
 
   // Remove any non-numeric characters except decimal point if allowed
   let cleaned = allowDecimals
-    ? value.replace(/[^\d.]/g, '')
-    : value.replace(/\D/g, '');
+    ? normalized.replace(/[^\d.]/g, '')
+    : normalized.replace(/\D/g, '');
 
   // Remove multiple decimal points, keep only the first one
   if (allowDecimals) {
     const parts = cleaned.split('.');
     if (parts.length > 2) {
       cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+  }
+
+  // Limit decimal places (e.g. 2 for cents in EUR)
+  if (allowDecimals && maxDecimalPlaces !== undefined) {
+    const parts = cleaned.split('.');
+    if (parts.length > 1 && parts[1].length > maxDecimalPlaces) {
+      cleaned = `${parts[0] || '0'}.${parts[1].slice(0, maxDecimalPlaces)}`;
     }
   }
 
@@ -123,6 +137,7 @@ export function sanitizeMoneyInput(value: string): string {
     maxValue: MAX_VALUE,
     minValue: 0,
     maxDigits: MAX_DIGITS,
+    maxDecimalPlaces: 2, // Cent-Beträge (2 Nachkommastellen)
   });
 }
 
@@ -168,5 +183,13 @@ export function sanitizeDecimalInput(
     minValue: options.minValue ?? 0,
     maxDigits: options.maxDigits ?? MAX_DIGITS,
   });
+}
+
+/**
+ * Rounds a number to 2 decimal places (cent precision).
+ * Avoids floating-point errors when summing money values.
+ */
+export function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 

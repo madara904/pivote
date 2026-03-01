@@ -91,9 +91,15 @@ appName: "Pivote",
   plugins: [
     twoFactor({
       skipVerificationOnEnable: true,
+      issuer: "Pivote",
       otpOptions: {
+        allowedAttempts: 3,
         expiresIn: 300,
         async sendOTP({ user, otp }) {
+          if (!user.id || !user.twoFactorEnabled) {
+           return
+          }
+
           await sendEmail({
             to: user.email,
             subject: "Ihr Einmal-Code",

@@ -7,9 +7,9 @@ export default async function SecuritySettingsPage() {
   await requireForwarderAccess();
 
   return (
-      <>
+    <div className="w-full space-y-4">
       <ChangePasswordCard />
       <MfaCard />
-      </>
+    </div>
   );
 }

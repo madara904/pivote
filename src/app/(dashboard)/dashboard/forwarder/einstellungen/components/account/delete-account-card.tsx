@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Loader2, AlertTriangle } from "lucide-react";
+import { SettingsCard } from "../settings-card";
 
 export default function DeleteAccountCard() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function DeleteAccountCard() {
     }
 
     setIsDeleting(true);
-    
+
     const result = await authClient.deleteUser({
       password: password.trim(),
     });
@@ -47,7 +48,6 @@ export default function DeleteAccountCard() {
       setIsDeleting(false);
     } else {
       toast.success("Konto wurde erfolgreich gelöscht.");
-      // Weiterleitung zur Startseite oder Login nach dem Löschen
       router.push("/");
     }
   };
@@ -55,67 +55,59 @@ export default function DeleteAccountCard() {
   if (!mounted) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10">
-      <div>
-        <h3 className="text-sm font-semibold text-destructive flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" />
-          Konto löschen
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Dies wird Ihr Konto und alle damit verbundenen Daten dauerhaft entfernen. 
-          Dieser Vorgang kann nicht rückgängig gemacht werden.
-        </p>
-      </div>
+    <SettingsCard
+      title="Konto löschen"
+      description="Dies wird Ihr Konto und alle damit verbundenen Daten dauerhaft entfernen. Dieser Vorgang kann nicht rückgängig gemacht werden."
+      icon={AlertTriangle}
+      variant="destructive"
+    >
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" size="sm" disabled={sessionPending} className="font-bold text-[11px]">
+            Meinen Account löschen
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sind Sie absolut sicher?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion ist endgültig. Um fortzufahren, geben Sie bitte Ihr aktuelles Passwort ein.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-      <div className="md:col-span-2">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={sessionPending}>
-              Meinen Account löschen
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Sind Sie absolut sicher?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Diese Aktion ist endgültig. Um fortzufahren, geben Sie bitte Ihr aktuelles Passwort ein.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            
-            <div className="py-4">
-              <Input
-                type="password"
-                placeholder="Passwort bestätigen"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isDeleting}
-                className="focus-visible:ring-destructive"
-              />
-            </div>
+          <div className="py-4">
+            <Input
+              type="password"
+              placeholder="Passwort bestätigen"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isDeleting}
+              className="text-[13px] focus-visible:ring-destructive"
+            />
+          </div>
 
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Abbrechen</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(e) => {
-                  e.preventDefault(); // Verhindert das automatische Schließen, damit wir den Call abwarten können
-                  handleDelete();
-                }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                disabled={isDeleting || !password.trim()}
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Wird gelöscht...
-                  </>
-                ) : (
-                  "Konto permanent löschen"
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting || !password.trim()}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Wird gelöscht...
+                </>
+              ) : (
+                "Konto permanent löschen"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SettingsCard>
   );
 }

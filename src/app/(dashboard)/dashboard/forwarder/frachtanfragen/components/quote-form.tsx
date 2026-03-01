@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "lucide-react";
+import { Euro, FileText, Truck } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -14,8 +13,13 @@ import { toast } from "sonner";
 import {
   sanitizeMoneyInput,
   sanitizeIntegerInput,
+  roundToTwoDecimals,
 } from "@/lib/form-sanitization";
 import UpgradeDialog from "@/components/upgrade-dialog";
+import { SettingsCard } from "@/app/(dashboard)/dashboard/forwarder/einstellungen/components/settings-card";
+import { DatePicker } from "@/components/ui/date-picker";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { cn } from "@/lib/utils";
 
 interface QuoteFormProps {
   inquiryId: string;
@@ -27,7 +31,6 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
   const trpcOptions = useTRPC();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    totalPrice: 0,
     currency: "EUR",
     airlineFlight: "",
     transitTime: "",
@@ -43,61 +46,56 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
-  const saveDraftQuotation = useMutation(trpcOptions.quotation.forwarder.saveDraftQuotation.mutationOptions({
-    onSuccess: () => {
-      toast.success("Entwurf erfolgreich gespeichert");
-      router.refresh();
-    },
-    onError: (error: unknown) => {
-      if (error && typeof error === "object" && "message" in error) {
-        toast.error(`Fehler beim Speichern: ${(error as { message?: string }).message}`);
-      } else {
-        toast.error("Fehler beim Speichern");
-      }
-    },
-  }));
-
-  const createQuotation = useMutation(trpcOptions.quotation.forwarder.createQuotation.mutationOptions({
-    onSuccess: async () => {
-      // Invalidate inquiry list to ensure it updates immediately
-      await queryClient.invalidateQueries(trpcOptions.inquiry.forwarder.getMyInquiriesFast.queryFilter());
-      toast.info("Angebot erfolgreich eingereicht");
-      router.push("/dashboard/forwarder/frachtanfragen?tab=quoted");
-      setUpgradeDialogOpen(false);
-    },
-    onError: (error: unknown) => {
-      // Only show toast for non-quota errors (quota errors show upgrade dialog)
-      if (error && typeof error === "object" && "data" in error && (error as { data?: { code?: string } }).data?.code !== "FORBIDDEN") {
-        if ("message" in error) {
-          toast.error(`Fehler beim Erstellen: ${(error as { message?: string }).message}`);
-        }
+  const createQuotation = useMutation(
+    trpcOptions.quotation.forwarder.createQuotation.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries(
+          trpcOptions.inquiry.forwarder.getMyInquiriesFast.queryFilter()
+        );
+        toast.info("Angebot erfolgreich eingereicht");
+        router.push("/dashboard/forwarder/frachtanfragen?tab=quoted");
         setUpgradeDialogOpen(false);
-      } else {
-        setUpgradeDialogOpen(true);
-      }
-    },
-  }));
+      },
+      onError: (error: unknown) => {
+        if (
+          error &&
+          typeof error === "object" &&
+          "data" in error &&
+          (error as { data?: { code?: string } }).data?.code !== "FORBIDDEN"
+        ) {
+          if ("message" in error) {
+            toast.error(
+              `Fehler beim Erstellen: ${(error as { message?: string }).message}`
+            );
+          }
+          setUpgradeDialogOpen(false);
+        } else {
+          setUpgradeDialogOpen(true);
+        }
+      },
+    })
+  );
 
-  // Calculate total price from cost breakdown
-  const calculatedTotal =
+  const calculatedTotal = roundToTwoDecimals(
     Number(formData.preCarriage || 0) +
-    Number(formData.mainCarriage || 0) +
-    Number(formData.onCarriage || 0) +
-    Number(formData.additionalCharges || 0);
+      Number(formData.mainCarriage || 0) +
+      Number(formData.onCarriage || 0) +
+      Number(formData.additionalCharges || 0)
+  );
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
   const handleMoneyInputChange = (field: string, value: string) => {
-    const sanitized = sanitizeMoneyInput(value);
-    // Store sanitized string value for proper display (removes leading zeros)
-    handleInputChange(field, sanitized);
+    handleInputChange(field, sanitizeMoneyInput(value));
   };
+
+  /** Anzeige mit Komma (DE) für Geldbeträge */
+  const formatMoneyDisplay = (val: string) => val?.replace(".", ",") ?? "";
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -117,58 +115,50 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
     }
 
     if (formData.transitTime && Number(formData.transitTime) < 1) {
-      newErrors.transitTime = "Transitzeit muss mindestens 1 Tag betragen";
+      newErrors.transitTime =
+        "Transitzeit muss mindestens 1 Tag betragen";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveDraft = () => {
-    saveDraftQuotation.mutate({
-      inquiryId,
-      totalPrice: calculatedTotal,
-      currency: formData.currency,
-      airlineFlight: formData.airlineFlight || undefined,
-      transitTime: formData.transitTime
-        ? Number(formData.transitTime)
-        : undefined,
-      validUntil: formData.validUntil ? new Date(formData.validUntil) : new Date(),
-      notes: formData.notes || undefined,
-      terms: formData.terms || undefined,
-      preCarriage: Number(formData.preCarriage || 0) || 0,
-      mainCarriage: Number(formData.mainCarriage || 0) || 0,
-      onCarriage: Number(formData.onCarriage || 0) || 0,
-      additionalCharges: Number(formData.additionalCharges || 0) || 0,
-    });
-  };
+  const getPayload = () => ({
+    inquiryId,
+    totalPrice: calculatedTotal,
+    currency: formData.currency,
+    airlineFlight: formData.airlineFlight || undefined,
+    transitTime: formData.transitTime
+      ? Number(formData.transitTime)
+      : undefined,
+    validUntil: formData.validUntil ? new Date(formData.validUntil) : new Date(),
+    notes: formData.notes || undefined,
+    terms: formData.terms || undefined,
+    preCarriage: roundToTwoDecimals(Number(formData.preCarriage || 0) || 0),
+    mainCarriage: roundToTwoDecimals(Number(formData.mainCarriage || 0) || 0),
+    onCarriage: roundToTwoDecimals(Number(formData.onCarriage || 0) || 0),
+    additionalCharges: roundToTwoDecimals(
+      Number(formData.additionalCharges || 0) || 0
+    ),
+  });
 
   const handleSubmit = () => {
     if (validateForm()) {
       createQuotation.mutate({
-        inquiryId,
-        totalPrice: calculatedTotal,
-        currency: formData.currency,
-        airlineFlight: formData.airlineFlight || undefined,
-        transitTime: formData.transitTime
-          ? Number(formData.transitTime)
-          : undefined,
+        ...getPayload(),
         validUntil: new Date(formData.validUntil),
-        notes: formData.notes || undefined,
-        terms: formData.terms || undefined,
-        preCarriage: Number(formData.preCarriage || 0) || 0,
-        mainCarriage: Number(formData.mainCarriage || 0) || 0,
-        onCarriage: Number(formData.onCarriage || 0) || 0,
-        additionalCharges: Number(formData.additionalCharges || 0) || 0,
       });
     }
   };
 
-  const isLoading = saveDraftQuotation.isPending || createQuotation.isPending;
+  const isLoading = createQuotation.isPending;
 
-  // Check if error is a quota error (FORBIDDEN from middleware)
   const isQuotaError = createQuotation.error?.data?.code === "FORBIDDEN";
   const quotaErrorMessage = createQuotation.error?.message;
+
+  const inputClass = "h-10 text-[13px]";
+  const labelClass = "text-[12px] font-medium";
+  const errorClass = "text-[11px] text-destructive mt-1";
 
   return (
     <>
@@ -181,165 +171,112 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
         />
       )}
 
-      <Card className="border">
-        <div className="p-6 space-y-6">
-        {/* Cost Breakdown */}
-        <Card className="border-0 shadow-none bg-transparent">
-          <div className="space-y-6 p-4 sm:p-6">
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold">Kostenaufschlüsselung</h2>
-              <p className="text-sm text-muted-foreground">
-                Geben Sie die einzelnen Kostenpunkte ein. Mindestens ein Wert
-                muss größer als 0 sein.
-              </p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Pre-carriage */}
-              <div className="space-y-2">
-                <Label htmlFor="preCarriage" className="text-sm font-medium">
-                  Vorlauf (Pre-carriage)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="preCarriage"
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.preCarriage}
-                    onChange={(e) =>
-                      handleMoneyInputChange("preCarriage", e.target.value)
-                    }
-                    className="pr-12"
-                    placeholder="0.00"
-                    disabled={isLoading}
-                    maxLength={10}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    {formData.currency}
-                  </span>
+      <div className="space-y-6">
+        {/* Kostenaufschlüsselung */}
+        <SettingsCard
+          title="Kostenaufschlüsselung"
+          description={
+            <span className="inline-flex items-center gap-1.5">
+              Geben Sie die einzelnen Kostenpunkte ein. Mindestens ein Wert muss
+              größer als 0 sein.
+              <InfoTooltip
+                content="Vorlauf (Pre-carriage): Transport zum Flughafen. Hauptlauf (Main carriage): Luftfracht. Nachlauf (On-carriage): Transport vom Zielflughafen. Zusatzkosten: z.B. Versicherung, Dokumente. Beträge in Euro mit Cent (z.B. 123,45)."
+                ariaLabel="Erklärung der Kostenpositionen"
+              />
+            </span>
+          }
+          icon={Euro}
+        >
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  id: "preCarriage",
+                  label: "Vorlauf (Pre-carriage)",
+                },
+                {
+                  id: "mainCarriage",
+                  label: "Hauptlauf (Main carriage)",
+                },
+                {
+                  id: "onCarriage",
+                  label: "Nachlauf (On-carriage)",
+                },
+                {
+                  id: "additionalCharges",
+                  label: "Zusatzkosten",
+                },
+              ].map(({ id, label }) => (
+                <div key={id} className="space-y-1.5">
+                  <Label htmlFor={id} className={labelClass}>
+                    {label}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id={id}
+                      type="text"
+                      inputMode="decimal"
+                      value={formatMoneyDisplay(
+                        String(formData[id as keyof typeof formData] ?? "")
+                      )}
+                      onChange={(e) =>
+                        handleMoneyInputChange(id, e.target.value)
+                      }
+                      className={cn(inputClass, "pr-12")}
+                      placeholder="0,00"
+                      disabled={isLoading}
+                      maxLength={10}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">
+                      {formData.currency}
+                    </span>
+                  </div>
                 </div>
-              </div>
-
-              {/* Main carriage */}
-              <div className="space-y-2">
-                <Label htmlFor="mainCarriage" className="text-sm font-medium">
-                  Hauptlauf (Main carriage)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="mainCarriage"
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.mainCarriage}
-                    onChange={(e) =>
-                      handleMoneyInputChange("mainCarriage", e.target.value)
-                    }
-                    className="pr-12"
-                    placeholder="0.00"
-                    disabled={isLoading}
-                    maxLength={10}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    {formData.currency}
-                  </span>
-                </div>
-              </div>
-
-              {/* On-carriage */}
-              <div className="space-y-2">
-                <Label htmlFor="onCarriage" className="text-sm font-medium">
-                  Nachlauf (On-carriage)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="onCarriage"
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.onCarriage}
-                    onChange={(e) =>
-                      handleMoneyInputChange("onCarriage", e.target.value)
-                    }
-                    className="pr-12"
-                    placeholder="0.00"
-                    disabled={isLoading}
-                    maxLength={10}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    {formData.currency}
-                  </span>
-                </div>
-              </div>
-
-              {/* Additional charges */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="additionalCharges"
-                  className="text-sm font-medium"
-                >
-                  Zusatzkosten
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="additionalCharges"
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.additionalCharges}
-                    onChange={(e) =>
-                      handleMoneyInputChange(
-                        "additionalCharges",
-                        e.target.value
-                      )
-                    }
-                    className="pr-12"
-                    placeholder="0.00"
-                    disabled={isLoading}
-                    maxLength={10}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    {formData.currency}
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
 
             {errors.preCarriage && (
-              <p className="text-sm text-red-600">{errors.preCarriage}</p>
+              <p className={errorClass}>{errors.preCarriage}</p>
             )}
 
-            {/* Total Price Display */}
-            <div className="border-t pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <p className="text-sm text-muted-foreground">Gesamtpreis</p>
-                  <p className="text-2xl sm:text-3xl font-semibold break-words">
-                    {calculatedTotal.toLocaleString("de-DE", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    <span className="text-lg sm:text-xl text-muted-foreground">
-                      {formData.currency}
-                    </span>
-                  </p>
-                </div>
-              </div>
+            <div className="border-t border-border pt-4">
+              <p className="text-[12px] text-muted-foreground inline-flex items-center gap-1.5">
+                Gesamtpreis
+                <InfoTooltip
+                  content="Wird automatisch aus allen Kostenpositionen berechnet. Cent-Beträge werden korrekt gerundet."
+                  ariaLabel="Info Gesamtpreis"
+                />
+              </p>
+              <p className="text-xl font-bold text-foreground">
+                {calculatedTotal.toLocaleString("de-DE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                <span className="text-base font-medium text-muted-foreground">
+                  {formData.currency}
+                </span>
+              </p>
               {errors.totalPrice && (
-                <p className="mt-2 text-sm text-red-600">{errors.totalPrice}</p>
+                <p className={errorClass}>{errors.totalPrice}</p>
               )}
             </div>
           </div>
-        </Card>
+        </SettingsCard>
 
-        {/* Shipment Details */}
-        <Card className="border-0 shadow-none bg-transparent">
-          <div className="space-y-6 p-4 sm:p-6">
-            <h2 className="text-xl font-semibold">Versanddetails</h2>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Airline/Flight */}
-              <div className="space-y-2">
-                <Label htmlFor="airlineFlight" className="text-sm font-medium">
+        {/* Versanddetails */}
+        <SettingsCard
+          title="Versanddetails"
+          description="Flug, Transitzeit und Gültigkeit des Angebots."
+          icon={Truck}
+        >
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="airlineFlight" className={labelClass}>
                   Fluggesellschaft / Flugnummer
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    (optional)
+                  </span>
                 </Label>
                 <Input
                   id="airlineFlight"
@@ -348,16 +285,24 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
                   onChange={(e) =>
                     handleInputChange("airlineFlight", e.target.value)
                   }
+                  className={inputClass}
                   placeholder="z.B. LH 123"
                   disabled={isLoading}
                 />
               </div>
 
-              {/* Transit Time */}
-              <div className="space-y-2">
-                <Label htmlFor="transitTime" className="text-sm font-medium">
-                  Transitzeit (Tage)
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
+              <div className="space-y-1.5">
+                <Label htmlFor="transitTime" className={labelClass}>
+                  <span className="inline-flex items-center gap-1.5">
+                    Transitzeit (Tage)
+                    <InfoTooltip
+                      content="Geschätzte Lieferzeit in Tagen vom Abholort bis zum Ziel."
+                      ariaLabel="Info Transitzeit"
+                    />
+                  </span>
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    (optional)
+                  </span>
                 </Label>
                 <Input
                   id="transitTime"
@@ -365,48 +310,56 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
                   inputMode="numeric"
                   value={formData.transitTime}
                   onChange={(e) => {
-                    const sanitized = sanitizeIntegerInput(e.target.value, {
-                      minValue: 1,
-                      maxValue: 365,
-                    });
-                    handleInputChange("transitTime", sanitized);
+                    handleInputChange(
+                      "transitTime",
+                      sanitizeIntegerInput(e.target.value, {
+                        minValue: 1,
+                        maxValue: 365,
+                      })
+                    );
                   }}
+                  className={inputClass}
                   placeholder="z.B. 3"
                   disabled={isLoading}
                   maxLength={7}
                 />
                 {errors.transitTime && (
-                  <p className="text-sm text-red-600">{errors.transitTime}</p>
+                  <p className={errorClass}>{errors.transitTime}</p>
                 )}
               </div>
 
-              {/* Valid Until */}
-              <div className="space-y-2">
-                <Label htmlFor="validUntil" className="text-sm font-medium">
-                  Gültig bis
-                  <span className="ml-1 text-red-600">*</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="validUntil"
-                    type="date"
-                    value={formData.validUntil}
-                    onChange={(e) =>
-                      handleInputChange("validUntil", e.target.value)
-                    }
-                    className="pr-10"
-                    disabled={isLoading}
-                  />
-                  <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                </div>
+              <div className="space-y-1.5">
+                <span id="validUntil-label" className={labelClass}>
+                  <span className="inline-flex items-center gap-1.5">
+                    Gültig bis
+                    <InfoTooltip
+                      content="Bis zu diesem Datum gilt das Angebot. Danach muss der Kunde ggf. neu anfragen."
+                      ariaLabel="Info Gültigkeitsdatum"
+                    />
+                  </span>
+                  <span className="text-destructive"> *</span>
+                </span>
+                <DatePicker
+                  id="validUntil"
+                  aria-labelledby="validUntil-label"
+                  value={formData.validUntil || undefined}
+                  onChange={(d) =>
+                    handleInputChange(
+                      "validUntil",
+                      d ? d.toISOString().split("T")[0] ?? "" : ""
+                    )
+                  }
+                  placeholder="Datum wählen"
+                  disabled={isLoading}
+                  minDate={new Date()}
+                />
                 {errors.validUntil && (
-                  <p className="text-sm text-red-600">{errors.validUntil}</p>
+                  <p className={errorClass}>{errors.validUntil}</p>
                 )}
               </div>
 
-              {/* Currency */}
-              <div className="space-y-2">
-                <Label htmlFor="currency" className="text-sm font-medium">
+              <div className="space-y-1.5">
+                <Label htmlFor="currency" className={labelClass}>
                   Währung
                 </Label>
                 <Input
@@ -416,81 +369,72 @@ export function QuoteForm({ inquiryId }: QuoteFormProps) {
                   onChange={(e) =>
                     handleInputChange("currency", e.target.value)
                   }
+                  className={inputClass}
                   placeholder="EUR"
                   disabled={isLoading}
                 />
               </div>
             </div>
           </div>
-        </Card>
+        </SettingsCard>
 
-        {/* Additional Information */}
-        <Card className="border-0 shadow-none bg-transparent">
-          <div className="space-y-6 p-4 sm:p-6">
-            <h2 className="text-xl font-semibold">Zusätzliche Informationen</h2>
+        {/* Zusätzliche Informationen */}
+        <SettingsCard
+          title="Zusätzliche Informationen"
+          description="Notizen und Geschäftsbedingungen für das Angebot."
+          icon={FileText}
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className={labelClass}>
+                Notizen
+                <span className="ml-1 font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => handleInputChange("notes", e.target.value)}
+                placeholder="Zusätzliche Informationen oder Hinweise..."
+                rows={4}
+                className="resize-none text-[13px]"
+                disabled={isLoading}
+              />
+            </div>
 
-            <div className="space-y-6">
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="notes" className="text-sm font-medium">
-                  Notizen
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
-                </Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange("notes", e.target.value)}
-                  placeholder="Zusätzliche Informationen oder Hinweise..."
-                  rows={4}
-                  className="resize-none"
-                  disabled={isLoading}
-                />
-              </div>
-
-              {/* Terms */}
-              <div className="space-y-2">
-                <Label htmlFor="terms" className="text-sm font-medium">
-                  Geschäftsbedingungen
-                  <span className="ml-1 text-muted-foreground">(optional)</span>
-                </Label>
-                <Textarea
-                  id="terms"
-                  value={formData.terms}
-                  onChange={(e) => handleInputChange("terms", e.target.value)}
-                  placeholder="Allgemeine Geschäftsbedingungen, Zahlungsbedingungen, etc..."
-                  rows={4}
-                  className="resize-none"
-                  disabled={isLoading}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="terms" className={labelClass}>
+                Geschäftsbedingungen
+                <span className="ml-1 font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea
+                id="terms"
+                value={formData.terms}
+                onChange={(e) => handleInputChange("terms", e.target.value)}
+                placeholder="Allgemeine Geschäftsbedingungen, Zahlungsbedingungen, etc."
+                rows={4}
+                className="resize-none text-[13px]"
+                disabled={isLoading}
+              />
             </div>
           </div>
-        </Card>
+        </SettingsCard>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 border-t pt-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Button
-            variant="outline"
-            size="lg"
-            onClick={handleSaveDraft}
-            disabled={isLoading}
-            className="w-full sm:w-auto"
-          >
-            <span className="truncate">Als Entwurf speichern</span>
-          </Button>
-          <Button
-            size="lg"
+            size="sm"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="w-full sm:w-auto"
+            className="w-full font-bold text-[11px] sm:w-auto"
           >
-            <span className="truncate">
-              {isLoading ? "Wird verarbeitet..." : "Angebot einreichen"}
-            </span>
+            {isLoading ? "Wird verarbeitet..." : "Angebot einreichen"}
           </Button>
         </div>
-        </div>
-      </Card>
+      </div>
     </>
   );
 }

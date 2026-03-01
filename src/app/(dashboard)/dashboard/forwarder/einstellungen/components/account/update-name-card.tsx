@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { authClient, useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, User } from "lucide-react";
+import { SettingsCard } from "../settings-card";
 
 export default function UpdateNameCard() {
   const { data, refetch, isPending } = useSession();
@@ -51,29 +52,29 @@ export default function UpdateNameCard() {
   if (!mounted) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">Anzeigename</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Ihr Name, wie er innerhalb der Plattform für Kollegen angezeigt wird.
-        </p>
-      </div>
-      <div className="md:col-span-2 max-w-md space-y-4">
+    <SettingsCard
+      title="Anzeigename"
+      description="Ihr Name, wie er innerhalb der Plattform für Kollegen angezeigt wird."
+      icon={User}
+    >
+      <div className="space-y-4">
         <Input
+          className="text-[13px] h-10"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ihr Name"
           disabled={isPending || isSaving}
         />
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={!isDirty || isSaving || isPending}
           size="sm"
+          className="font-bold text-[11px]"
         >
           {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Änderungen speichern
         </Button>
       </div>
-    </div>
+    </SettingsCard>
   );
 }

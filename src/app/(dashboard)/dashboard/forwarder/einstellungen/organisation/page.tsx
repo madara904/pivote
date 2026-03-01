@@ -10,7 +10,7 @@ export default async function OrganizationSettingsPage() {
   await requireForwarderAccess();
 
   void prefetch(trpc.organization.getMyOrganizations.queryOptions());
-  
+
   return (
     <HydrateClient>
       <ErrorBoundary
@@ -18,7 +18,7 @@ export default async function OrganizationSettingsPage() {
         description="Es ist ein Fehler beim Laden der Organisationen aufgetreten. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support, wenn das Problem weiterhin besteht."
       >
         <Suspense fallback={<Loading />}>
-            <OrganizationCreateForm />
+          <OrganizationCreateForm />
         </Suspense>
       </ErrorBoundary>
     </HydrateClient>

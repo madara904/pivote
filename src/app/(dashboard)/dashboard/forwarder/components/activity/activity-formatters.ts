@@ -41,6 +41,7 @@ export function formatCurrency(value: unknown, currency: string | undefined) {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
     currency: currency || "EUR",
+    minimumFractionDigits: 2, // Cent-Beträge immer anzeigen
     maximumFractionDigits: 2,
   }).format(amount);
 }

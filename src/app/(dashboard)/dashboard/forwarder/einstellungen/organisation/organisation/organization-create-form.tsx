@@ -26,8 +26,17 @@ const orgSchema = z.object({
   city: z.string().optional(),
   postalCode: z.string().optional(),
   country: z.string().optional(),
-  vatNumber: z.string().min(1, "USt-IdNr. ist erforderlich"),
-  registrationNumber: z.string().optional(),
+  vatNumber: z
+    .string()
+    .min(1, "USt-IdNr. ist erforderlich")
+    .regex(/^DE[0-9]{9}$/, "Format: DE + 9 Ziffern (z. B. DE123456789)"),
+  registrationNumber: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || /^HRB[0-9]+$/.test(value),
+      "Format: HRB + Ziffern (z. B. HRB12345)"
+    ),
 });
 
 export type OrgForm = z.infer<typeof orgSchema>;
@@ -60,7 +69,10 @@ export default function OrganizationCrudTest() {
 
   
   const selectedOrg = orgsData?.find((o) => o.id === selectedOrgId);
-  const selectedOrgIsOwner = selectedOrg?.membershipRole === "owner";
+  const selectedOrgRole = selectedOrg?.membershipRole;
+  const selectedOrgIsOwner = selectedOrgRole === "owner";
+  const selectedOrgCanManageLogo =
+    selectedOrgRole === "owner" || selectedOrgRole === "admin";
 
 
   useEffect(() => {
@@ -72,10 +84,12 @@ export default function OrganizationCrudTest() {
 
   const createForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
     defaultValues: {
       name: "",
       email: "",
-      type: "shipper",
+      type: "forwarder",
       description: "",
       phone: "",
       website: "",
@@ -89,10 +103,12 @@ export default function OrganizationCrudTest() {
   });
   const editForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
     defaultValues: {
       name: "",
       email: "",
-      type: "shipper",
+      type: "forwarder",
       description: "",
       phone: "",
       website: "",
@@ -159,12 +175,19 @@ export default function OrganizationCrudTest() {
 
   const handleInviteMember = () => {
     if (!selectedOrgId) return;
-    if (!inviteEmail.trim()) {
+    const trimmed = inviteEmail.trim();
+    if (!trimmed) {
       toast.error("Bitte eine E-Mail-Adresse eingeben.");
       return;
     }
+    const emailSchema = z.string().email("Bitte geben Sie eine gültige E-Mail-Adresse ein.");
+    const parsed = emailSchema.safeParse(trimmed);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message ?? "Bitte geben Sie eine gültige E-Mail-Adresse ein.");
+      return;
+    }
     addMember.mutate(
-      { organizationId: selectedOrgId, email: inviteEmail.trim(), role: inviteRole },
+      { organizationId: selectedOrgId, email: trimmed, role: inviteRole },
       {
         onSuccess: () => {
           setInviteEmail("");
@@ -174,7 +197,7 @@ export default function OrganizationCrudTest() {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-4">
       <OrganizationCreateCard
         form={createForm}
         onSubmit={handleCreate}
@@ -186,6 +209,8 @@ export default function OrganizationCrudTest() {
         organizations={orgsData}
         isLoading={false}
         errorMessage={undefined}
+        selectedOrgId={selectedOrgId}
+        onSelect={setSelectedOrgId}
         deletePending={deleteOrganization.isPending}
         onEdit={(orgId) => {
           setSelectedOrgId(orgId);
@@ -195,6 +220,69 @@ export default function OrganizationCrudTest() {
         canEdit={(org) => org.membershipRole === "owner"}
         canDelete={(org) => org.membershipRole === "owner"}
       />
+
+      {!selectedOrgId ? (
+        <div className="py-8 border border-dashed border-border/80 bg-muted/20 flex items-center justify-center min-h-[120px]">
+          <p className="text-[12px] text-muted-foreground">
+            Wählen Sie eine Organisation aus, um Logo und Team zu verwalten.
+          </p>
+        </div>
+      ) : (
+        <>
+          <OrganizationLogoCard
+            selectedOrgId={selectedOrgId}
+            selectedOrgLogo={selectedOrg?.logo ?? null}
+            selectedOrgCanManage={selectedOrgCanManageLogo}
+            onLogoUploaded={(url) => {
+              if (!selectedOrgId) return;
+              editOrganization.mutate(
+                { organizationId: selectedOrgId, logo: url },
+                {
+                  onSuccess: () => {
+                    toast.success("Logo erfolgreich hochgeladen!");
+                  },
+                }
+              );
+            }}
+            onLogoReset={(url) => {
+              if (!selectedOrgId) return;
+              editOrganization.mutate(
+                { organizationId: selectedOrgId, logo: url ?? undefined },
+                {
+                  onSuccess: () => {
+                    toast.success("Logo wurde zurückgesetzt.");
+                  },
+                }
+              );
+            }}
+            onLogoError={(messageText) => toast.error(messageText)}
+          />
+
+          <OrganizationMembersCard
+            selectedOrgIsOwner={selectedOrgIsOwner}
+            inviteEmail={inviteEmail}
+            inviteRole={inviteRole}
+            onInviteEmailChange={setInviteEmail}
+            onInviteRoleChange={setInviteRole}
+            onInvite={handleInviteMember}
+            invitePending={addMember.isPending}
+            members={membersQuery.data}
+            membersLoading={membersQuery.isLoading}
+            membersError={membersQuery.error?.message}
+            onUpdateRole={(memberId: string, role: "admin" | "member") =>
+              updateMemberRole.mutate(
+                { organizationId: selectedOrgId, memberId, role }
+              )
+            }
+            onRemoveMember={(memberId: string) =>
+              removeMember.mutate(
+                { organizationId: selectedOrgId, memberId }
+              )
+            }
+            removePending={removeMember.isPending}
+          />
+        </>
+      )}
 
       <OrganizationEditDialog
         open={editMode && !!selectedOrgId}
@@ -206,53 +294,6 @@ export default function OrganizationCrudTest() {
         isSubmitting={editOrganization.isPending}
         canEdit={selectedOrgIsOwner}
       />
-
-      <OrganizationLogoCard
-        selectedOrgId={selectedOrgId}
-        selectedOrgLogo={selectedOrg?.logo ?? null}
-        selectedOrgIsOwner={selectedOrgIsOwner}
-        onLogoUploaded={(url) => {
-          if (!selectedOrgId) return;
-          editOrganization.mutate(
-            { organizationId: selectedOrgId, logo: url },
-            {
-              onSuccess: () => {
-                toast.success("Logo erfolgreich hochgeladen!");
-              },
-            }
-          );
-        }}
-        onLogoError={(messageText) => toast.error(messageText)}
-      />
-
-      {selectedOrgId && (
-        <OrganizationMembersCard
-          selectedOrgIsOwner={selectedOrgIsOwner}
-          inviteEmail={inviteEmail}
-          inviteRole={inviteRole}
-          onInviteEmailChange={setInviteEmail}
-          onInviteRoleChange={setInviteRole}
-          onInvite={handleInviteMember}
-          invitePending={addMember.isPending}
-          members={membersQuery.data}
-          membersLoading={membersQuery.isLoading}
-          membersError={membersQuery.error?.message}
-          onUpdateRole={(memberId: string, role: "admin" | "member") =>
-            updateMemberRole.mutate(
-              { organizationId: selectedOrgId, memberId, role }
-            )
-          }
-          onRemoveMember={(memberId: string) =>
-            removeMember.mutate(
-              { organizationId: selectedOrgId, memberId }
-            )
-          }
-          updateRolePending={updateMemberRole.isPending}
-          removePending={removeMember.isPending}
-          message={null}
-          messageTone="success"
-        />
-      )}
     </div>
   );
 }

@@ -18,7 +18,6 @@ import {
   Settings, 
   ClipboardList,
   House,
-  LogsIcon
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,11 +38,6 @@ const menuItems = {
       title: "Verbindungen",
       url: "/dashboard/forwarder/verbindungen",
       icon: Link2,
-    },
-    {
-      title: "Logs & Events",
-      url: "/dashboard/forwarder/logs",
-      icon: LogsIcon,
     },
   ],
   settings: [

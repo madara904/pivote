@@ -54,7 +54,10 @@ export const membershipRouter = createTRPCRouter({
     .input(
       z.object({
         organizationId: z.string().uuid(),
-        email: z.string().email(),
+        email: z
+          .string()
+          .min(1, "Bitte geben Sie eine E-Mail-Adresse ein.")
+          .email("Bitte geben Sie eine gültige E-Mail-Adresse ein."),
         role: z.enum(["admin", "member"]).default("member"),
       })
     )

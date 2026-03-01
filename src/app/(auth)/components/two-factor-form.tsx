@@ -17,6 +17,7 @@ import { authClient } from "@/lib/auth-client";
 import { getReturnToFromSearchParams } from "@/lib/redirect-utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 const OTP_LENGTH = 6;
 const OTP_VALID_SECONDS = 300; // 5 Minuten
@@ -171,12 +172,18 @@ export default function TwoFactorForm() {
                 }}
                 disabled={isSending || isSubmitting}
               />
-              <Label
-                htmlFor="trustDevice"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Dieses Gerät merken
-              </Label>
+              <div className="flex items-center gap-1.5">
+                <Label
+                  htmlFor="trustDevice"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Dieses Gerät merken
+                </Label>
+                <InfoTooltip
+                  mode="click"
+                  content="Wenn aktiviert, bleibt dieses Gerät für zukünftige Logins vertrauenswürdig."
+                />
+              </div>
             </div>
 
             <p className="text-slate-500 font-medium text-sm">

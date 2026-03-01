@@ -10,7 +10,7 @@ export default async function VerbindungenPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Verbundene Partner" />
+      <PageHeader title="Partnerverbindungen" />
       <HydrateClient>
         <Suspense fallback={<DotLoading />}>
           <ForwarderConnectionsView />

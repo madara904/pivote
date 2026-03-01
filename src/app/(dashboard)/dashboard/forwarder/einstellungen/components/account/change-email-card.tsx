@@ -7,6 +7,7 @@ import { authClient, useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Mail } from "lucide-react";
+import { SettingsCard } from "../settings-card";
 
 export default function ChangeEmailCard() {
   const { data, isPending } = useSession();
@@ -21,7 +22,6 @@ export default function ChangeEmailCard() {
   const pathname = usePathname();
   const callbackURL = useMemo(() => {
     if (typeof window === "undefined") return undefined;
-
     return `${window.location.origin}${pathname}`;
   }, [pathname]);
 
@@ -70,37 +70,35 @@ export default function ChangeEmailCard() {
   if (!mounted) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-10 border-b border-border/50">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          E-Mail-Adresse
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Ihre aktuelle Adresse: <span className="font-medium text-foreground">{currentEmail || data?.user?.email || "—"}</span>
+    <SettingsCard
+      title="E-Mail-Adresse"
+      description={
+        <>
+          Aktuell: <span className="font-medium text-foreground">{currentEmail || data?.user?.email || "—"}</span>
+        </>
+      }
+      icon={Mail}
+    >
+      <div className="space-y-4">
+        <Input
+          className="text-[13px] h-10"
+          value={newEmail}
+          onChange={(e) => {
+            if (!hasTouched) setHasTouched(true);
+            setNewEmail(e.target.value);
+          }}
+          placeholder="neue-email@beispiel.de"
+          type="email"
+          disabled={isPending || isSaving}
+        />
+        <p className="text-[11px] text-muted-foreground">
+          Nach der Änderung müssen Sie die neue E-Mail-Adresse bestätigen, bevor sie aktiv wird.
         </p>
-      </div>
-      
-      <div className="md:col-span-2 max-w-md space-y-4">
-        <div className="space-y-2">
-          <Input
-            value={newEmail}
-            onChange={(event) => {
-              if (!hasTouched) setHasTouched(true);
-              setNewEmail(event.target.value);
-            }}
-            placeholder="neue-email@beispiel.de"
-            type="email"
-            disabled={isPending || isSaving}
-          />
-          <p className="text-[12px] text-muted-foreground italic">
-            Nach der Änderung müssen Sie die neue E-Mail-Adresse bestätigen, bevor sie aktiv wird.
-          </p>
-        </div>
-
-        <Button 
-          onClick={handleChangeEmail} 
+        <Button
+          onClick={handleChangeEmail}
           disabled={isSaving || isPending || !hasTouched || !isDirty}
           size="sm"
+          className="font-bold text-[11px]"
         >
           {isSaving ? (
             <>
@@ -112,6 +110,6 @@ export default function ChangeEmailCard() {
           )}
         </Button>
       </div>
-    </div>
+    </SettingsCard>
   );
 }
